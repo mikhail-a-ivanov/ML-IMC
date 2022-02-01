@@ -34,7 +34,7 @@ def leastSquares(x_input, y_input, powers=[0, 1], start=0, quiet=True):
     return((x, y_fit, p, R2))
 
 def lmpTablePolynomial(name, powers, p, r_min=0.000001, r_max=15, 
-                       r_boundary=3, Npoints=3001, extraForceConstant=100):
+                       r_boundary=3, Npoints=3001, force_constant=100):
     """
     Creates LAMMPS table potential file from a polynomial fit
     of a potential.
@@ -48,7 +48,7 @@ def lmpTablePolynomial(name, powers, p, r_min=0.000001, r_max=15,
     print(f'Writing {name}.table file...')
     print(f'N points = {Npoints}')
     print(f'Using polynomial fit for R in range[{r_boundary}, {r_max}]')
-    print(f'Using quadratic extrapolation for R < {r_boundary} with k = {extraForceConstant}')
+    print(f'Using quadratic extrapolation for R < {r_boundary} with k = {force_constant}')
     
     r = np.linspace(r_max/(Npoints - 1), r_max, (Npoints - 1))
     table_R = np.concatenate(([r_min], r)) # distance values
@@ -66,27 +66,27 @@ def lmpTablePolynomial(name, powers, p, r_min=0.000001, r_max=15,
     
     # predicted and extrapolated potential values in kcal/mol
     table_V_poly = np.matmul(p, R_poly.T)/cal_to_J
-    table_V_extra = extraForceConstant/2 * (table_R_extra - r_boundary)**2 + table_V_poly[0]
+    table_V_extra = force_constant/2 * (table_R_extra - r_boundary)**2 + table_V_poly[0]
     
     table_V = np.concatenate((table_V_extra, table_V_poly))
     
-    derivativePowers = powers - 1
+    derivative_powers = powers - 1
     Rderivative_poly = []
-    for power in derivativePowers:
+    for power in derivative_powers:
         Rderivative_poly.append(table_R_poly**power)
     Rderivative_poly = np.stack(Rderivative_poly).T
     
     # predicted and extrapolated force values
     table_F_poly = np.matmul(-p*powers, Rderivative_poly.T)/cal_to_J
-    table_F_extra = -extraForceConstant * (table_R_extra - r_boundary) + table_F_poly[0]
+    table_F_extra = -force_constant * (table_R_extra - r_boundary) + table_F_poly[0]
     
     table_F = np.concatenate((table_F_extra, table_F_poly))
     
     header = f'{name}\nN {len(table_R)}\n'
     
     # Save table into the file
-    tableData = np.stack((table_N, table_R, table_V, table_F)).T
-    np.savetxt(f'{name}.table', tableData, fmt='%i  %.6f  %.6f  %.6f',
+    table_data = np.stack((table_N, table_R, table_V, table_F)).T
+    np.savetxt(f'{name}.table', table_data, fmt='%i  %.6f  %.6f  %.6f',
           header=header, comments='')
     
     return((header, table_N, table_R, table_V, table_F))

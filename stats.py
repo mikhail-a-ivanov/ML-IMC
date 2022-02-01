@@ -23,7 +23,7 @@ def blockAveraging(data, dt):
         data = data[1:]
         
     N = len(data)
-    totalTime = N * dt
+    total_time = N * dt
     blocks = getFactors(N)
     for i in range(len(blocks)):
         data_reshaped = data.reshape(int(N/blocks[i]), blocks[i])
@@ -34,6 +34,6 @@ def blockAveraging(data, dt):
     std = np.array(std)
     
     err = std / np.sqrt(blocks)
-    blockTime = totalTime / blocks
+    block_time = total_time / blocks
         
-    return((blockTime, blocks, std, err))
+    return((block_time, blocks, std, err))
