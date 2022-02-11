@@ -1,5 +1,5 @@
 # ML-IMC
-***M**achine **L**earning enhanced **I**nverse **M**onte **C**arlo.
+**M**achine **L**earning enhanced **I**nverse **M**onte **C**arlo.
 
 ## Authors
 - Prof. Alexander Lyubartsev (alexander.lyubartsev@mmk.su.se) - Principal investigator and method developer
