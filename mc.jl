@@ -1,4 +1,5 @@
 using Printf
+using RandomNumbers
 
 """
 pbcdx(x1, x2, xsize)
@@ -18,7 +19,7 @@ Compute 3D periodic boundary distance between points p1 and p2
 """
 function pbcdistance(p1, p2, box)
     R2 = 0.
-    for i in 1:length(p1)
+    @inbounds for i in 1:length(p1)
         R2 += pbcdx(p1[i], p2[i], box[i])^2
     end
     R = sqrt(R2)
@@ -33,7 +34,7 @@ separated by scaled Rm distance
 and the periodic box vectors in reduced units
 """
 function ljlattice(latticePoints, latticeScaling)
-    lattice = [convert(Vector{AbstractFloat}, [i, j, k]) 
+    lattice = [convert(Vector{Float32}, [i, j, k]) 
         for i in 0:latticePoints-1 for j in 0:latticePoints-1 for k in 0:latticePoints-1]
     lattice = lattice .* (2^(1/6) * latticeScaling)
     # Generate PBC box vectors
@@ -72,7 +73,7 @@ function particleenergy(conf, box, pointIndex)
     E = 0.
     # Remove the particle from the configuration
     deleteat!(confCopy, pointIndex)
-    for i in 1:length(confCopy)
+    @inbounds @fastmath for i in 1:length(confCopy)
         r6 = (1/pbcdistance(particle, confCopy[i], box))^6
         r12 = r6^2
         E += 4 * (r12 - r6)
@@ -107,13 +108,13 @@ mcmove(E, Tred, conf, box, delta)
 Performs a Metropolis Monte Carlo
 displacement move
 """
-function mcmove(conf, box, E, Tred, delta)
+function mcmove(conf, box, E, Tred, delta, rng)
     # Pick a particle at random and calculate its energy
-    pointIndex = rand(1:length(conf))
+    pointIndex = rand(rng, Int32(1):Int32(length(conf)))
     E1 = particleenergy(conf, box, pointIndex)
 
     # Displace a particle and compute the new energy
-    dr = [delta*(rand() - 0.5), delta*(rand() - 0.5), delta*(rand() - 0.5)]
+    dr = [delta*(rand(rng, Float32) - 0.5), delta*(rand(rng, Float32) - 0.5), delta*(rand(rng, Float32) - 0.5)]
     conf[pointIndex] += dr
     
     E2 = particleenergy(conf, box, pointIndex)
@@ -129,7 +130,7 @@ function mcmove(conf, box, E, Tred, delta)
         accepted += 1
         E += ΔE
     else
-        if rand() < exp(-ΔE/Tred)
+        if rand(rng, Float32) < exp(-ΔE/Tred)
             accepted += 1
             E += ΔE
         else
@@ -144,7 +145,7 @@ mcrun(steps, outfreq, conf, box, Tred, delta)
 
 Runs Monte Carlo simulation for a given number of steps
 """
-function mcrun(steps, outfreq, conf, box, Tred, delta)
+function mcrun(steps, outfreq, conf, box, Tred, delta, rng)
     # Initialize energy and configuration arrays
     energies = zeros(steps + 1)
     E = totalenergy(conf, box)
@@ -158,7 +159,7 @@ function mcrun(steps, outfreq, conf, box, Tred, delta)
 
     # Run MC simulation
     for i in 1:steps
-        newconf, newE, accepted = mcmove(conf, box, energies[i], Tred, delta)
+        newconf, newE, accepted = mcmove(conf, box, energies[i], Tred, delta, rng)
         energies[i + 1] = newE
         acceptedTotal += accepted
         if i % outfreq == 0
@@ -198,8 +199,9 @@ function main()
     # Run MC simulation
     steps = Int(1E6) # MC steps
     outfreq = Int(1E5) # Output frequency
-    
-    confs, energies, acceptanceRatio = mcrun(steps, outfreq, conf, box, Tred, delta)
+
+    rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Star()
+    confs, energies, acceptanceRatio = mcrun(steps, outfreq, conf, box, Tred, delta, rng_xor)
     println("Acceptance ratio = ", acceptanceRatio)
     println("Energies = ", round.(energies, digits=3), "\n")
 
