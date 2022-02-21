@@ -145,6 +145,9 @@ function mcrun(steps, outfreq, conf, box, Tred, delta, rng)
         acceptedTotal += accepted
         if i % outfreq == 0
             confs[Int(i/outfreq) + 1] = newconf
+            if i % (outfreq*100) == 0
+                println("Step ", i, "...")
+            end
         end
     end
     acceptanceRatio = acceptedTotal / steps
@@ -209,6 +212,10 @@ function main()
     density = 1374 # target density [kg/m3]
     delta = 0.2 # Max displacement [σ]
     lattice_points = 10 # Number of lattice points
+    steps = Int(1E7) # MC steps
+    outfreq = Int(1E5) # Output frequency
+    println("Total number of steps = ", steps)
+    println("Output frequency = ", outfreq)
     # Other parameters
     density_Rm = (amu*atommass / (2^(1/6) * σ * 1E-10)^3) # Initial density
     Tred = T*kB/ϵ # Temperature in reduced units
@@ -220,15 +227,12 @@ function main()
     
     # Compute total energy
     E = totalenergy(conf, box)
-    @printf("Starting energy = %.3f epsilon\n", E)
+    @printf("Starting energy = %.3f epsilon\n\n", E)
 
     # Save initial configuration to XYZ
     writexyz(conf, 0, σ, false, "start.xyz")
 
     # Run MC simulation
-    steps = Int(1E5) # MC steps
-    outfreq = Int(1E4) # Output frequency
-
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
     confs, energies, acceptanceRatio = mcrun(steps, outfreq, conf, box, Tred, delta, rng_xor)
     println("Acceptance ratio = ", acceptanceRatio)
