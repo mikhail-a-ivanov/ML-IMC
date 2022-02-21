@@ -145,7 +145,7 @@ function mcrun(steps, outfreq, conf, box, Tred, delta, rng)
         acceptedTotal += accepted
         if i % outfreq == 0
             confs[Int(i/outfreq) + 1] = newconf
-            if i % (outfreq*100) == 0
+            if i % (outfreq*10) == 0
                 println("Step ", i, "...")
             end
         end
@@ -212,7 +212,7 @@ function main()
     density = 1374 # target density [kg/m3]
     delta = 0.2 # Max displacement [σ]
     lattice_points = 10 # Number of lattice points
-    steps = Int(1E7) # MC steps
+    steps = Int(5E7) # MC steps
     outfreq = Int(1E5) # Output frequency
     println("Total number of steps = ", steps)
     println("Output frequency = ", outfreq)
