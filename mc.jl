@@ -89,7 +89,7 @@ mcmove(E, Tred, conf, box, delta)
 Performs a Metropolis Monte Carlo
 displacement move
 """
-function mcmove(conf, box, E, Tred, delta, rng)
+function mcmove!(conf, box, E, Tred, delta, rng)
     # Pick a particle at random and calculate its energy
     pointIndex = rand(rng, Int32(1):Int32(length(conf)))
     E1 = particleenergy(conf, box, pointIndex)
@@ -122,43 +122,48 @@ function mcmove(conf, box, E, Tred, delta, rng)
 end
 
 """
-mcrun(steps, outfreq, conf, box, Tred, delta)
+mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng)
 
 Runs Monte Carlo simulation for a given number of steps
 """
-function mcrun(steps, outfreq, conf, box, Tred, delta, rng)
-    # Initialize energy and configuration arrays
-    energies = zeros(steps + 1)
+function mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng)
+    # Initialize the total energy
     E = totalenergy(conf, box)
-    energies[1] = E
+    @printf("Starting energy = %.3f epsilon\n\n", E)
 
-    confs = [[SVector{3, Float32}(zeros(3)) for i in 1:length(conf)] for j in 1:(floor(Int, steps/outfreq) + 1)]
-    confs[1] = conf
+    # Save initial configuration and energy
+    writexyz(conf, 0, σ, false, "start.xyz")
+    writeenergies(E, 0, false, "energies.dat")
+
+    # Start writing MC trajectory
+    writexyz(conf, 0, σ, false, "mc-traj.xyz")
 
     # Acceptance counter
     acceptedTotal = 0
 
     # Run MC simulation
     @inbounds @fastmath for i in 1:steps
-        newconf, newE, accepted = mcmove(conf, box, energies[i], Tred, delta, rng)
-        energies[i + 1] = newE
+        conf, E, accepted = mcmove!(conf, box, E, Tred, delta, rng)
         acceptedTotal += accepted
         if i % outfreq == 0
-            confs[Int(i/outfreq) + 1] = newconf
+            writexyz(conf, i, σ, true, "mc-traj.xyz")
+            writeenergies(E, i, true, "energies.dat")
             if i % (outfreq*10) == 0
                 println("Step ", i, "...")
             end
         end
+        if i == steps-1
+            writexyz(conf, steps, σ, false, "end.xyz")
+        end
     end
     acceptanceRatio = acceptedTotal / steps
-    return(confs, energies[1:outfreq:end], acceptanceRatio)
+    return(acceptanceRatio)
 end
 
 """
-writexyz(conf, outname="conf.xyz", atomtype="Ar")
+writexyz(conf, currentStep, σ, append=false, outname="conf.xyz", atomtype="Ar")
 
-Writes and XYZ file of a system snapshot
-for visualization in VMD
+Writes configuration to an XYZ file
 """
 function writexyz(conf, currentStep, σ, append=false, outname="conf.xyz", atomtype="Ar")
     if append
@@ -180,6 +185,11 @@ function writexyz(conf, currentStep, σ, append=false, outname="conf.xyz", atomt
     close(io)
 end
 
+"""
+writeenergies(energy, currentStep, append=false, outname="energies.dat")
+
+Writes total energy to an output file
+"""
 function writeenergies(energy, currentStep, append=false, outname="energies.dat")
     if append
         io = open(outname, "a")
@@ -225,30 +235,10 @@ function main()
     conf, box = ljlattice(lattice_points, lattice_scaling)
     println("Box vectors (Å): ", round.(box * σ, digits=3))
     
-    # Compute total energy
-    E = totalenergy(conf, box)
-    @printf("Starting energy = %.3f epsilon\n\n", E)
-
-    # Save initial configuration to XYZ
-    writexyz(conf, 0, σ, false, "start.xyz")
-
     # Run MC simulation
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-    confs, energies, acceptanceRatio = mcrun(steps, outfreq, conf, box, Tred, delta, rng_xor)
+    acceptanceRatio = mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng_xor)
     println("Acceptance ratio = ", acceptanceRatio)
-    println("Energies = ", round.(energies, digits=3), "\n")
-
-    # Save MC trajectory and energies
-    writexyz(confs[1], 0, σ, false, "mc-traj.xyz")
-    writeenergies(energies[1], 0, false, "energies.dat")
-    
-    for i in 2:length(energies)
-        writeenergies(energies[i], (i-1)*outfreq, true, "energies.dat")
-        writexyz(confs[i], (i-1)*outfreq, σ, true, "mc-traj.xyz")
-    end
-
-    # Save final configuration to XYZ
-    writexyz(confs[end], steps, σ, false, "end.xyz")
     end
 end
 
