@@ -2,7 +2,6 @@ using Printf
 using RandomNumbers
 using StaticArrays
 
-
 """
 pbcdx(x1, x2, xsize)
 
@@ -20,8 +19,8 @@ pbcdistance(p1, p2, box)
 Compute 3D periodic boundary distance between points p1 and p2 
 """
 function pbcdistance(p1, p2, box)
-    R2 = 0.
-    @inbounds for i in 1:length(p1)
+    R2::Float32 = 0.
+    @fastmath @inbounds for i in 1:length(p1)
         R2 += pbcdx(p1[i], p2[i], box[i])^2
     end
     R = sqrt(R2)
@@ -32,30 +31,40 @@ end
 ljlattice(latticePoints, latticeScaling)
 
 Generate a 3D latice of LJ atoms
-separated by scaled Rm distance 
-and the periodic box vectors in reduced units
+separated by scaled Rm distance,
+the periodic box vectors in reduced units
+and the distance matrix
 """
 function ljlattice(latticePoints, latticeScaling)
     lattice = [convert(SVector{3, Float32}, [i, j, k]) 
         for i in 0:latticePoints-1 for j in 0:latticePoints-1 for k in 0:latticePoints-1]
-    lattice = lattice .* (2^(1/6) * latticeScaling)
+    scaling::Float32 = (2^(1/6)) * (latticeScaling)
+    lattice = lattice .* scaling
     # Generate PBC box vectors
-    boxSide = (latticePoints) * (2^(1/6) * latticeScaling)
-    box = convert(SVector{3, Float32}, [boxSide, boxSide, boxSide])
-    return(lattice, box)
+    boxSide::Float32 = (latticePoints) * (2^(1/6) * latticeScaling)
+    box::SVector{3, Float32} = [boxSide, boxSide, boxSide]
+    # Build distance matrix
+    distanceMatrix = zeros(Float32, length(lattice), length(lattice))
+    @inbounds for i in 1:length(lattice)
+        for j in 1:length(lattice)
+            distanceMatrix[i,j] = pbcdistance(lattice[i], lattice[j], box)
+        end
+    end
+    return(lattice, box, distanceMatrix)
 end
 
 """
-totalenergy(conf, box)
+totalenergy(distanceMatrix)
 
 Compute the total potential energy in reduced units
-for a given configuration of LJ atoms
+for a given distance matrix
 """
-function totalenergy(conf, box)
+function totalenergy(distanceMatrix)
+    N = convert(Int32, sqrt(length(distanceMatrix)))
     E = 0.
-    for i in 1:length(conf)
+    for i in 1:N
         for j in 1:i-1
-            r6 = (1/pbcdistance(conf[i], conf[j], box))^6
+            r6 = (1/distanceMatrix[i,j])^6
             r12 = r6^2
             E += 4 * (r12 - r6)
         end
@@ -64,44 +73,76 @@ function totalenergy(conf, box)
 end
 
 """
-particleenergy(conf, pointIndex)
+particleenergy(distanceVector)
 
 Computes the potential energy of one particle
-from a given configuration
+from a given distance vector
 """
-function particleenergy(conf, box, pointIndex)
-    confCopy = copy(conf)
-    particle = conf[pointIndex]
+function particleenergy(distanceVector)
     E = 0.
-    # Remove the particle from the configuration
-    deleteat!(confCopy, pointIndex)
-    Rs = zeros(Float32, length(confCopy))
-    @inbounds @fastmath for i in 1:length(confCopy)
-        R = pbcdistance(particle, confCopy[i], box)
-        Rs[i] = R
-        r6 = (1/R)^6
+    distanceVector = filter(!iszero, distanceVector)
+    @fastmath @inbounds for i in 1:length(distanceVector)
+        r6 = (1/distanceVector[i])^6
         r12 = r6^2
         E += 4 * (r12 - r6)
     end
-    return(E, Rs)
+    return(E)
 end
 
 """
-mcmove(E, Tred, conf, box, delta)
+hist!(distanceMatrix, hist, binWidth)
+
+Computes RDF histogram
+"""
+function hist!(distanceMatrix, hist, binWidth)
+    N = convert(Int32, sqrt(length(distanceMatrix)))
+    for i in 1:N
+        for j in 1:i-1
+            histIndex = floor(Int32, distanceMatrix[i,j]/binWidth)
+            if histIndex <= length(hist[1])
+                hist[2][histIndex] += 1
+            end
+        end
+    end
+    return(hist)
+end
+
+"""
+updatedistance(conf, box, distanceVector, pointIndex)
+
+Updates distance vector
+"""
+
+function updatedistance(conf, box, distanceVector, pointIndex)
+    for i in 1:length(distanceVector)
+        distanceVector[i] = pbcdistance(conf[i], conf[pointIndex], box)
+    end
+    return(distanceVector)
+end
+
+
+"""
+mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
 
 Performs a Metropolis Monte Carlo
 displacement move
 """
-function mcmove!(conf, box, E, Tred, delta, rng)
+function mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
     # Pick a particle at random and calculate its energy
     pointIndex = rand(rng, Int32(1):Int32(length(conf)))
-    E1, Rs = particleenergy(conf, box, pointIndex)
+    distanceVector = distanceMatrix[:, pointIndex]
+    E1 = particleenergy(distanceVector)
 
-    # Displace a particle and compute the new energy
-    dr = SVector{3, Float32}(delta*(rand(rng, Float32) - 0.5), delta*(rand(rng, Float32) - 0.5), delta*(rand(rng, Float32) - 0.5))
-    conf[pointIndex] += dr
+    # Displace the particle
+    dr = SVector{3, Float32}(delta*(rand(rng, Float32) - 0.5), 
+                             delta*(rand(rng, Float32) - 0.5), 
+                             delta*(rand(rng, Float32) - 0.5))
     
-    E2, Rs2 = particleenergy(conf, box, pointIndex)
+    conf[pointIndex] += dr
+
+    # Update the distance vector and calculate energy
+    newDistanceVector = updatedistance(conf, box, distanceVector, pointIndex)
+    E2 = particleenergy(newDistanceVector)
 
     # Get energy difference
     ΔE = E2 - E1
@@ -113,25 +154,31 @@ function mcmove!(conf, box, E, Tred, delta, rng)
     if ΔE < 0
         accepted += 1
         E += ΔE
+        # Update the distance matrix 
+        # Update both row and column to keep the matrix symmetric
+        distanceMatrix[pointIndex, :] = newDistanceVector
+        distanceMatrix[:, pointIndex] = newDistanceVector
     else
         if rand(rng, Float32) < exp(-ΔE/Tred)
             accepted += 1
             E += ΔE
+            distanceMatrix[pointIndex, :] = newDistanceVector
+            distanceMatrix[:, pointIndex] = newDistanceVector
         else
             conf[pointIndex] -= dr
         end
     end
-    return(conf, E, accepted, Rs)
+    return(conf, E, accepted, distanceMatrix)
 end
 
 """
-mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng)
+mcrun(steps, Eqsteps, outfreq, conf, box, distanceMatrix, Tred, delta, σ, rng, binWidth, Nbins)
 
 Runs Monte Carlo simulation for a given number of steps
 """
-function mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng, binWidth, Nbins)
+function mcrun(steps, Eqsteps, outfreq, conf, box, distanceMatrix, Tred, delta, σ, rng, binWidth, Nbins)
     # Initialize the total energy
-    E = totalenergy(conf, box)
+    E = totalenergy(distanceMatrix)
     @printf("Starting energy = %.3f epsilon\n\n", E)
 
     # Save initial configuration and energy
@@ -146,16 +193,18 @@ function mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng, binWidth, Nbins)
 
     # Initialize the distance histogram
     maxR = Nbins * binWidth
-    histogram = [LinRange(0, maxR, Nbins), zeros(Int32, Nbins)]
+    hist = [LinRange(0, maxR, Nbins), zeros(Int32, Nbins)]
 
     # Run MC simulation
     @inbounds @fastmath for i in 1:steps
-        conf, E, accepted, Rs = mcmove!(conf, box, E, Tred, delta, rng)
+        conf, E, accepted, distanceMatrix = mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
         acceptedTotal += accepted
         if i % outfreq == 0
             writexyz(conf, i, σ, true, "mc-traj.xyz")
             writeenergies(E, i, true, "energies.dat")
-            histogram = rdf!(histogram, Rs)
+            if i > Eqsteps
+                hist = hist!(distanceMatrix, hist, binWidth)
+            end
             if i % (outfreq*10) == 0
                 println("Step ", i, "...")
             end
@@ -165,18 +214,11 @@ function mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng, binWidth, Nbins)
         end
     end
     acceptanceRatio = acceptedTotal / steps
-    return(histogram, acceptanceRatio)
-end
 
-function rdf!(histogram, Rs)
-    for i in 1:length(Rs)
-        for j in 1:(length(histogram[1]) - 1)
-            if Rs[i] > histogram[1][j] && Rs[i] < histogram[1][j+1]
-                histogram[2][j+1] += 1
-            end
-        end
-    end
-    return(histogram)
+    # Normalize the histogram to the number of frames
+    Nframes = (steps - Eqsteps) / outfreq
+    hist[2] /= Nframes
+    return(hist, acceptanceRatio)
 end
 
 """
@@ -223,6 +265,29 @@ function writeenergies(energy, currentStep, append=false, outname="energies.dat"
 end
 
 """
+writeRDF(outname, hist, binWidth, σ, N, box)
+
+Normalizes the RDF histogram to RDF and writes into a file
+"""
+function writeRDF(outname, hist, binWidth, σ, N, box)
+    # Normalize the historgram
+    V = (box[1])^3
+    Npairs = Int32(N*(N-1)/2)
+    rdfNorm = [(V/Npairs) * 1/(4*π*binWidth*hist[1][i]^2) for i in 2:length(hist[1])]
+    RDF = hist[2][2:end] .* rdfNorm
+    hist[1] *= σ
+    # Write the data
+    io = open(outname, "w")
+    print(io, "# RDF data \n")
+    print(io, "# r, Å; g(r); Histogram \n")
+    print(io, @sprintf("%6.3f %12.3f %12.3f", hist[1][1], 0, hist[2][1]), "\n")
+    for i in 2:length(hist[1])
+        print(io, @sprintf("%6.3f %12.3f %12.3f", hist[1][i], RDF[i-1], hist[2][i]), "\n")
+    end
+    close(io)
+end
+
+"""
 Main function for running MC simulation
 """
 function main()
@@ -237,31 +302,37 @@ function main()
     σ = 3.405 # [Å]
     ϵ = 119.8*kB # [J]; original value in ϵ/kB [K]
     # Conditions
-    T = 95 # target temperature [K]
-    density = 1374 # target density [kg/m3]
-    delta = 0.2 # Max displacement [σ]
+    T = 95.0 # target temperature [K]
+    density = 1374.0 # target density [kg/m3]
+    delta = 0.5 / σ # Max displacement [Å]
     lattice_points = 10 # Number of lattice points
-    steps = Int(1E5) # MC steps
-    outfreq = Int(1E4) # Output frequency
+    steps = Int(1E7) # MC steps
+    Eqsteps = Int(1E6) # MC steps
+    outfreq = Int(1E5) # Output frequency
+    # RDF parameters
+    binWidth = 0.1 / σ # in Å
+    Nbins = 150
+
     println("Total number of steps = ", steps)
+    println("Equilibration steps = ", Eqsteps)
     println("Output frequency = ", outfreq)
+
     # Other parameters
     density_Rm = (amu*atommass / (2^(1/6) * σ * 1E-10)^3) # Initial density
     Tred = T*kB/ϵ # Temperature in reduced units
     lattice_scaling = (density_Rm / density)^(1/3) # Scaling to target density
-    # RDF parameters
-    binWidth = 0.05
-    Nbins = 100
 
     # Generate LJ lattice
-    conf, box = ljlattice(lattice_points, lattice_scaling)
+    conf, box, distanceMatrix = ljlattice(lattice_points, lattice_scaling)
     println("Box vectors (Å): ", round.(box * σ, digits=3))
     
     # Run MC simulation
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-    historgram, acceptanceRatio = mcrun(steps, outfreq, conf, box, Tred, delta, σ, rng_xor, binWidth, Nbins)
-    println("Acceptance ratio = ", acceptanceRatio)
-    println(historgram)
+    hist, acceptanceRatio = mcrun(steps, Eqsteps, outfreq, conf, box, distanceMatrix, Tred, delta, σ, rng_xor, binWidth, Nbins)
+    println("Acceptance ratio = ", round(acceptanceRatio, digits=3))
+
+    # Write RDF into a file
+    writeRDF("rdf.dat", hist, binWidth, σ, length(conf), box)
     end
 end
 
