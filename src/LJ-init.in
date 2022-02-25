@@ -1,0 +1,24 @@
+# System
+latticePoints = 10        # Number of LJ lattice points
+
+# Forcefield
+atommass      = 39.792    # [amu]
+sigma         = 3.405     # [Å]
+epsilon       = 119.8     # ϵ/kB [K]
+
+# Conditions
+temperature   = 95.0      # [K]
+density       = 1374.0    # [kg/m3]
+
+# Monte Carlo parameters
+delta         = 0.5       # Max displacement [Å]
+steps         = 100000    # Total number of MC steps
+Eqsteps       = 10000     # Equilibration MC steps
+
+# RDF parameters
+binWidth      = 0.1       # [Å]
+Nbins         = 150       # number of bins
+
+# Output control
+xyzout        = 10000     # XYZ output frequency
+outfreq       = 1000      # Output frequency
