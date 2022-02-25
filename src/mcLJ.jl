@@ -46,7 +46,7 @@ function ljlattice(latticePoints, latticeScaling)
 end
 
 """
-buildDistanceMatrix(lattice, box)
+buildDistanceMatrix(conf, box)
 
 Build distance matrix for a given
 configuration
@@ -180,11 +180,23 @@ function mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
 end
 
 """
-mcrun(steps, Eqsteps, outfreq, conf, box, distanceMatrix, Tred, delta, σ, rng, binWidth, Nbins)
+mcrun(inputData)
 
 Runs Monte Carlo simulation for a given number of steps
 """
-function mcrun(steps, Eqsteps, outfreq, conf, box, distanceMatrix, Tred, delta, σ, rng, binWidth, Nbins)
+function mcrun(inputData)
+    # Initialize input data
+    conf, box, distanceMatrix, σ, steps, Eqsteps, xyzout, outfreq, delta, Tred, Nbins, binWidth = prepinput(inputData)
+    rdfParameters = [length(conf), σ, box, binWidth]
+
+    println("Total number of steps = ", steps)
+    println("Equilibration steps = ", Eqsteps)
+    println("Output frequency = ", outfreq)
+    println("XYZ output frequency = ", xyzout)
+
+    # Initialize rng
+    rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
+
     # Initialize the total energy
     E = totalenergy(distanceMatrix)
     @printf("Starting energy = %.3f epsilon\n\n", E)
@@ -205,10 +217,15 @@ function mcrun(steps, Eqsteps, outfreq, conf, box, distanceMatrix, Tred, delta, 
 
     # Run MC simulation
     @inbounds @fastmath for i in 1:steps
-        conf, E, accepted, distanceMatrix = mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
+        conf, E, accepted, distanceMatrix = mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng_xor)
         acceptedTotal += accepted
-        if i % outfreq == 0
+
+        # MC output
+        if i % xyzout == 0
             writexyz(conf, i, σ, true, "mc-traj.xyz")
+        end
+
+        if i % outfreq == 0
             writeenergies(E, i, true, "energies.dat")
             if i > Eqsteps
                 hist = hist!(distanceMatrix, hist, binWidth)
@@ -217,16 +234,19 @@ function mcrun(steps, Eqsteps, outfreq, conf, box, distanceMatrix, Tred, delta, 
                 println("Step ", i, "...")
             end
         end
+
         if i == steps-1
             writexyz(conf, steps, σ, false, "end.xyz")
         end
     end
+    
     acceptanceRatio = acceptedTotal / steps
 
     # Normalize the histogram to the number of frames
     Nframes = (steps - Eqsteps) / outfreq
     hist[2] /= Nframes
-    return(hist, acceptanceRatio)
+
+    return(hist, rdfParameters, acceptanceRatio)
 end
 
 """
@@ -273,11 +293,17 @@ function writeenergies(energy, currentStep, append=false, outname="energies.dat"
 end
 
 """
-writeRDF(outname, hist, binWidth, σ, N, box)
+writeRDF(outname, hist, rdfParameters)
 
 Normalizes the RDF histogram to RDF and writes into a file
 """
-function writeRDF(outname, hist, binWidth, σ, N, box)
+function writeRDF(outname, hist, rdfParameters)
+    # Initialize RDF parameters
+    N = rdfParameters[1]
+    σ = rdfParameters[2]
+    box = rdfParameters[3]
+    binWidth = rdfParameters[4]
+
     # Normalize the historgram
     V = (box[1])^3
     Npairs = Int32(N*(N-1)/2)
@@ -296,7 +322,7 @@ function writeRDF(outname, hist, binWidth, σ, N, box)
 end
 
 """
-readinput(inputname)
+readinput(inputname, numParameters=13)
 
 Reads the simulation parameters from
 the input file. Assumes a strict
@@ -329,6 +355,7 @@ function prepinput(inputData)
     kB = 1.38064852E-23 # [J/K]
     amu = 1.66605304E-27 # [kg]
 
+    # Parse inputData array
     latticePoints = Int(inputData[1]) # number of LJ lattice points
     atommass = inputData[2] # [amu]
     σ = inputData[3] # [Å]
@@ -338,7 +365,7 @@ function prepinput(inputData)
     delta = inputData[7] / σ # max displacement [σ]
     steps = Int(inputData[8]) # total number of MC steps
     Eqsteps = Int(inputData[9]) # equilibration MC steps
-    binWidth = inputData[10] # [Å]
+    binWidth = inputData[10] / σ # [σ]
     Nbins = Int(inputData[11]) # number of RDF buildDistanceMatrix
     xyzout = Int(inputData[12]) # XYZ output frequency
     outfreq = Int(inputData[13]) # RDF and E output frequency
@@ -356,3 +383,4 @@ function prepinput(inputData)
     distanceMatrix = builddistanceMatrix(conf, box)
 
     return(conf, box, distanceMatrix, σ, steps, Eqsteps, xyzout, outfreq, delta, Tred, Nbins, binWidth)
+end
