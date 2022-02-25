@@ -12,10 +12,7 @@ function main()
 
     # Run MC simulation
     hist, rdfParameters, acceptanceRatio = mcrun(inputData)
-    println("Acceptance ratio = ", round(acceptanceRatio, digits=3))
-
-    # Write RDF into a file
-    writeRDF("rdf.dat", hist, rdfParameters)
+    println("Acceptance ratio = ", round(acceptanceRatio, digits=3))    
     end
 end
 

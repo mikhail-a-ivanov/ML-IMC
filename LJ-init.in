@@ -12,13 +12,13 @@ density       = 1374.0    # [kg/m3]
 
 # Monte Carlo parameters
 delta         = 0.5       # Max displacement [Å]
-steps         = 100000    # Total number of MC steps
-Eqsteps       = 10000     # Equilibration MC steps
+steps         = 1E7       # Total number of MC steps
+Eqsteps       = 1E6       # Equilibration MC steps
 
 # RDF parameters
 binWidth      = 0.1       # [Å]
 Nbins         = 150       # number of bins
 
 # Output control
-xyzout        = 10000     # XYZ output frequency
-outfreq       = 1000      # Output frequency
+xyzout        = 1E6       # XYZ output frequency
+outfreq       = 1E5       # Output frequency

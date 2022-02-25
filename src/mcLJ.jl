@@ -1,6 +1,8 @@
 using Printf
 using RandomNumbers
 using StaticArrays
+using Distributed
+using SharedArrays
 
 """
 pbcdx(x1, x2, xsize)
@@ -185,6 +187,17 @@ mcrun(inputData)
 Runs Monte Carlo simulation for a given number of steps
 """
 function mcrun(inputData)
+    # Get the worker id and the output filenames
+    if nprocs() == 1
+        id = myid()
+    else
+        id = myid() - 1
+    end
+    idString = lpad(id, 3, '0')
+    energyFile = "energies-p$(idString).dat"
+    trajFile = "mctraj-p$(idString).xyz"
+    rdfFile = "rdf-p$(idString).dat"
+
     # Initialize input data
     conf, box, distanceMatrix, σ, steps, Eqsteps, xyzout, outfreq, delta, Tred, Nbins, binWidth = prepinput(inputData)
     rdfParameters = [length(conf), σ, box, binWidth]
@@ -202,11 +215,10 @@ function mcrun(inputData)
     @printf("Starting energy = %.3f epsilon\n\n", E)
 
     # Save initial configuration and energy
-    writexyz(conf, 0, σ, false, "start.xyz")
-    writeenergies(E, 0, false, "energies.dat")
+    writeenergies(E, 0, false, energyFile)
 
     # Start writing MC trajectory
-    writexyz(conf, 0, σ, false, "mc-traj.xyz")
+    writexyz(conf, 0, σ, false, trajFile)
 
     # Acceptance counter
     acceptedTotal = 0
@@ -222,21 +234,17 @@ function mcrun(inputData)
 
         # MC output
         if i % xyzout == 0
-            writexyz(conf, i, σ, true, "mc-traj.xyz")
+            writexyz(conf, i, σ, true, trajFile)
         end
 
         if i % outfreq == 0
-            writeenergies(E, i, true, "energies.dat")
+            writeenergies(E, i, true, energyFile)
             if i > Eqsteps
                 hist = hist!(distanceMatrix, hist, binWidth)
             end
             if i % (outfreq*10) == 0
                 println("Step ", i, "...")
             end
-        end
-
-        if i == steps-1
-            writexyz(conf, steps, σ, false, "end.xyz")
         end
     end
     
@@ -246,15 +254,18 @@ function mcrun(inputData)
     Nframes = (steps - Eqsteps) / outfreq
     hist[2] /= Nframes
 
+    # Write the worker RDF
+    writeRDF(rdfFile, hist, rdfParameters)
+    
     return(hist, rdfParameters, acceptanceRatio)
 end
 
 """
-writexyz(conf, currentStep, σ, append=false, outname="conf.xyz", atomtype="Ar")
+writexyz(conf, currentStep, σ, append=false, outname, atomtype="Ar")
 
 Writes configuration to an XYZ file
 """
-function writexyz(conf, currentStep, σ, append=false, outname="conf.xyz", atomtype="Ar")
+function writexyz(conf, currentStep, σ, append, outname, atomtype="Ar")
     if append
         io = open(outname, "a")
     else
@@ -275,11 +286,11 @@ function writexyz(conf, currentStep, σ, append=false, outname="conf.xyz", atomt
 end
 
 """
-writeenergies(energy, currentStep, append=false, outname="energies.dat")
+writeenergies(energy, currentStep, append=false, outname)
 
 Writes total energy to an output file
 """
-function writeenergies(energy, currentStep, append=false, outname="energies.dat")
+function writeenergies(energy, currentStep, append, outname)
     if append
         io = open(outname, "a")
     else
