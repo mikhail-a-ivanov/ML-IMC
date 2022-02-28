@@ -1,6 +1,5 @@
 # Load packages on every worker
 @everywhere include("src/mcLJ.jl")
-BLAS.set_num_threads(1)
 
 """
 Main function for running MC simulation
@@ -12,9 +11,10 @@ function main()
     inputname = ARGS[1]
     inputData = readinput(inputname, 13)
 
-    inputs = [inputData for worker in workers()]
-    pmap(mcrun, inputs)
-
+    # Run MC simulation
+    @sync for worker in workers()
+            @async @spawnat worker mcrun(inputData)
+        end
     #println("Acceptance ratio = ", round(acceptanceRatio, digits=3)q)    
     end
 end

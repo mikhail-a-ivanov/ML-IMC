@@ -1,8 +1,10 @@
 using Printf
+using Dates
 using RandomNumbers
 using StaticArrays
 using Distributed
 using SharedArrays
+using LinearAlgebra
 
 """
 pbcdx(x1, x2, xsize)
@@ -107,7 +109,7 @@ updatedistance(conf, box, distanceVector, pointIndex)
 Updates distance vector
 """
 function updatedistance(conf, box, distanceVector, pointIndex)
-    for i in 1:length(distanceVector)
+    @fastmath @inbounds for i in 1:length(distanceVector)
         distanceVector[i] = pbcdistance(conf[i], conf[pointIndex], box)
     end
     return(distanceVector)
@@ -228,7 +230,7 @@ function mcrun(inputData)
     hist = [LinRange(0, maxR, Nbins), zeros(Int32, Nbins)]
 
     # Run MC simulation
-    @inbounds @fastmath for i in 1:steps
+    @fastmath for i in 1:steps
         conf, E, accepted, distanceMatrix = mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng_xor)
         acceptedTotal += accepted
 
@@ -243,7 +245,7 @@ function mcrun(inputData)
                 hist = hist!(distanceMatrix, hist, binWidth)
             end
             if i % (outfreq*10) == 0
-                println("Step ", i, "...")
+                println(Dates.format(now(), "HH:MM:SS"), " Step ", i, "...")
             end
         end
     end
