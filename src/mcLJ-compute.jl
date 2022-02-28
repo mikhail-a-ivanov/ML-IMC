@@ -24,7 +24,7 @@ Compute 3D periodic boundary distance between points p1 and p2
 """
 function pbcdistance(p1, p2, box)
     R2::Float32 = 0.
-    @fastmath @inbounds for i in 1:length(p1)
+    @fastmath @inbounds for i in 1:3
         R2 += pbcdx(p1[i], p2[i], box[i])^2
     end
     R = sqrt(R2)
@@ -49,36 +49,17 @@ function ljlattice(latticePoints, latticeScaling)
     return(lattice, box)
 end
 
-"""
-buildDistanceMatrix(conf, box)
-
-Build distance matrix for a given
-configuration
-"""
-function builddistanceMatrix(conf, box)
-    # Build distance matrix
-    distanceMatrix = zeros(Float32, length(conf), length(conf))
-    @inbounds for i in 1:length(conf)
-        for j in 1:length(conf)
-            distanceMatrix[i,j] = pbcdistance(conf[i], conf[j], box)
-        end
-    end
-    return(distanceMatrix)
-end
-
 
 """
-totalenergy(distanceMatrix)
-
+totalenergy(conf, box)
 Compute the total potential energy in reduced units
-for a given distance matrix
+for a given configuration of LJ atoms
 """
-function totalenergy(distanceMatrix)
-    N = convert(Int32, sqrt(length(distanceMatrix)))
+function totalenergy(conf, box)
     E = 0.
-    for i in 1:N
+    for i in 1:length(conf)
         for j in 1:i-1
-            r6 = (1/distanceMatrix[i,j])^6
+            r6 = (1/pbcdistance(conf[i], conf[j], box))^6
             r12 = r6^2
             E += 4 * (r12 - r6)
         end
@@ -87,44 +68,32 @@ function totalenergy(distanceMatrix)
 end
 
 """
-particleenergy(distanceVector)
-
+particleenergy(conf, box, pointIndex)
 Computes the potential energy of one particle
-from a given distance vector
+from a given configuration
 """
-function particleenergy(distanceVector)
+function particleenergy(conf, box, pointIndex)
     E = 0.
-    distanceVector = filter(!iszero, distanceVector)
-    @fastmath @inbounds for i in 1:length(distanceVector)
-        r6 = (1/distanceVector[i])^6
-        r12 = r6^2
-        E += 4 * (r12 - r6)
+    @inbounds @fastmath for i in 1:length(conf)
+        if i != pointIndex
+            r6 = (1/pbcdistance(conf[pointIndex], conf[i], box))^6
+            r12 = r6^2
+            E += 4 * (r12 - r6)
+        end
     end
     return(E)
 end
 
-"""
-updatedistance(conf, box, distanceVector, pointIndex)
-
-Updates distance vector
-"""
-function updatedistance(conf, box, distanceVector, pointIndex)
-    @fastmath @inbounds for i in 1:length(distanceVector)
-        distanceVector[i] = pbcdistance(conf[i], conf[pointIndex], box)
-    end
-    return(distanceVector)
-end
 
 """
-hist!(distanceMatrix, hist, binWidth)
+hist!(conf, box, hist, binWidth)
 
 Computes RDF histogram
 """
-function hist!(distanceMatrix, hist, binWidth)
-    N = convert(Int32, sqrt(length(distanceMatrix)))
-    for i in 1:N
+function hist!(conf, box, hist, binWidth)
+    for i in 1:length(conf)
         for j in 1:i-1
-            histIndex = floor(Int32, 0.5 + distanceMatrix[i,j]/binWidth)
+            histIndex = floor(Int32, 0.5 + (pbcdistance(conf[i], conf[j], box)/binWidth))
             if histIndex <= length(hist[1])
                 hist[2][histIndex] += 1
             end
@@ -139,11 +108,10 @@ mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
 Performs a Metropolis Monte Carlo
 displacement move
 """
-function mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
+function mcmove!(conf, box, E, Tred, delta, rng)
     # Pick a particle at random and calculate its energy
     pointIndex = rand(rng, Int32(1):Int32(length(conf)))
-    distanceVector = distanceMatrix[:, pointIndex]
-    E1 = particleenergy(distanceVector)
+    E1 = particleenergy(conf, box, pointIndex)
 
     # Displace the particle
     dr = SVector{3, Float32}(delta*(rand(rng, Float32) - 0.5), 
@@ -153,8 +121,7 @@ function mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
     conf[pointIndex] += dr
 
     # Update the distance vector and calculate energy
-    newDistanceVector = updatedistance(conf, box, distanceVector, pointIndex)
-    E2 = particleenergy(newDistanceVector)
+    E2 = particleenergy(conf, box, pointIndex)
 
     # Get energy difference
     ΔE = E2 - E1
@@ -166,21 +133,15 @@ function mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng)
     if ΔE < 0
         accepted += 1
         E += ΔE
-        # Update the distance matrix 
-        # Update both row and column to keep the matrix symmetric
-        distanceMatrix[pointIndex, :] = newDistanceVector
-        distanceMatrix[:, pointIndex] = newDistanceVector
     else
         if rand(rng, Float32) < exp(-ΔE/Tred)
             accepted += 1
             E += ΔE
-            distanceMatrix[pointIndex, :] = newDistanceVector
-            distanceMatrix[:, pointIndex] = newDistanceVector
         else
             conf[pointIndex] -= dr
         end
     end
-    return(conf, E, accepted, distanceMatrix)
+    return(conf, E, accepted)
 end
 
 """
@@ -195,7 +156,7 @@ function mcrun(inputData, workerid)
     rdfFile = "rdf-p$(idString).dat"
 
     # Initialize input data
-    conf, box, distanceMatrix, σ, steps, Eqsteps, xyzout, outfreq, delta, Tred, Nbins, binWidth = prepinput(inputData)
+    conf, box, σ, steps, Eqsteps, xyzout, outfreq, delta, Tred, Nbins, binWidth = prepinput(inputData)
     rdfParameters = [length(conf), σ, box, binWidth]
 
     println("Total number of steps = ", steps)
@@ -207,7 +168,7 @@ function mcrun(inputData, workerid)
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Initialize the total energy
-    E = totalenergy(distanceMatrix)
+    E = totalenergy(conf, box)
     @printf("Starting energy = %.3f epsilon\n\n", E)
 
     # Save initial configuration and energy
@@ -225,7 +186,7 @@ function mcrun(inputData, workerid)
 
     # Run MC simulation
     @fastmath for i in 1:steps
-        conf, E, accepted, distanceMatrix = mcmove!(conf, box, distanceMatrix, E, Tred, delta, rng_xor)
+        conf, E, accepted = mcmove!(conf, box, E, Tred, delta, rng_xor)
         acceptedTotal += accepted
 
         # MC output
@@ -236,7 +197,7 @@ function mcrun(inputData, workerid)
         if i % outfreq == 0
             writeenergies(E, i, true, energyFile)
             if i > Eqsteps
-                hist = hist!(distanceMatrix, hist, binWidth)
+                hist = hist!(conf, box, hist, binWidth)
             end
             if i % (outfreq*10) == 0
                 println(Dates.format(now(), "HH:MM:SS"), " Step ", i, "...")
@@ -386,8 +347,5 @@ function prepinput(inputData)
     conf, box = ljlattice(latticePoints, latticeScaling)
     println("Box vectors (Å): ", round.(box * σ, digits=3))
 
-    # Build distance matrix
-    distanceMatrix = builddistanceMatrix(conf, box)
-
-    return(conf, box, distanceMatrix, σ, steps, Eqsteps, xyzout, outfreq, delta, Tred, Nbins, binWidth)
+    return(conf, box, σ, steps, Eqsteps, xyzout, outfreq, delta, Tred, Nbins, binWidth)
 end

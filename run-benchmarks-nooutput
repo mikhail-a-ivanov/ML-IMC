@@ -1,5 +1,0 @@
-julia mc-serial.jl LJ-init-1E8-nooutput.in > serial-1E8.out
-julia -p 1 mc-parallel.jl LJ-init-1E8-nooutput.in > p1-1E8.out
-julia -p 2 mc-parallel.jl LJ-init-1E8-nooutput.in > p2-1E8.out
-julia -p 4 mc-parallel.jl LJ-init-1E8-nooutput.in > p4-1E8.out
-julia -p 6 mc-parallel.jl LJ-init-1E8-nooutput.in > p6-1E8.out

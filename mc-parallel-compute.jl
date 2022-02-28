@@ -1,5 +1,5 @@
 # Load packages on every worker
-include("src/mcLJ.jl")
+include("src/mcLJ-compute.jl")
 BLAS.set_num_threads(1)
 
 """

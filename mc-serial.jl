@@ -11,7 +11,7 @@ function main()
     inputData = readinput(inputname, 13)
 
     # Run MC simulation
-    hist, rdfParameters, acceptanceRatio = mcrun(inputData)
+    hist, rdfParameters, acceptanceRatio = mcrun(inputData, 0)
     println("Acceptance ratio = ", round(acceptanceRatio, digits=3))    
     end
 end
