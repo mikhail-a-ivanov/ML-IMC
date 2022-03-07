@@ -57,8 +57,8 @@ for a given configuration of LJ atoms
 """
 function totalenergy(conf, box)
     E = 0.
-    for i in 1:length(conf)
-        for j in 1:i-1
+    @inbounds for i in 1:length(conf)
+        @inbounds for j in 1:i-1
             r6 = (1/pbcdistance(conf[i], conf[j], box))^6
             r12 = r6^2
             E += 4 * (r12 - r6)
@@ -74,7 +74,7 @@ from a given configuration
 """
 function particleenergy(conf, box, pointIndex)
     E = 0.
-    @inbounds @fastmath for i in 1:length(conf)
+    @inbounds @fastmath @simd for i in 1:length(conf)
         if i != pointIndex
             r6 = (1/pbcdistance(conf[pointIndex], conf[i], box))^6
             r12 = r6^2
@@ -91,8 +91,8 @@ hist!(conf, box, hist, binWidth)
 Computes RDF histogram
 """
 function hist!(conf, box, hist, binWidth)
-    for i in 1:length(conf)
-        for j in 1:i-1
+    @inbounds for i in 1:length(conf)
+        @fastmath @inbounds for j in 1:i-1
             histIndex = floor(Int32, 0.5 + (pbcdistance(conf[i], conf[j], box)/binWidth))
             if histIndex <= length(hist[1])
                 hist[2][histIndex] += 1
@@ -185,7 +185,7 @@ function mcrun(inputData, workerid)
     hist = [LinRange(0, maxR, Nbins), zeros(Int32, Nbins)]
 
     # Run MC simulation
-    @fastmath for i in 1:steps
+    @fastmath @inbounds for i in 1:steps
         conf, E, accepted = mcmove!(conf, box, E, Tred, delta, rng_xor)
         acceptedTotal += accepted
 
