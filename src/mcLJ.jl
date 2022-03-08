@@ -145,9 +145,9 @@ function mcmove!(conf, box, distanceMatrix, E, beta, delta, rng)
     E1 = particleenergy(distanceVector)
 
     # Displace the particle
-    dr = SVector{3, Float64}(delta*(rand(rng, Float64) - 0.5f0), 
-                             delta*(rand(rng, Float64) - 0.5f0), 
-                             delta*(rand(rng, Float64) - 0.5f0))
+    dr = SVector{3, Float64}(delta*(rand(rng, Float64) - 0.5), 
+                             delta*(rand(rng, Float64) - 0.5), 
+                             delta*(rand(rng, Float64) - 0.5))
     
     conf[pointIndex] += dr
 
@@ -183,7 +183,7 @@ function mcrun(inputData, workerid)
     rdfFile = "rdf-p$(idString).dat"
 
     # Initialize input data
-    latticePoints, latticeScaling, σ, steps, Eqsteps, xyzout, outfreq, delta, beta, Nbins, binWidth = prepinput(inputData)
+    latticePoints, latticeScaling, σ, steps, Eqsteps, xyzout, outfreq, outlevel, delta, beta, Nbins, binWidth = prepinput(inputData)
 
     # Generate LJ lattice
     conf, box = ljlattice(latticePoints, latticeScaling)
@@ -203,13 +203,17 @@ function mcrun(inputData, workerid)
 
     # Initialize the total energy
     E = totalenergy(distanceMatrix)
-    @printf("Starting energy = %.3f epsilon\n\n", E)
+    #@printf("Starting energy = %.3f epsilon\n\n", E)
 
     # Save initial configuration and energy
-    writeenergies(E, 0, false, energyFile)
+    if outlevel >= 2
+        writeenergies(E, 0, false, energyFile)
+    end
 
     # Start writing MC trajectory
-    writexyz(conf, 0, σ, false, trajFile)
+    if outlevel == 3
+        writexyz(conf, 0, σ, false, trajFile)
+    end
 
     # Acceptance counter
     acceptedTotal = 0
@@ -219,30 +223,29 @@ function mcrun(inputData, workerid)
         conf, E, accepted, distanceMatrix = mcmove!(conf, box, distanceMatrix, E, beta, delta, rng_xor)
         acceptedTotal += accepted
 
-        # MC output
-        if i % xyzout == 0
-            writexyz(conf, i, σ, true, trajFile)
-        end
-
-        if i % outfreq == 0
-            writeenergies(E, i, true, energyFile)
-            if i > Eqsteps
+            # MC output
+            if i % outfreq == 0 && i > Eqsteps && outlevel >= 1
                 hist = hist!(distanceMatrix, hist, binWidth)
             end
-            if i % (outfreq*10) == 0
-                println(Dates.format(now(), "HH:MM:SS"), " Step ", i, "...\n")
+
+            if i % outfreq == 0 && outlevel >= 2
+                writeenergies(E, i, true, energyFile)
             end
-        end
+
+            if i % xyzout == 0 && outlevel == 3
+                writexyz(conf, i, σ, true, trajFile)
+            end
     end
     
     acceptanceRatio = acceptedTotal / steps
 
-    # Normalize the histogram to the number of frames
-    Nframes = (steps - Eqsteps) / outfreq
-    hist[2] /= Nframes
-
-    # Write the worker RDF
-    writeRDF(rdfFile, hist, rdfParameters)
+    if outlevel >= 1
+        # Normalize the histogram to the number of frames
+        Nframes = (steps - Eqsteps) / outfreq
+        hist[2] /= Nframes
+        # Write the worker RDF
+        writeRDF(rdfFile, hist, rdfParameters)
+    end
     
     return(hist, rdfParameters, acceptanceRatio)
 end
@@ -326,7 +329,7 @@ Reads the simulation parameters from
 the input file. Assumes a strict
 order of the parameters.
 """
-function readinput(inputname, numParameters=13)
+function readinput(inputname, numParameters=14)
     inputData = []
     file = open(inputname, "r")
     lines = readlines(file)
@@ -367,11 +370,12 @@ function prepinput(inputData)
     Nbins::Int = inputData[11] # number of RDF buildDistanceMatrix
     xyzout::Int = inputData[12] # XYZ output frequency
     outfreq::Int = inputData[13] # RDF and E output frequency
+    outlevel::Int = inputData[14] # Output level (0: no output, 1: +RDF, 2: +energies, 3: +trajectories)
 
     # Other parameters
     densityRm::Float64 = (amu*atommass / (2^(1/6) * σ * 1E-10)^3) # Initial density
     beta::Float64 = ϵ/(T*kB) # Inverse reduced temperature
     latticeScaling::Float64 = (densityRm / density)^(1/3) # Scaling to target density
 
-    return(latticePoints, latticeScaling, σ, steps, Eqsteps, xyzout, outfreq, delta, beta, Nbins, binWidth)
+    return(latticePoints, latticeScaling, σ, steps, Eqsteps, xyzout, outfreq, outlevel, delta, beta, Nbins, binWidth)
 end
