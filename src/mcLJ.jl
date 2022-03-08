@@ -2,7 +2,6 @@ using Printf
 using Dates
 using RandomNumbers
 using StaticArrays
-using SharedArrays
 using LinearAlgebra
 
 """
@@ -58,7 +57,7 @@ function builddistanceMatrix(conf, box)
     # Build distance matrix
     distanceMatrix = zeros(Float64, length(conf), length(conf))
     @inbounds for i in 1:length(conf)
-        for j in 1:length(conf)
+        @inbounds for j in 1:length(conf)
             distanceMatrix[i,j] = pbcdistance(conf[i], conf[j], box)
         end
     end
@@ -184,7 +183,6 @@ function mcrun(inputData)
     idString = lpad(id, 3, '0')
     energyFile = "energies-p$(idString).dat"
     trajFile = "mctraj-p$(idString).xyz"
-    #rdfFile = "rdf-p$(idString).dat"
 
     # Initialize input data
     latticePoints, latticeScaling, σ, steps, Eqsteps, xyzout, outfreq, outlevel, delta, beta, Nbins, binWidth = prepinput(inputData)
@@ -207,7 +205,6 @@ function mcrun(inputData)
 
     # Initialize the total energy
     E = totalenergy(distanceMatrix)
-    #@printf("Starting energy = %.3f epsilon\n\n", E)
 
     # Save initial configuration and energy
     if outlevel >= 2
@@ -240,18 +237,14 @@ function mcrun(inputData)
                 writexyz(conf, i, σ, true, trajFile)
             end
     end
-    
-    acceptanceRatio = acceptedTotal / steps
 
     if outlevel >= 1
         # Normalize the histogram to the number of frames
         Nframes = (steps - Eqsteps) / outfreq
         hist[2] /= Nframes
-        # Save a copy of hist before saving
-        #histcopy = copy(hist)
-        # Write the worker RDF
-        #writeRDF(rdfFile, hist, rdfParameters)
     end
+
+    acceptanceRatio = acceptedTotal / steps
     
     return(hist, rdfParameters, acceptanceRatio)
 end
@@ -317,6 +310,7 @@ function writeRDF(outname, hist, rdfParameters)
     rdfNorm = [(V/Npairs) * 1/(4*π*binWidth*hist[1][i]^2) for i in 2:length(hist[1])]
     RDF = hist[2][2:end] .* rdfNorm
     hist[1] *= σ
+    
     # Write the data
     io = open(outname, "w")
     print(io, "# RDF data \n")

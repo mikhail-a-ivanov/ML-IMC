@@ -8,8 +8,10 @@ BLAS.set_num_threads(1)
 Main function for running MC simulation
 """
 function main()
+    # Total number of workers
     np = length(workers())
 
+    # Start the timer and read the input file
     startTime = Dates.now()
     println("Running MC simulation on $(np) rank(s)...\n")
     println("Starting at: ", startTime)
@@ -33,6 +35,7 @@ function main()
     meanAcceptanceRatio = mean([output[3] for output in outputs])
     println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=3))
     
+    # Stop the timer
     stopTime = Dates.now()
     wallTime = Dates.canonicalize(stopTime - startTime)
     println("Stopping at: ", stopTime, "\n")
