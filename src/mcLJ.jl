@@ -1,4 +1,3 @@
-using MPI
 using Printf
 using Dates
 using RandomNumbers
