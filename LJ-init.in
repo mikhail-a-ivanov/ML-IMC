@@ -22,4 +22,4 @@ Nbins         = 600        # number of bins
 # Output control
 xyzout        = 1E6       # XYZ output frequency
 outfreq       = 1E4       # Output frequency
-outlevel      = 0         # Output level (0: no output, 1: +RDF, 2: +energies, 3: +trajectories)
+outlevel      = 1         # Output level (0: no output, 1: +RDF, 2: +energies, 3: +trajectories)

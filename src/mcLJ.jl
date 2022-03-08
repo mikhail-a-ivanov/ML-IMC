@@ -66,7 +66,6 @@ function builddistanceMatrix(conf, box)
     return(distanceMatrix)
 end
 
-
 """
 totalenergy(distanceMatrix)
 
@@ -76,8 +75,8 @@ for a given distance matrix
 function totalenergy(distanceMatrix)
     N = convert(Int32, sqrt(length(distanceMatrix)))
     E::Float64 = 0.
-    for i in 1:N
-        for j in 1:i-1
+    @inbounds for i in 1:N
+        @inbounds for j in 1:i-1
             r6 = (1/distanceMatrix[i,j])^6
             E += 4 * (r6^2 - r6)
         end
@@ -121,8 +120,8 @@ Computes RDF histogram
 """
 function hist!(distanceMatrix, hist, binWidth)
     N = convert(Int32, sqrt(length(distanceMatrix)))
-    for i in 1:N
-        for j in 1:i-1
+    @inbounds for i in 1:N
+        @inbounds @fastmath for j in 1:i-1
             histIndex = floor(Int32, 0.5 + distanceMatrix[i,j]/binWidth)
             if histIndex <= length(hist[1])
                 hist[2][histIndex] += 1
@@ -219,7 +218,7 @@ function mcrun(inputData, workerid)
     acceptedTotal = 0
 
     # Run MC simulation
-    @fastmath for i in 1:steps
+    @inbounds @fastmath for i in 1:steps
         conf, E, accepted, distanceMatrix = mcmove!(conf, box, distanceMatrix, E, beta, delta, rng_xor)
         acceptedTotal += accepted
 
