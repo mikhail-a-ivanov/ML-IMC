@@ -28,7 +28,8 @@ function main()
         rdfRange = outputs[1][1][1]
         rdfParameters = outputs[1][2]
         meanHist = [rdfRange, mean([output[1][2] for output in outputs])]
-        writeRDF("rdf-mean.dat", meanHist, rdfParameters)
+        rdfName = "rdf-mean-p$(np).dat"
+        writeRDF(rdfName, meanHist, rdfParameters)
     end
     
     # Report the mean acceptance ratio
