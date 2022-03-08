@@ -82,23 +82,6 @@ function totalenergy(distanceMatrix)
     return(E)
 end
 
-"""
-writeenergies(energy, currentStep, append=false, outname)
-
-Writes total energy to an output file
-"""
-function writeenergies(energy, currentStep, append, outname)
-    if append
-        io = open(outname, "a")
-    else
-        io = open(outname, "w")
-    end
-    print(io, "# Total energy in reduced units \n")
-    print(io, "# Step = ", @sprintf("%d", currentStep), "\n")
-    print(io, @sprintf("%10.3f", energy), "\n")
-    print(io, "\n")
-    close(io)
-end
 
 function main()
     @time begin
@@ -107,24 +90,29 @@ function main()
 
     myid = MPI.Comm_rank(comm)
     np = MPI.Comm_size(comm)
+    root = 0
 
-    idString = lpad(myid + 1, 3, '0')
-    energyFile = "energies-p$(idString).dat"
+    E_MPI = zeros(np)
 
-    conf, box = ljlattice(20, 1)
+    conf, box = ljlattice(10, 1)
     distanceMatrix = builddistanceMatrix(conf, box)
     # Initialize the total energy
     E = totalenergy(distanceMatrix)
-    @printf("Rank %d out of %d: Starting energy = %.3f epsilon\n\n", myid, np, E)
+    @printf("Rank %d out of %d: Starting energy = %.3f epsilon\n\n", myid, np, E*(1+myid))
 
-    writeenergies(E, 0, false, energyFile)
-
-    for i in 1:10000
-        writeenergies(E, 0, true, energyFile)
-    end
 
     MPI.Barrier(comm)
+    # Collect info
+    if myid != root
+        MPI.Send(E, 0, 0, comm)
+    else
+        for i in 1:np
+            E_MPI[i] = MPI.Recv(E, 0, 0, comm)
+            println("Rank $(i) energy = $(E_MPI)")
+        end
     end
+    end
+    MPI.Finalize()
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

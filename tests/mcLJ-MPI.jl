@@ -175,17 +175,11 @@ mcrun(inputData)
 
 Runs Monte Carlo simulation for a given number of steps
 """
-function mcrun(inputData)
-    # Get the worker id and the output filenames
-    if nprocs() == 1
-        id = myid()
-    else
-        id = myid() - 1
-    end
-    idString = lpad(id, 3, '0')
+function mcrun(inputData, workerid)
+    idString = lpad(workerid + 1, 3, '0')
     energyFile = "energies-p$(idString).dat"
     trajFile = "mctraj-p$(idString).xyz"
-    #rdfFile = "rdf-p$(idString).dat"
+    rdfFile = "rdf-p$(idString).dat"
 
     # Initialize input data
     latticePoints, latticeScaling, σ, steps, Eqsteps, xyzout, outfreq, outlevel, delta, beta, Nbins, binWidth = prepinput(inputData)
@@ -248,10 +242,8 @@ function mcrun(inputData)
         # Normalize the histogram to the number of frames
         Nframes = (steps - Eqsteps) / outfreq
         hist[2] /= Nframes
-        # Save a copy of hist before saving
-        #histcopy = copy(hist)
         # Write the worker RDF
-        #writeRDF(rdfFile, hist, rdfParameters)
+        writeRDF(rdfFile, hist, rdfParameters)
     end
     
     return(hist, rdfParameters, acceptanceRatio)
