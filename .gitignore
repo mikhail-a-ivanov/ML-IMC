@@ -1,1 +1,4 @@
-*.ipynb
+# Do not commit output files
+*.dat
+*.xyz
+*.out
