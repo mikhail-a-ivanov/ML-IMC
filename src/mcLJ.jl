@@ -7,7 +7,7 @@ using LinearAlgebra
 """
 pbcdx(x1, x2, xsize)
 
-Compute periodic boundary distance between x1 and x2
+Computes periodic boundary distance along one axis
 """
 function pbcdx(x1, x2, xsize)
     dx = x2 - x1
@@ -18,7 +18,7 @@ end
 """
 pbcdistance(p1, p2, box)
 
-Compute 3D periodic boundary distance between points p1 and p2 
+Computes 3D periodic boundary distance between two points
 """
 function pbcdistance(p1, p2, box)
     R2::Float64 = 0.
@@ -32,9 +32,9 @@ end
 """
 ljlattice(latticePoints, latticeScaling)
 
-Generate a 3D latice of LJ atoms
+Generates a cubic latice of LJ atoms
 separated by scaled Rm distance,
-the periodic box vectors in reduced units
+and the periodic box vectors in reduced units
 """
 function ljlattice(latticePoints, latticeScaling)
     lattice = [convert(SVector{3, Float64}, [i, j, k]) 
@@ -50,11 +50,10 @@ end
 """
 buildDistanceMatrix(conf, box)
 
-Build distance matrix for a given
+Builds the distance matrix for a given
 configuration
 """
 function builddistanceMatrix(conf, box)
-    # Build distance matrix
     distanceMatrix = zeros(Float64, length(conf), length(conf))
     @inbounds for i in 1:length(conf)
         @inbounds for j in 1:length(conf)
@@ -67,7 +66,7 @@ end
 """
 totalenergy(distanceMatrix)
 
-Compute the total potential energy in reduced units
+Computes the total potential energy in reduced units
 for a given distance matrix
 """
 function totalenergy(distanceMatrix)
@@ -102,7 +101,8 @@ end
 """
 updatedistance(conf, box, distanceVector, pointIndex)
 
-Updates distance vector
+Updates all distances between a selected particle
+and all the others in a given configuration
 """
 function updatedistance!(conf, box, distanceVector, pointIndex)
     @fastmath @inbounds for i in 1:length(distanceVector)
@@ -114,7 +114,7 @@ end
 """
 hist!(distanceMatrix, hist, binWidth)
 
-Computes RDF histogram
+Accumulates pair distances in a histogram
 """
 function hist!(distanceMatrix, hist, binWidth)
     N = convert(Int32, sqrt(length(distanceMatrix)))
@@ -171,7 +171,8 @@ end
 """
 mcrun(inputData)
 
-Runs Monte Carlo simulation for a given number of steps
+Runs the Monte Carlo simulation for a given
+set of input parameters
 """
 function mcrun(inputData)
     # Get the worker id and the output filenames
@@ -250,9 +251,9 @@ function mcrun(inputData)
 end
 
 """
-writexyz(conf, currentStep, σ, append=false, outname, atomtype="Ar")
+writexyz(conf, currentStep, σ, append, outname, atomtype="Ar")
 
-Writes configuration to an XYZ file
+Writes a configuration to an XYZ file
 """
 function writexyz(conf, currentStep, σ, append, outname, atomtype="Ar")
     if append
@@ -275,9 +276,9 @@ function writexyz(conf, currentStep, σ, append, outname, atomtype="Ar")
 end
 
 """
-writeenergies(energy, currentStep, append=false, outname)
+writeenergies(energy, currentStep, append, outname)
 
-Writes total energy to an output file
+Writes the total energy to an output file
 """
 function writeenergies(energy, currentStep, append, outname)
     if append
@@ -295,7 +296,7 @@ end
 """
 writeRDF(outname, hist, rdfParameters)
 
-Normalizes the RDF histogram to RDF and writes into a file
+Normalizes the histogram to RDF and writes it into a file
 """
 function writeRDF(outname, hist, rdfParameters)
     # Initialize RDF parameters
@@ -323,11 +324,11 @@ function writeRDF(outname, hist, rdfParameters)
 end
 
 """
-readinput(inputname, numParameters=13)
+readinput(inputname, numParameters=14)
 
 Reads the simulation parameters from
-the input file. Assumes a strict
-order of the parameters.
+the input file. Assumes the strict
+order of the parameters!
 """
 function readinput(inputname, numParameters=14)
     inputData = []
@@ -349,7 +350,7 @@ end
 """
 prepinput(inputData)
 
-Prepares the input data for MC simulation
+Prepares the input data for the MC simulation
 """
 function prepinput(inputData)
     # Constants
