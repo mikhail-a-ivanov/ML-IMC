@@ -1,0 +1,14 @@
+# System
+box = 36.405 36.405 36.405
+
+# Conditions
+temperature   = 95.0      # [K]
+
+# Monte Carlo parameters
+delta         = 0.75      # Max displacement [Å]
+steps         = 1E6       # Total number of MC steps
+Eqsteps       = 1E5       # Equilibration MC steps
+
+# Output control
+xyzout        = 1E6       # XYZ output frequency
+outfreq       = 1E5       # Output frequency
