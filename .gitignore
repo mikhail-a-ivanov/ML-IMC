@@ -5,3 +5,6 @@
 
 # Do not commit sh scripts
 *.sh
+
+# Do not commit svg
+*.svg
