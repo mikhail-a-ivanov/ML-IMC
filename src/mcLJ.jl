@@ -108,6 +108,7 @@ function mcmove!(conf, box, distanceMatrix, E, beta, delta, rng)
     if rand(rng, Float64) < exp(-ΔE*beta)
         accepted += 1
         E += ΔE
+        # Update distance matrix
         distanceMatrix[pointIndex, :] = distanceVector
         distanceMatrix[:, pointIndex] = distanceVector
     else

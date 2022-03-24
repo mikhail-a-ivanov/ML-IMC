@@ -10,8 +10,8 @@ steps         = 1E5                  # Total number of MC steps
 Eqsteps       = 1E4                  # Equilibration MC steps
 
 # Output control          
-xyzout        = 1E6                  # XYZ output frequency
-outfreq       = 1E2                  # Output frequency
+xyzout        = 0                    # XYZ output frequency
+outfreq       = 1E3                  # Output frequency
 
 # RDF parameters          
 binWidth      = 0.025                # [Å]
