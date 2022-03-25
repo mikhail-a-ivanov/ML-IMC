@@ -108,15 +108,15 @@ function histpart!(distanceVector, hist, binWidth)
 end
 
 """
-crossCorrelation!(hist, model, crossWeigths, crossBiases)
+crossCorrelation!(hist, model, crossWeights, crossBiases)
 
 Updated cross correlation arrays
 """
-function crossCorrelation!(hist, model, crossWeigths, crossBiases)
+function crossCorrelation!(hist, model, crossWeights, crossBiases)
     dHdw, dHdb = gradient(neuralenergy, hist, model)[2]
-    crossWeigths .+= (hist * dHdw) # Matrix Nbins x Nweights
+    crossWeights .+= (hist * dHdw) # Matrix Nbins x Nweights
     crossBiases .+= (hist .* dHdb) # Vector Nbins
-    return(crossWeigths, crossBiases)
+    return(crossWeights, crossBiases)
 end
 
 """
@@ -137,7 +137,7 @@ Performs a Metropolis Monte Carlo
 displacement move using a neural network
 to predict energies from distance histograms
 """
-function mcmove!(conf, distanceMatrix, crossWeigths, crossBiases, E, step, parameters, model, histNN, rng)
+function mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, parameters, model, histNN, rng)
     # Pick a particle
     pointIndex = rand(rng, Int32(1):Int32(length(conf)))
     
@@ -183,7 +183,7 @@ function mcmove!(conf, distanceMatrix, crossWeigths, crossBiases, E, step, param
                  histNN[i] += hist2[i] 
             end
             # Update cross correlation arrays
-            crossCorrelation!(hist2, model, crossWeigths, crossBiases)
+            crossCorrelation!(hist2, model, crossWeights, crossBiases)
         end
     else
         conf[pointIndex] -= dr
@@ -193,10 +193,10 @@ function mcmove!(conf, distanceMatrix, crossWeigths, crossBiases, E, step, param
                  histNN[i] += hist1[i] 
             end
             # Update cross correlation arrays
-            crossCorrelation!(hist1, model, crossWeigths, crossBiases)
+            crossCorrelation!(hist1, model, crossWeights, crossBiases)
         end
     end
-    return(conf, distanceMatrix, crossWeigths, crossBiases, E, histNN, accepted)
+    return(conf, distanceMatrix, crossWeights, crossBiases, E, histNN, accepted)
 end
 
 """
@@ -225,7 +225,7 @@ function mcrun!(input)
     distanceMatrix = builddistanceMatrix(conf, parameters.box)
 
     # Build the cross correlation arrays
-    crossWeigths = zeros(Float32, parameters.Nbins, length(model.weight))
+    crossWeights = zeros(Float32, parameters.Nbins, length(model.weight))
     crossBiases = zeros(Float32, parameters.Nbins)
 
     # Acceptance counter
@@ -233,8 +233,8 @@ function mcrun!(input)
 
     # Run MC simulation
     @inbounds @fastmath for step in 1:parameters.steps
-        conf, distanceMatrix, crossWeigths, crossBiases, E, histNN, accepted = 
-            mcmove!(conf, distanceMatrix, crossWeigths, crossBiases, E, step, parameters, model, histNN, rng_xor)
+        conf, distanceMatrix, crossWeights, crossBiases, E, histNN, accepted = 
+            mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, parameters, model, histNN, rng_xor)
         acceptedTotal += accepted
         if step % parameters.outfreq == 0
             energies[Int(step/parameters.outfreq) + 1] = E
@@ -246,9 +246,106 @@ function mcrun!(input)
     histNN ./= Float32(dataPoints)
 
     # Normalize the cross correlation arrays
-    crossWeigths ./= dataPoints
+    crossWeights ./= dataPoints
     crossBiases ./= dataPoints
 
     println("Acceptance ratio = $(acceptanceRatio)")
-    return(histNN, energies, crossWeigths, crossBiases, acceptanceRatio)
+    return(histNN, energies, crossWeights, crossBiases, acceptanceRatio)
+end
+
+"""
+function computeDerivatives(crossWeights, crossBiases, histNN, model, parameters)
+
+Compute dL/dl derivatives for training (based on IMC method)
+"""
+function computeDerivatives(crossWeights, crossBiases, histNN, histref, model, parameters)
+    # Compute <dH/dl> * <S>
+    dHdw, dHdb = gradient(neuralenergy, histNN, model)[2]
+    productWeights = Float32.(histNN * dHdw)
+    productBiases = Float32.(histNN .* dHdb)
+
+    # Compute histogram gradients
+    dSdw = -Float32(parameters.β) .* (crossWeights - productWeights)
+    dSdb = -Float32(parameters.β) .* (crossBiases - productBiases)
+
+    # Loss derivative
+    dL = lossDerivative(histNN, histref)
+
+    # Loss total gradient
+    dLdw = zeros(length(model.weight))
+    for i in 1:length(dLdw)
+        dLdw[i] = 2 * dL[i] * sum(dSdw[i, :]) # take a column from dS/dw matrix
+    end
+    dLdb = sum(dL .* dSdb)
+    return(dLdw, dLdb)
+end
+
+"""
+function updatemodel!(model, rate, dLdw, dLdb)
+
+Update model parameters using the calculated 
+gradients multiplied by rate
+"""
+function updatemodel!(model, rate, dLdw, dLdb)
+    Flux.Optimise.update!(model.weight, rate*dLdw')
+    Flux.Optimise.update!(model.bias, rate*dLdb')
+end
+
+"""
+function loss(histNN, histref)
+
+Compute the error function
+"""
+function loss(histNN, histref)
+    loss = zeros(length(histNN))
+    for i in 1:length(loss)
+        loss[i] = (histNN[i] - histref[i])^2
+    end
+    return(sum(loss))
+end
+
+"""
+function lossDerivative(histNN, histref)
+
+Compute the loss derivative function for dL/dl calculation
+"""
+function lossDerivative(histNN, histref)
+    loss = zeros(length(histNN))
+    for i in 1:length(loss)
+        loss[i] = 2*(histNN[i] - histref[i])
+    end
+    return(loss)
+end
+
+"""
+function writehist(outname, hist, parameters)
+
+Writes the histogram into a file
+"""
+function writehist(outname, hist, bins)
+    io = open(outname, "w")
+    print(io, "# r, Å; Histogram \n")
+    print(io, @sprintf("%6.3f %12.3f", bins[1], 0), "\n")
+    for i in 2:length(hist)
+        print(io, @sprintf("%6.3f %12.3f", bins[i], hist[i]), "\n")
+    end
+    close(io)
+end
+
+"""
+function savemodel(outname, model)
+
+Saves model into a file
+"""
+function savemodel(outname, model)
+    io = open(outname, "w")
+    print(io, "# ML-IMC model: $(length(model.weight)) weights; $(length(model.bias)) biases\n")
+    print(io, "# Weights\n")
+    for weight in model.weight
+        print(io, @sprintf("%12.8f", weight), "\n")
+    end
+    print(io, "# Biases\n")
+    for bias in model.bias
+        print(io, @sprintf("%12.8f", bias), "\n")
+    end
 end
