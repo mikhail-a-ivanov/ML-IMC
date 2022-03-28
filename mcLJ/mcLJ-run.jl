@@ -1,7 +1,7 @@
 # Load packages on every worker
 using Distributed
 using Statistics
-@everywhere include("src/mcLJ.jl")
+@everywhere include("../src/mcLJ.jl")
 BLAS.set_num_threads(1)
 
 """

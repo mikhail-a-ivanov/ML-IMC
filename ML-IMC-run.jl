@@ -89,5 +89,5 @@ Run the main() function
 """
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    main("mctraj-p001.xyz", "rdf-mean-p40.dat", "LJML-init.in", identity, 0.05, 10)
+    main("mcLJ/mctraj-p001.xyz", "mcLJ/rdf-mean-p40.dat", "LJML-init.in", identity, 0.05, 10)
 end
