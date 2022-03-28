@@ -6,8 +6,8 @@ temperature   = 95.0                 # [K]
 
 # Monte Carlo parameters          
 delta         = 0.75                 # Max displacement [Å]
-steps         = 1E5                 # Total number of MC steps
-Eqsteps       = 1E4                  # Equilibration MC steps
+steps         = 2E6                  # Total number of MC steps
+Eqsteps       = 1E6                  # Equilibration MC steps
 
 # Output control          
 xyzout        = 0                    # XYZ output frequency
