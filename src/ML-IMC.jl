@@ -108,18 +108,6 @@ function histpart!(distanceVector, hist, binWidth)
 end
 
 """
-crossCorrelation!(hist, model, crossWeights, crossBiases)
-
-Updated cross correlation arrays
-"""
-function crossCorrelation!(hist, model, crossWeights, crossBiases)
-    dHdw, dHdb = gradient(neuralenergy, hist, model)[2]
-    crossWeights .+= (hist * dHdw) # Matrix Nbins x Nweights
-    crossBiases .+= (hist .* dHdb) # Vector Nbins
-    return(crossWeights, crossBiases)
-end
-
-"""
 neuralenergy(hist, model)
 
 Computes the potential energy of one particle
@@ -209,10 +197,11 @@ and the neural network model
 function mcrun!(input)
     # Unpack the inputs
     conf, parameters, model = input
-    dataPoints = Int(parameters.steps / parameters.outfreq)
+    TotalDataPoints = Int(parameters.steps / parameters.outfreq)
+    prodDataPoints = Int((parameters.steps - parameters.Eqsteps) / parameters.outfreq)
 
     # Allocate and initialize the energy
-    energies = zeros(dataPoints + 1)
+    energies = zeros(TotalDataPoints + 1)
     E = 0.
 
     # Allocate the histogram
@@ -243,14 +232,26 @@ function mcrun!(input)
     acceptanceRatio = acceptedTotal / parameters.steps
 
     # Normalize the histogram
-    histNN ./= Float32(dataPoints)
+    histNN ./= Float32(prodDataPoints)
 
-    # Normalize the cross correlation arrays
-    crossWeights ./= dataPoints
-    crossBiases ./= dataPoints
+    # Normalize the cross correlation arrays 
+    crossWeights ./= prodDataPoints
+    crossBiases ./= prodDataPoints
 
     println("Acceptance ratio = $(acceptanceRatio)")
     return(histNN, energies, crossWeights, crossBiases, acceptanceRatio)
+end
+
+"""
+crossCorrelation!(hist, model, crossWeights, crossBiases)
+
+Updated cross correlation arrays
+"""
+function crossCorrelation!(hist, model, crossWeights, crossBiases)
+    dHdw, dHdb = gradient(neuralenergy, hist, model)[2]
+    crossWeights .+= (hist * dHdw) # Matrix Nbins x Nweights
+    crossBiases .+= (hist .* dHdb) # Vector Nbins
+    return(crossWeights, crossBiases)
 end
 
 """
@@ -301,7 +302,9 @@ function loss(histNN, histref)
     for i in 1:length(loss)
         loss[i] = (histNN[i] - histref[i])^2
     end
-    return(sum(loss))
+    totalLoss = sum(loss)
+    println("Loss = ", round(totalLoss, digits=8))
+    return(totalLoss)
 end
 
 """
