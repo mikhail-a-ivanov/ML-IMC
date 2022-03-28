@@ -204,7 +204,7 @@ function mcrun!(input)
     energies = zeros(TotalDataPoints + 1)
     E = 0.
 
-    # Allocate the histogram
+    # Allocate the histograms
     histNN = zeros(parameters.Nbins)
 
     # Initialize RNG
@@ -336,6 +336,23 @@ function writehist(outname, hist, bins)
 end
 
 """
+function writeenergies(outname, energies)
+
+Writes the total energy to an output file
+"""
+function writeenergies(outname, energies, parameters, slicing=10)
+    steps = 0:parameters.outfreq*slicing:parameters.steps
+    io = open(outname, "w")
+    print(io, "# Total energy, kJ/mol \n")
+    for i in 1:length(energies[1:slicing:end])
+        print(io, "# Step = ", @sprintf("%d", steps[i]), "\n")
+        print(io, @sprintf("%10.3f", energies[1:slicing:end][i]), "\n")
+        print(io, "\n")
+    end
+    close(io)
+end
+
+"""
 function savemodel(outname, model)
 
 Saves model into a file
@@ -351,4 +368,5 @@ function savemodel(outname, model)
     for bias in model.bias
         print(io, @sprintf("%12.8f", bias), "\n")
     end
+    close(io)
 end
