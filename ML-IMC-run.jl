@@ -16,22 +16,28 @@ function inputdata(xyzname, rdfname, inputname)
 
 Reads input data
 """
-function inputdata(xyzname, rdfname, inputname)
+function inputdata()
+    # Read input parameters
+    inputname = ARGS[1]
+    parameters = readinput(inputname)
+
     # Load a configuration from XYZ file
-    xyz = readXYZ(xyzname)
+    xyz = readXYZ(parameters.xyzname)
     conf = xyz[end]
 
     # Read reference histogram
-    bins, rdfref, histref = readRDF(rdfname)
+    bins, rdfref, histref = readRDF(parameters.rdfname)
 
-    # Read input parameters
-    parameters = readinput(inputname)
     return(conf, bins, rdfref, histref, parameters)
 end
 
-function main(xyzname, rdfname, inputname, activation=identity, η=0.05, iters=5)
-    conf, bins, rdfref, histref, parameters = inputdata(xyzname, rdfname, inputname)
-    model = Dense(length(histref), 1, activation, bias=true)
+function main()
+    conf, bins, rdfref, histref, parameters = inputdata()
+    if parameters.activation == "identity"
+        model = Dense(length(histref), 1, identity, bias=true)
+    else
+        println("Other types of activation are not currently supported.")
+    end
 
     # Normalize the reference histogram to per particle histogram
     histref ./= length(conf)/2 # Number of pairs divided by the number of particles
@@ -40,12 +46,13 @@ function main(xyzname, rdfname, inputname, activation=identity, η=0.05, iters=5
     startTime = Dates.now()
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
-    println("Number of iterations: $(iters)")
-    println("Learning rate: $(η)")
+    println("Number of iterations: $(parameters.iters)")
+    println("Learning rate: $(parameters.η)")
+    println("Using $(parameters.activation) activation")
     println("Starting at: ", startTime)
      
     # Prepare inputs
-    for i in 1:iters
+    for i in 1:parameters.iters
         iterString = lpad(i, 2, '0')
         println("Iteration $i...")
         input = conf, parameters, model
@@ -74,7 +81,7 @@ function main(xyzname, rdfname, inputname, activation=identity, η=0.05, iters=5
 
         # Training
         dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, histNN, histref, model, parameters)
-        updatemodel!(model, η, dLdw, dLdb)
+        updatemodel!(model, parameters.η, dLdw, dLdb)
     end
 
     # Stop the timer
@@ -89,5 +96,5 @@ Run the main() function
 """
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    main("mcLJ/mctraj-p001.xyz", "mcLJ/rdf-mean-p40.dat", "LJML-init.in", identity, 0.05, 10)
+    main()
 end

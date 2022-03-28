@@ -16,3 +16,12 @@ outfreq       = 1E3                  # Output frequency
 # RDF parameters          
 binWidth      = 0.025                # [Å]
 Nbins         = 600                  # Number of bins
+
+# Learning parameters
+iters         = 5                    # Number of learning iterations
+rate          = 0.05                 # Learning rate
+activation    = identity             # Activation function
+
+# Input files
+xyzname       = mcLJ/mctraj-p001.xyz   # Input configuration file
+rdfname       = mcLJ/rdf-mean-p40.dat  # Reference RDF file

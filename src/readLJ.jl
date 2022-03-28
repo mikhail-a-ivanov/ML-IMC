@@ -12,7 +12,7 @@ function readXYZ(xyzname)
     nlines = length(lines)
     nframes = Int((nlines % natoms) / 2)
     xyz = [[zeros(3) for i in 1:natoms] for j in 1:nframes]
-    println("Reading $(xyzname) with $(nlines) lines...")
+    println("\nReading $(xyzname) with $(nlines) lines...")
     println("Found $(nframes) frames with $(natoms) atoms each...")
     for lineId in 1:nlines
         frameId = ceil(Int, lineId/(natoms + ncomments))
@@ -38,6 +38,7 @@ by mcLJ.jl
 """
 function readRDF(rdfname)
     file = open(rdfname, "r")
+    println("\nReading reference data from $(rdfname)...")
     lines = readlines(file)
     ncomments = 2
     nlines = length(lines) - ncomments
@@ -53,4 +54,5 @@ function readRDF(rdfname)
         end
     end
     return(bins, rdf, hist)
+    close(file)
 end

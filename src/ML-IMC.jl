@@ -20,6 +20,11 @@ xyzout: XYZ output frequency
 outfreq: output frequency
 binWidth: histogram bin width, Å
 Nbins: number of histogram bins
+iters: number of learning iterations
+η: learning rate
+activation: activation function
+xyzname: input configuration file
+rdfname: reference RDF file
 """
 struct inputParms
     box::SVector{3, Float64}
@@ -31,6 +36,11 @@ struct inputParms
     outfreq::Int
     binWidth::Float64
     Nbins::Int
+    iters::Int
+    η::Float64
+    activation::String
+    xyzname::String
+    rdfname::String
 end
 
 """
@@ -54,6 +64,11 @@ function readinput(inputname)
     outfreq::Int = 0
     binWidth::Float64 = 0.
     Nbins::Int = 0
+    iters::Int = 0
+    η::Float64 = 0.
+    activation::String = ""
+    xyzname::String = ""
+    rdfname::String = ""
     file = open(inputname, "r")
     lines = readlines(file)
     for line in lines
@@ -80,11 +95,22 @@ function readinput(inputname)
                 binWidth = parse(Float64, splittedLine[3])
             elseif splittedLine[1] == "Nbins"
                 Nbins = Int(parse(Float64, splittedLine[3]))
+            elseif splittedLine[1] == "iters"
+                iters = Int(parse(Float64, splittedLine[3]))
+            elseif splittedLine[1] == "rate"
+                η = parse(Float64, splittedLine[3])
+            elseif splittedLine[1] == "activation"
+                activation = splittedLine[3]
+            elseif splittedLine[1] == "xyzname"
+                xyzname = splittedLine[3]
+            elseif splittedLine[1] == "rdfname"
+                rdfname = splittedLine[3] 
             end
         end
     end
     # Save parameters into the inputParms struct
-    parameters = inputParms(box, β, Δ, steps, Eqsteps, xyzout, outfreq, binWidth, Nbins)
+    parameters = inputParms(box, β, Δ, steps, Eqsteps, xyzout, outfreq, binWidth, Nbins,
+                            iters, η, activation, xyzname, rdfname)
     return(parameters)
 end
 
