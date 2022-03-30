@@ -2,6 +2,7 @@
 *.dat
 *.xyz
 *.out
+*.bson
 
 # Do not commit sh scripts
 *.sh
