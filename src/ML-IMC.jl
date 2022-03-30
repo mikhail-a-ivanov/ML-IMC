@@ -6,116 +6,10 @@ using LinearAlgebra
 using Flux
 
 include("distances.jl")
+include("readLJ.jl")
 
 """
-struct inputParms
-
-Fields:
-box: box vector, Å
-β: 1/(kB*T), reciprocal kJ/mol
-Δ: max displacement, Å
-steps: total number of steps
-Eqsteps: equilibration steps
-xyzout: XYZ output frequency
-outfreq: output frequency
-binWidth: histogram bin width, Å
-Nbins: number of histogram bins
-iters: number of learning iterations
-η: learning rate
-activation: activation function
-xyzname: input configuration file
-rdfname: reference RDF file
-"""
-struct inputParms
-    box::SVector{3, Float64}
-    β::Float64
-    Δ::Float64  
-    steps::Int
-    Eqsteps::Int
-    xyzout::Int 
-    outfreq::Int
-    binWidth::Float64
-    Nbins::Int
-    iters::Int
-    η::Float64
-    activation::String
-    xyzname::String
-    rdfname::String
-end
-
-"""
-readinput(inputname)
-
-Reads an input file for ML-IMC
-and saves the data into the
-inputParms struct
-"""
-function readinput(inputname)
-    # Constants
-    NA::Float64 = 6.02214076E23 # [mol-1]
-    kB::Float64 = 1.38064852E-23 * NA / 1000 # [kJ/(mol*K)]
-    # Has to define the variable outside of the main loop
-    box = zeros(3)
-    β::Float64 = 0.
-    Δ::Float64 = 0.
-    steps::Int = 0
-    Eqsteps::Int = 0
-    xyzout::Int = 0
-    outfreq::Int = 0
-    binWidth::Float64 = 0.
-    Nbins::Int = 0
-    iters::Int = 0
-    η::Float64 = 0.
-    activation::String = ""
-    xyzname::String = ""
-    rdfname::String = ""
-    file = open(inputname, "r")
-    lines = readlines(file)
-    for line in lines
-        if length(line) > 0 && line[1] != '#'
-            splittedLine = split(line)
-            if splittedLine[1] == "box"
-                box[1] = parse(Float64, splittedLine[3])
-                box[2] = parse(Float64, splittedLine[4])
-                box[3] = parse(Float64, splittedLine[5])
-            elseif splittedLine[1] == "temperature"
-                T = parse(Float64, splittedLine[3])
-                β = 1/(kB * T)
-            elseif splittedLine[1] == "delta"
-                Δ = parse(Float64, splittedLine[3])
-            elseif splittedLine[1] == "steps"
-                steps = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "Eqsteps"
-                Eqsteps = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "xyzout"
-                xyzout = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "outfreq"
-                outfreq = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "binWidth"
-                binWidth = parse(Float64, splittedLine[3])
-            elseif splittedLine[1] == "Nbins"
-                Nbins = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "iters"
-                iters = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "rate"
-                η = parse(Float64, splittedLine[3])
-            elseif splittedLine[1] == "activation"
-                activation = splittedLine[3]
-            elseif splittedLine[1] == "xyzname"
-                xyzname = splittedLine[3]
-            elseif splittedLine[1] == "rdfname"
-                rdfname = splittedLine[3] 
-            end
-        end
-    end
-    # Save parameters into the inputParms struct
-    parameters = inputParms(box, β, Δ, steps, Eqsteps, xyzout, outfreq, binWidth, Nbins,
-                            iters, η, activation, xyzname, rdfname)
-    return(parameters)
-end
-
-"""
-function histpart!(distanceVector, hist, binWidth, recalculate=false)
+function histpart!(distanceVector, hist, binWidth)
 
 Accumulates pair distances from a distance vector
 (one particle) to a histogram
@@ -308,14 +202,14 @@ function computeDerivatives(crossWeights, crossBiases, histNN, histref, model, p
 end
 
 """
-function updatemodel!(model, rate, dLdw, dLdb)
+function updatemodel!(model, opt, dLdw, dLdb)
 
 Update model parameters using the calculated 
-gradients multiplied by rate
+gradients and the selected optimizer
 """
-function updatemodel!(model, rate, dLdw, dLdb)
-    Flux.Optimise.update!(model.weight, rate*dLdw')
-    Flux.Optimise.update!(model.bias, rate*dLdb')
+function updatemodel!(model, opt, dLdw, dLdb)
+    Flux.Optimise.update!(opt, model.weight, dLdw)
+    Flux.Optimise.update!(opt, model.bias, [dLdb])
 end
 
 """
@@ -395,4 +289,57 @@ function savemodel(outname, model)
         print(io, @sprintf("%12.8f", bias), "\n")
     end
     close(io)
+end
+
+"""
+function mindistance(hist, parameters)
+
+Returns the minimal occuring distance in the histogram
+"""
+function mindistance(hist, parameters)
+    for i in 1:parameters.Nbins
+        if hist[i] != 0
+            return((i - 1) * parameters.binWidth)
+        end
+    end
+end
+
+"""
+function repulsion(hist, parameters, shift=0.01, stiffness=500)
+
+Returns repulsion weights for the neural network
+Functional form for repulsion: stiffness*[exp(-αr)-shift]
+α is a coefficient that makes sure that the repulsion term
+goes to zero at minimal distance from the given histogram
+"""
+function repulsion(hist, parameters, shift=0.01, stiffness=500)
+    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
+    minDistance = mindistance(hist, parameters)
+    # Find α so that [exp(-αr) - shift] goes to zero at minDistance
+    α = -log(shift)/minDistance
+    potential = zeros(Float32, parameters.Nbins)
+    for i in 1:parameters.Nbins
+        if bins[i] < minDistance
+            potential[i] = stiffness*(exp(-α*bins[i])-shift)
+        end
+    end
+    return(potential)
+end
+
+"""
+function modelinit(hist, parameters, shift=0.01, stiffness=500)
+
+Initializes the model with repulsion term
+"""
+function modelinit(hist, parameters, shift=0.01, stiffness=500)
+    if parameters.activation == "identity"
+        model = Dense(length(hist), 1, identity, bias=true)
+    else
+        println("Other types of activation are currently not supported.")
+    end
+    # Nullify weights (subtract weights from themselves)
+    Flux.Optimise.update!(model.weight, model.weight)
+    # Add repulsion term
+    Flux.Optimise.update!(model.weight, -repulsion(hist, parameters, shift, stiffness)')
+    return(model)
 end

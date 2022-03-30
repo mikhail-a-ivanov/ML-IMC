@@ -19,10 +19,8 @@ Nbins         = 600                  # Number of bins
 
 # Learning parameters
 iters         = 5                    # Number of learning iterations
-activation    = identity             # Activation function
-optimizer     = Momentum             # Optimizer (other options - Descent)
 rate          = 0.05                 # Learning rate
-momentum      = 0.9                  # Momentum coefficient
+activation    = identity             # Activation function
 
 # Input files
 xyzname       = mcLJ/mctraj-p001.xyz   # Input configuration file

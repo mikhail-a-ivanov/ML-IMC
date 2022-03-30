@@ -2,6 +2,7 @@ using Dates
 using Statistics
 using LinearAlgebra
 using Distributed
+using BSON: @save, @load
 
 BLAS.set_num_threads(1)
 
@@ -32,23 +33,37 @@ function inputdata()
 end
 
 function main()
+    # Initialize inputs
     conf, bins, rdfref, histref, parameters = inputdata()
-    if parameters.activation == "identity"
-        model = Dense(length(histref), 1, identity, bias=true)
-    else
-        println("Other types of activation are not currently supported.")
-    end
 
     # Normalize the reference histogram to per particle histogram
     histref ./= length(conf)/2 # Number of pairs divided by the number of particles
+
+    # Initialize the model
+    model = modelinit(histref, parameters)
+
+    # Initialize the optimizer
+    if parameters.optimizer == "Momentum"
+        opt = Momentum(parameters.η, parameters.μ)
+    elseif parameters.optimizer == "Descent"
+        opt = Descent(parameters.η)
+    else
+        opt = Descent(parameters.η)
+        println("Other types of optimizers are currently not supported!")
+    end
 
     # Start the timer
     startTime = Dates.now()
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
-    println("Number of iterations: $(parameters.iters)")
-    println("Learning rate: $(parameters.η)")
+    println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
     println("Using $(parameters.activation) activation")
+    println("Number of iterations: $(parameters.iters)")
+    println("Optimizer type: $(parameters.optimizer)")
+    println("Learning rate: $(parameters.η)")
+    if parameters.optimizer == "Momentum"
+        println("Momentum coefficient: $(parameters.μ)")
+    end
     println("Starting at: ", startTime)
      
     # Prepare inputs
@@ -77,11 +92,11 @@ function main()
         writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
 
         # Write the model (before training!)
-        savemodel("model-iter-$(iterString).dat", model)
+        @save "model-iter-$(iterString).bson" model
 
         # Training
         dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, histNN, histref, model, parameters)
-        updatemodel!(model, parameters.η, dLdw, dLdb)
+        updatemodel!(model, opt, dLdw, dLdb)
     end
 
     # Stop the timer
