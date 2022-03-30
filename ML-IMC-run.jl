@@ -24,6 +24,7 @@ function inputdata()
 
     # Load a configuration from XYZ file
     xyz = readXYZ(parameters.xyzname)
+    println("Using the last recorded frame as an input configuration...")
     conf = xyz[end]
 
     # Read reference histogram
