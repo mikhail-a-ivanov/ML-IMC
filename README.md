@@ -1,6 +1,27 @@
 # ML-IMC
 **M**achine **L**earning enhanced **I**nverse **M**onte **C**arlo.
 
+## How to run
+Clone the repository and run:
+
+`julia -p 40 ML-IMC-run.jl LJML-init.in > p40.out`
+
+## Required Julia packages
+**Julia version: 1.7**
+
+Core packages:
+- Flux
+- Distributed
+- LinearAlgebra
+- StaticArrays
+- RandomNumbers
+
+Other packages:
+- Dates
+- Printf
+- BSON
+- Statistics
+
 ## Authors
 - Prof. Alexander Lyubartsev (alexander.lyubartsev@mmk.su.se) - Principal investigator and method developer
 - Mikhail Ivanov (mikhail.ivanov@mmk.su.se) - Main software developer
