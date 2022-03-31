@@ -22,26 +22,41 @@ function inputdata()
     inputname = ARGS[1]
     parameters = readinput(inputname)
 
-    # Load a configuration from XYZ file
-    xyz = readXYZ(parameters.xyzname)
-    println("Using the last recorded frame as an input configuration...")
-    conf = xyz[end]
-
     # Read reference histogram
     bins, rdfref, histref = readRDF(parameters.rdfname)
 
-    return(conf, bins, rdfref, histref, parameters)
+    return(bins, rdfref, histref, parameters)
+end
+
+"""
+function inputconfs(parameters)
+
+Reads input configurations from XYZ file
+"""
+function inputconfs(parameters)
+    xyz = readXYZ(parameters.xyzname)
+    confs = xyz[2:end] # Omit the initial configuration
+    return(confs)
 end
 
 function main()
     # Initialize inputs
-    conf, bins, rdfref, histref, parameters = inputdata()
+    bins, rdfref, histref, parameters = inputdata()
+
+    # Read XYZ file the first time
+    confs = inputconfs(parameters)
+
+    # Make a copy to read at the start of each iterations
+    refconfs = copy(confs)
 
     # Normalize the reference histogram to per particle histogram
-    histref ./= length(conf)/2 # Number of pairs divided by the number of particles
+    histref ./= length(confs[end])/2 # Number of pairs divided by the number of particles
 
     # Initialize the model
     model = modelinit(histref, parameters)
+
+    # Initialize RNG for random input frame selection
+    rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Initialize the optimizer
     if parameters.optimizer == "Momentum"
@@ -67,12 +82,12 @@ function main()
     end
     println("Starting at: ", startTime)
      
-    # Prepare inputs
+    # Run training iterations
     for i in 1:parameters.iters
         iterString = lpad(i, 2, '0')
         println("Iteration $i...")
-        input = conf, parameters, model
-        inputs = [input for worker in workers()]
+        inputs = [(confs[rand(rng_xor, 1:length(confs))], parameters, model) 
+                for worker in workers()]
      
         # Run the simulation in parallel
         outputs = pmap(mcrun!, inputs)
@@ -98,6 +113,9 @@ function main()
         # Training
         dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, histNN, histref, model, parameters)
         updatemodel!(model, opt, dLdw, dLdb)
+
+        # Load the reference configurations
+        confs = copy(refconfs)
     end
 
     # Stop the timer

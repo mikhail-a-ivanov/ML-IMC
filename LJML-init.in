@@ -21,7 +21,7 @@ Nbins         = 600                  # Number of bins
 iters         = 5                    # Number of learning iterations
 activation    = identity             # Activation function
 optimizer     = Momentum             # Optimizer (other options - Descent)
-rate          = 0.05                 # Learning rate
+rate          = 0.1                  # Learning rate
 momentum      = 0.9                  # Momentum coefficient
 
 # Input files
