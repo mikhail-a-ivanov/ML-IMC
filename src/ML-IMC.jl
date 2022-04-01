@@ -327,11 +327,11 @@ function repulsion(hist, parameters, shift=0.01, stiffness=500)
 end
 
 """
-function modelinit(hist, parameters, shift=0.01, stiffness=500)
+function modelinit(hist, parameters, shift=0.01, stiffness=50)
 
 Initializes the model with repulsion term
 """
-function modelinit(hist, parameters, shift=0.01, stiffness=500)
+function modelinit(hist, parameters, shift=0.01, stiffness=50)
     if parameters.activation == "identity"
         model = Dense(length(hist), 1, identity, bias=true)
     else
