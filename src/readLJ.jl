@@ -2,6 +2,7 @@
 struct inputParms
 
 Fields:
+N: number of particles
 box: box vector, Å
 T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
@@ -19,8 +20,10 @@ optimizer: type of optimizer
 μ: momentum coefficient
 xyzname: input configuration file
 rdfname: reference RDF file
+paircorr: type of pair correlations (RDF or histogram)
 """
 struct inputParms
+    N::Int
     box::SVector{3, Float64}
     T::Float64
     β::Float64
@@ -38,6 +41,7 @@ struct inputParms
     μ::Float64
     xyzname::String
     rdfname::String
+    paircorr::String
 end
 
 

@@ -1,8 +1,9 @@
 # System
+N             = 1000                 # Number of particles
 box           = 36.405 36.405 36.405 # Box vectors [Å]
 
 # Conditions
-T = 95.0                             # [K]
+T             = 95.0                 # [K]
 
 # Monte Carlo parameters          
 Δ             = 0.75                 # Max displacement [Å]
@@ -18,10 +19,11 @@ binWidth      = 0.025                # [Å]
 Nbins         = 600                  # Number of bins
 
 # Learning parameters
-iters         = 2                    # Number of learning iterations
+paircorr      = RDF                  # Type of pair correlations (RDF or histogram)
+iters         = 5                    # Number of learning iterations
 activation    = identity             # Activation function
 optimizer     = Momentum             # Optimizer (other options - Descent)
-η             = 0.1                  # Learning rate
+η             = 0.001                # Learning rate
 μ             = 0.9                  # Momentum coefficient
 
 # Input files

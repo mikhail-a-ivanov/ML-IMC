@@ -45,12 +45,13 @@ function main()
 
     # Read XYZ file the first time
     confs = inputconfs(parameters)
+    @assert parameters.N == length(confs[end]) "Given number of particles does not match with XYZ configuration!"
 
     # Make a copy to read at the start of each iterations
     refconfs = copy(confs)
 
     # Normalize the reference histogram to per particle histogram
-    histref ./= length(confs[end])/2 # Number of pairs divided by the number of particles
+    histref ./= parameters.N / 2 # Number of pairs divided by the number of particles
 
     # Initialize the model
     model = modelinit(histref, parameters)
@@ -73,6 +74,7 @@ function main()
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
     println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
+    println("Using $(parameters.paircorr) as a pair descriptor")
     println("Using $(parameters.activation) activation")
     println("Number of iterations: $(parameters.iters)")
     println("Optimizer type: $(parameters.optimizer)")
@@ -92,17 +94,11 @@ function main()
         # Run the simulation in parallel
         outputs = pmap(mcrun!, inputs)
 
-        histNN = mean([output[1] for output in outputs])
+        pairdescriptorNN = mean([output[1] for output in outputs])
         energies = mean([output[2] for output in outputs])
         crossWeights = mean([output[3] for output in outputs])
         crossBiases = mean([output[4] for output in outputs])
         meanAcceptanceRatio = mean([output[5] for output in outputs])
-
-        println("Mean acceptance ratio = $(meanAcceptanceRatio)")
-        loss(histNN, histref)
-
-        # Write the histogram
-        writehist("histNN-iter-$(iterString).dat", histNN, bins)
 
         # Write averaged energies
         writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
@@ -110,8 +106,18 @@ function main()
         # Write the model (before training!)
         @save "model-iter-$(iterString).bson" model
 
-        # Training
-        dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, histNN, histref, model, parameters)
+        println("Mean acceptance ratio = $(meanAcceptanceRatio)")
+        if parameters.paircorr == "RDF"
+            loss(pairdescriptorNN, rdfref)
+            writedescriptor("rdfNN-iter-$(iterString).dat", pairdescriptorNN, bins)
+            dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, pairdescriptorNN, rdfref, model, parameters)
+        elseif parameters.paircorr == "histogram"
+            loss(pairdescriptorNN, histref)
+            writedescriptor("histNN-iter-$(iterString).dat", pairdescriptorNN, bins)
+            dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, pairdescriptorNN, histref, model, parameters)
+        end
+
+        # Update the model
         updatemodel!(model, opt, dLdw, dLdb)
 
         # Load the reference configurations

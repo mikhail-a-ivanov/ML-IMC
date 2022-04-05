@@ -18,7 +18,7 @@ function histpart!(distanceVector, hist, binWidth)
     N = length(distanceVector)
     @inbounds @fastmath for i in 1:N
         if distanceVector[i] != 0
-            histIndex = floor(Int, 0.5 + distanceVector[i]/binWidth)
+            histIndex = floor(Int32, 0.5 + distanceVector[i]/binWidth)
             if histIndex <= length(hist)
                 hist[histIndex] += 1
             end
@@ -28,36 +28,57 @@ function histpart!(distanceVector, hist, binWidth)
 end
 
 """
-neuralenergy(hist, model)
+normalizehist!(hist, parameters)
+
+Normalizes one particle distance histogram to RDF
+"""
+function normalizehist!(hist, parameters)
+    V = parameters.box[1] * parameters.box[2] * parameters.box[3]
+    #Npairs::Int = parameters.N * (parameters.N - 1) / 2
+    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
+    shellVolumes = [4*π*parameters.binWidth*bins[i]^2 for i in 1:length(bins)]
+    rdfNorm = ones(Float32, parameters.Nbins)
+    for i in 2:length(rdfNorm)
+        rdfNorm[i] = V/parameters.N * 1/shellVolumes[i]
+    end
+    hist .*= rdfNorm
+    return(hist)
+end
+
+"""
+neuralenergy(inputlayer, model)
 
 Computes the potential energy of one particle
-distance histogram using the neural network
+from the input layer of the neural network
 """
-function neuralenergy(hist, model)
-    E::Float64 = model(hist)[1]
+function neuralenergy(inputlayer, model)
+    E::Float64 = model(inputlayer)[1]
     return(E)
 end
 
 """
-mcmove!(conf, E, step, parameters, model, histNN, rng)
+mcmove!(conf, E, step, parameters, model, pairdescriptorNN, rng)
 
 Performs a Metropolis Monte Carlo
 displacement move using a neural network
-to predict energies from distance histograms
+to predict energies from pair correlation functions (pairdescriptor)
 """
-function mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, parameters, model, histNN, rng)
+function mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, parameters, model, pairdescriptorNN, rng)
     # Pick a particle
     pointIndex = rand(rng, Int32(1):Int32(length(conf)))
     
     # Allocate the distance vector
     distanceVector = distanceMatrix[:, pointIndex]
 
-    # Allocate and compute the histogram
-    hist1 = zeros(parameters.Nbins)
-    histpart!(distanceVector, hist1, parameters.binWidth)
+    # Allocate and compute the pair descriptor
+    pairdescriptor1 = zeros(Float32, parameters.Nbins)
+    histpart!(distanceVector, pairdescriptor1, parameters.binWidth)
+    if parameters.paircorr == "RDF"
+        normalizehist!(pairdescriptor1, parameters)
+    end
     
     # Compute the energy
-    E1 = neuralenergy(hist1, model)
+    E1 = neuralenergy(pairdescriptor1, model)
     
     # Displace the particle
     dr = SVector{3, Float64}(parameters.Δ*(rand(rng, Float64) - 0.5), 
@@ -66,13 +87,16 @@ function mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, param
     
     conf[pointIndex] += dr
     
-    # Update distance and compute the new histogram
-    hist2 = zeros(parameters.Nbins)
+    # Update distance and compute the new descriptor
+    pairdescriptor2 = zeros(Float32, parameters.Nbins)
     updatedistance!(conf, parameters.box, distanceVector, pointIndex)
-    histpart!(distanceVector, hist2, parameters.binWidth)
+    histpart!(distanceVector, pairdescriptor2, parameters.binWidth)
+    if parameters.paircorr == "RDF"
+        normalizehist!(pairdescriptor2, parameters)
+    end
     
     # Compute the energy again
-    E2 = neuralenergy(hist2, model)
+    E2 = neuralenergy(pairdescriptor2, model)
     
     # Get energy difference
     ΔE = E2 - E1
@@ -85,26 +109,26 @@ function mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, param
         # Update distance matrix
         distanceMatrix[pointIndex, :] = distanceVector
         distanceMatrix[:, pointIndex] = distanceVector
-        # Add the particle histogram to the total histogram
+        # Update the descriptor data
         if step % parameters.outfreq == 0 && step > parameters.Eqsteps
             for i in 1:parameters.Nbins
-                 histNN[i] += hist2[i] 
+                pairdescriptorNN[i] += pairdescriptor2[i] 
             end
             # Update cross correlation arrays
-            crossCorrelation!(hist2, model, crossWeights, crossBiases)
+            crossCorrelation!(pairdescriptor2, model, crossWeights, crossBiases)
         end
     else
         conf[pointIndex] -= dr
-        # Add the particle histogram to the total histogram
+        # Update the descriptor data
         if step % parameters.outfreq == 0 && step > parameters.Eqsteps
             for i in 1:parameters.Nbins
-                 histNN[i] += hist1[i] 
+                pairdescriptorNN[i] += pairdescriptor1[i] 
             end
             # Update cross correlation arrays
-            crossCorrelation!(hist1, model, crossWeights, crossBiases)
+            crossCorrelation!(pairdescriptor1, model, crossWeights, crossBiases)
         end
     end
-    return(conf, distanceMatrix, crossWeights, crossBiases, E, histNN, accepted)
+    return(conf, distanceMatrix, crossWeights, crossBiases, E, pairdescriptorNN, accepted)
 end
 
 """
@@ -124,8 +148,8 @@ function mcrun!(input)
     energies = zeros(TotalDataPoints + 1)
     E = 0.
 
-    # Allocate the histograms
-    histNN = zeros(parameters.Nbins)
+    # Allocate the pair correlation functions
+    pairdescriptorNN = zeros(Float32, parameters.Nbins)
 
     # Initialize RNG
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
@@ -142,8 +166,9 @@ function mcrun!(input)
 
     # Run MC simulation
     @inbounds @fastmath for step in 1:parameters.steps
-        conf, distanceMatrix, crossWeights, crossBiases, E, histNN, accepted = 
-            mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, parameters, model, histNN, rng_xor)
+        conf, distanceMatrix, crossWeights, crossBiases, E, pairdescriptorNN, accepted = 
+            mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, 
+            parameters, model, pairdescriptorNN, rng_xor)
         acceptedTotal += accepted
         if step % parameters.outfreq == 0
             energies[Int(step/parameters.outfreq) + 1] = E
@@ -151,46 +176,46 @@ function mcrun!(input)
     end
     acceptanceRatio = acceptedTotal / parameters.steps
 
-    # Normalize the histogram
-    histNN ./= Float32(prodDataPoints)
+    # Normalize the pair correlation functions
+    pairdescriptorNN ./= Float32(prodDataPoints)
 
     # Normalize the cross correlation arrays 
     crossWeights ./= prodDataPoints
     crossBiases ./= prodDataPoints
 
     println("Acceptance ratio = $(acceptanceRatio)")
-    return(histNN, energies, crossWeights, crossBiases, acceptanceRatio)
+    return(pairdescriptorNN, energies, crossWeights, crossBiases, acceptanceRatio)
 end
 
 """
-crossCorrelation!(hist, model, crossWeights, crossBiases)
+crossCorrelation!(descriptor, model, crossWeights, crossBiases)
 
 Updated cross correlation arrays
 """
-function crossCorrelation!(hist, model, crossWeights, crossBiases)
-    dHdw, dHdb = gradient(neuralenergy, hist, model)[2]
-    crossWeights .+= (hist * dHdw) # Matrix Nbins x Nweights
-    crossBiases .+= (hist .* dHdb) # Vector Nbins
+function crossCorrelation!(descriptor, model, crossWeights, crossBiases)
+    dHdw, dHdb = gradient(neuralenergy, descriptor, model)[2]
+    crossWeights .+= (descriptor * dHdw) # Matrix Nbins x Nweights
+    crossBiases .+= (descriptor .* dHdb) # Vector Nbins
     return(crossWeights, crossBiases)
 end
 
 """
-function computeDerivatives(crossWeights, crossBiases, histNN, model, parameters)
+function computeDerivatives(crossWeights, crossBiases, descriptor, model, parameters)
 
 Compute dL/dl derivatives for training (based on IMC method)
 """
-function computeDerivatives(crossWeights, crossBiases, histNN, histref, model, parameters)
+function computeDerivatives(crossWeights, crossBiases, descriptorNN, descriptorref, model, parameters)
     # Compute <dH/dl> * <S>
-    dHdw, dHdb = gradient(neuralenergy, histNN, model)[2]
-    productWeights = Float32.(histNN * dHdw)
-    productBiases = Float32.(histNN .* dHdb)
+    dHdw, dHdb = gradient(neuralenergy, descriptorNN, model)[2]
+    productWeights = Float32.(descriptorNN * dHdw)
+    productBiases = Float32.(descriptorNN .* dHdb)
 
-    # Compute histogram gradients
+    # Compute descriptor gradients
     dSdw = -Float32(parameters.β) .* (crossWeights - productWeights)
     dSdb = -Float32(parameters.β) .* (crossBiases - productBiases)
 
     # Loss derivative
-    dL = lossDerivative(histNN, histref)
+    dL = lossDerivative(descriptorNN, descriptorref)
 
     # Loss total gradient
     dLdw = zeros(length(model.weight))
@@ -213,14 +238,14 @@ function updatemodel!(model, opt, dLdw, dLdb)
 end
 
 """
-function loss(histNN, histref)
+function loss(descriptorNN, descriptorref)
 
 Compute the error function
 """
-function loss(histNN, histref)
-    loss = zeros(length(histNN))
+function loss(descriptorNN, descriptorref)
+    loss = zeros(length(descriptorNN))
     for i in 1:length(loss)
-        loss[i] = (histNN[i] - histref[i])^2
+        loss[i] = (descriptorNN[i] - descriptorref[i])^2
     end
     totalLoss = sum(loss)
     println("Loss = ", round(totalLoss, digits=8))
@@ -228,29 +253,29 @@ function loss(histNN, histref)
 end
 
 """
-function lossDerivative(histNN, histref)
+function lossDerivative(descriptorNN, descriptorref)
 
 Compute the loss derivative function for dL/dl calculation
 """
-function lossDerivative(histNN, histref)
-    loss = zeros(length(histNN))
+function lossDerivative(descriptorNN, descriptorref)
+    loss = zeros(length(descriptorNN))
     for i in 1:length(loss)
-        loss[i] = 2*(histNN[i] - histref[i])
+        loss[i] = 2*(descriptorNN[i] - descriptorref[i])
     end
     return(loss)
 end
 
 """
-function writehist(outname, hist, parameters)
+function writedescriptor(outname, descriptor, parameters)
 
-Writes the histogram into a file
+Writes the descriptor into a file
 """
-function writehist(outname, hist, bins)
+function writedescriptor(outname, descriptor, bins)
     io = open(outname, "w")
-    print(io, "# r, Å; Histogram \n")
+    print(io, "# r, Å; Descriptor \n")
     print(io, @sprintf("%6.3f %12.3f", bins[1], 0), "\n")
-    for i in 2:length(hist)
-        print(io, @sprintf("%6.3f %12.3f", bins[i], hist[i]), "\n")
+    for i in 2:length(descriptor)
+        print(io, @sprintf("%6.3f %12.3f", bins[i], descriptor[i]), "\n")
     end
     close(io)
 end
@@ -292,29 +317,29 @@ function savemodel(outname, model)
 end
 
 """
-function mindistance(hist, parameters)
+function mindistance(descriptor, parameters)
 
-Returns the minimal occuring distance in the histogram
+Returns the minimal occuring distance in the descriptor
 """
-function mindistance(hist, parameters)
+function mindistance(descriptor, parameters)
     for i in 1:parameters.Nbins
-        if hist[i] != 0
+        if descriptor[i] != 0
             return((i - 1) * parameters.binWidth)
         end
     end
 end
 
 """
-function repulsion(hist, parameters, shift=0.01, stiffness=500)
+function repulsion(descriptor, parameters, shift=0.01, stiffness=5)
 
 Returns repulsion weights for the neural network
 Functional form for repulsion: stiffness*[exp(-αr)-shift]
 α is a coefficient that makes sure that the repulsion term
-goes to zero at minimal distance from the given histogram
+goes to zero at minimal distance from the given pair correlation function (descriptor)
 """
-function repulsion(hist, parameters, shift=0.01, stiffness=500)
+function repulsion(descriptor, parameters, shift=0.01, stiffness=5)
     bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
-    minDistance = mindistance(hist, parameters)
+    minDistance = mindistance(descriptor, parameters)
     # Find α so that [exp(-αr) - shift] goes to zero at minDistance
     α = -log(shift)/minDistance
     potential = zeros(Float32, parameters.Nbins)
@@ -327,19 +352,19 @@ function repulsion(hist, parameters, shift=0.01, stiffness=500)
 end
 
 """
-function modelinit(hist, parameters, shift=0.01, stiffness=50)
+function modelinit(descriptor, parameters, shift=0.01, stiffness=5)
 
 Initializes the model with repulsion term
 """
-function modelinit(hist, parameters, shift=0.01, stiffness=50)
+function modelinit(descriptor, parameters, shift=0.01, stiffness=5)
     if parameters.activation == "identity"
-        model = Dense(length(hist), 1, identity, bias=true)
+        model = Dense(length(descriptor), 1, identity, bias=true)
     else
         println("Other types of activation are currently not supported.")
     end
     # Nullify weights (subtract weights from themselves)
     Flux.Optimise.update!(model.weight, model.weight)
     # Add repulsion term
-    Flux.Optimise.update!(model.weight, -repulsion(hist, parameters, shift, stiffness)')
+    Flux.Optimise.update!(model.weight, -repulsion(descriptor, parameters, shift, stiffness)')
     return(model)
 end
