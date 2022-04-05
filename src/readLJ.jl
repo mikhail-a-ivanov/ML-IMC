@@ -3,6 +3,7 @@ struct inputParms
 
 Fields:
 box: box vector, Å
+T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
 Δ: max displacement, Å
 steps: total number of steps
@@ -21,6 +22,7 @@ rdfname: reference RDF file
 """
 struct inputParms
     box::SVector{3, Float64}
+    T::Float64
     β::Float64
     Δ::Float64  
     steps::Int
@@ -109,68 +111,47 @@ function readinput(inputname)
     # Constants
     NA::Float64 = 6.02214076E23 # [mol-1]
     kB::Float64 = 1.38064852E-23 * NA / 1000 # [kJ/(mol*K)]
-    # Has to define the variable outside of the main loop
-    box = zeros(3)
-    β::Float64 = 0.
-    Δ::Float64 = 0.
-    steps::Int = 0
-    Eqsteps::Int = 0
-    xyzout::Int = 0
-    outfreq::Int = 0
-    binWidth::Float64 = 0.
-    Nbins::Int = 0
-    iters::Int = 0
-    activation::String = ""
-    optimizer::String = ""
-    η::Float64 = 0.
-    μ::Float64 = 0.
-    xyzname::String = ""
-    rdfname::String = ""
+
+    # Read the input file
     file = open(inputname, "r")
     lines = readlines(file)
-    for line in lines
-        if length(line) > 0 && line[1] != '#'
-            splittedLine = split(line)
-            if splittedLine[1] == "box"
-                box[1] = parse(Float64, splittedLine[3])
-                box[2] = parse(Float64, splittedLine[4])
-                box[3] = parse(Float64, splittedLine[5])
-            elseif splittedLine[1] == "temperature"
-                T = parse(Float64, splittedLine[3])
-                β = 1/(kB * T)
-            elseif splittedLine[1] == "delta"
-                Δ = parse(Float64, splittedLine[3])
-            elseif splittedLine[1] == "steps"
-                steps = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "Eqsteps"
-                Eqsteps = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "xyzout"
-                xyzout = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "outfreq"
-                outfreq = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "binWidth"
-                binWidth = parse(Float64, splittedLine[3])
-            elseif splittedLine[1] == "Nbins"
-                Nbins = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "iters"
-                iters = Int(parse(Float64, splittedLine[3]))
-            elseif splittedLine[1] == "activation"
-                activation = splittedLine[3]
-            elseif splittedLine[1] == "optimizer"
-                optimizer = splittedLine[3]
-            elseif splittedLine[1] == "rate"
-                η = parse(Float64, splittedLine[3])
-            elseif splittedLine[1] == "momentum"
-                μ = parse(Float64, splittedLine[3])
-            elseif splittedLine[1] == "xyzname"
-                xyzname = splittedLine[3]
-            elseif splittedLine[1] == "rdfname"
-                rdfname = splittedLine[3] 
+    splittedLines = [split(line) for line in lines]
+
+    # Make a list of field names
+    fields = [String(field) for field in fieldnames(inputParms)]
+
+    vars = [] # Array with input variables
+    # Loop over fieldnames and fieldtypes and over splitted lines
+    for (field, fieldtype) in zip(fields, fieldtypes(inputParms))
+        for line in splittedLines
+            if length(line) != 0 && field == line[1]
+                if field == "box"
+                    box = zeros(3)
+                    box[1] = parse(Float64, line[3])
+                    box[2] = parse(Float64, line[4])
+                    box[3] = parse(Float64, line[5])
+                    append!(vars, [box])
+                    #println("$(field) = $(box)")            
+                elseif field == "T"
+                    T = parse(Float64, line[3])
+                    β = 1/(kB * T)
+                    append!(vars, T)  
+                    append!(vars, β)
+                    #println("T = $(T)")
+                    #println("β = $(β)")
+                else
+                    #println("$(field) = $(line[3])")
+                    if fieldtype != String
+                        append!(vars, parse(fieldtype, line[3]))
+                    else
+                        append!(vars, [line[3]])
+                    end
+                end
             end
         end
     end
+
     # Save parameters into the inputParms struct
-    parameters = inputParms(box, β, Δ, steps, Eqsteps, xyzout, outfreq, binWidth, Nbins,
-                            iters, activation, optimizer, η, μ, xyzname, rdfname)
+    parameters = inputParms(vars...)
     return(parameters)
 end

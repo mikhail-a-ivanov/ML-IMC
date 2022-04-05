@@ -2,27 +2,27 @@
 box           = 36.405 36.405 36.405 # Box vectors [Å]
 
 # Conditions
-temperature   = 95.0                 # [K]
+T = 95.0                             # [K]
 
 # Monte Carlo parameters          
-delta         = 0.75                 # Max displacement [Å]
-steps         = 2E6                  # Total number of MC steps
-Eqsteps       = 1E6                  # Equilibration MC steps
+Δ             = 0.75                 # Max displacement [Å]
+steps         = 2000000              # Total number of MC steps
+Eqsteps       = 1000000              # Equilibration MC steps
 
 # Output control          
 xyzout        = 0                    # XYZ output frequency
-outfreq       = 1E3                  # Output frequency
+outfreq       = 1000                 # Output frequency
 
 # RDF parameters          
 binWidth      = 0.025                # [Å]
 Nbins         = 600                  # Number of bins
 
 # Learning parameters
-iters         = 5                    # Number of learning iterations
+iters         = 2                    # Number of learning iterations
 activation    = identity             # Activation function
 optimizer     = Momentum             # Optimizer (other options - Descent)
-rate          = 0.1                  # Learning rate
-momentum      = 0.9                  # Momentum coefficient
+η             = 0.1                  # Learning rate
+μ             = 0.9                  # Momentum coefficient
 
 # Input files
 xyzname       = mcLJ/mctraj-p001.xyz   # Input configuration file
