@@ -61,11 +61,11 @@ function main()
 
     # Initialize the optimizer
     if parameters.optimizer == "Momentum"
-        opt = Momentum(parameters.η, parameters.μ)
+        opt = Momentum(parameters.rate, parameters.momentum)
     elseif parameters.optimizer == "Descent"
-        opt = Descent(parameters.η)
+        opt = Descent(parameters.rate)
     else
-        opt = Descent(parameters.η)
+        opt = Descent(parameters.rate)
         println("Other types of optimizers are currently not supported!")
     end
 
@@ -78,9 +78,9 @@ function main()
     println("Using $(parameters.activation) activation")
     println("Number of iterations: $(parameters.iters)")
     println("Optimizer type: $(parameters.optimizer)")
-    println("Learning rate: $(parameters.η)")
+    println("Learning rate: $(parameters.rate)")
     if parameters.optimizer == "Momentum"
-        println("Momentum coefficient: $(parameters.μ)")
+        println("Momentum coefficient: $(parameters.momentum)")
     end
     println("Starting at: ", startTime)
      
