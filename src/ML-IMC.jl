@@ -81,9 +81,9 @@ function mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, param
     E1 = neuralenergy(pairdescriptor1, model)
     
     # Displace the particle
-    dr = SVector{3, Float64}(parameters.Δ*(rand(rng, Float64) - 0.5), 
-                             parameters.Δ*(rand(rng, Float64) - 0.5), 
-                             parameters.Δ*(rand(rng, Float64) - 0.5))
+    dr = SVector{3, Float64}(parameters.delta*(rand(rng, Float64) - 0.5), 
+                             parameters.delta*(rand(rng, Float64) - 0.5), 
+                             parameters.delta*(rand(rng, Float64) - 0.5))
     
     conf[pointIndex] += dr
     
@@ -99,13 +99,13 @@ function mcmove!(conf, distanceMatrix, crossWeights, crossBiases, E, step, param
     E2 = neuralenergy(pairdescriptor2, model)
     
     # Get energy difference
-    ΔE = E2 - E1
+    deltaE = E2 - E1
     # Acceptance counter
     accepted = 0
     
-    if rand(rng, Float64) < exp(-ΔE*parameters.β)
+    if rand(rng, Float64) < exp(-deltaE*parameters.beta)
         accepted += 1
-        E += ΔE
+        E += deltaE
         # Update distance matrix
         distanceMatrix[pointIndex, :] = distanceVector
         distanceMatrix[:, pointIndex] = distanceVector
@@ -211,8 +211,8 @@ function computeDerivatives(crossWeights, crossBiases, descriptorNN, descriptorr
     productBiases = Float32.(descriptorNN .* dHdb)
 
     # Compute descriptor gradients
-    dSdw = -Float32(parameters.β) .* (crossWeights - productWeights)
-    dSdb = -Float32(parameters.β) .* (crossBiases - productBiases)
+    dSdw = -Float32(parameters.beta) .* (crossWeights - productWeights)
+    dSdb = -Float32(parameters.beta) .* (crossBiases - productBiases)
 
     # Loss derivative
     dL = lossDerivative(descriptorNN, descriptorref)
@@ -333,19 +333,19 @@ end
 function repulsion(descriptor, parameters, shift=0.01, stiffness=5)
 
 Returns repulsion weights for the neural network
-Functional form for repulsion: stiffness*[exp(-αr)-shift]
-α is a coefficient that makes sure that the repulsion term
+Functional form for repulsion: stiffness*[exp(-alpha*r)-shift]
+alpha is a coefficient that makes sure that the repulsion term
 goes to zero at minimal distance from the given pair correlation function (descriptor)
 """
 function repulsion(descriptor, parameters, shift=0.01, stiffness=5)
     bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
     minDistance = mindistance(descriptor, parameters)
-    # Find α so that [exp(-αr) - shift] goes to zero at minDistance
-    α = -log(shift)/minDistance
+    # Find alpha so that [exp(-alpha*r) - shift] goes to zero at minDistance
+    alpha = -log(shift)/minDistance
     potential = zeros(Float32, parameters.Nbins)
     for i in 1:parameters.Nbins
         if bins[i] < minDistance
-            potential[i] = stiffness*(exp(-α*bins[i])-shift)
+            potential[i] = stiffness*(exp(-alpha*bins[i])-shift)
         end
     end
     return(potential)

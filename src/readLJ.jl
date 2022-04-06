@@ -5,8 +5,8 @@ Fields:
 N: number of particles
 box: box vector, Å
 T: temperature, K
-β: 1/(kB*T), reciprocal kJ/mol
-Δ: max displacement, Å
+beta: 1/(kB*T), reciprocal kJ/mol
+delta: max displacement, Å
 steps: total number of steps
 Eqsteps: equilibration steps
 xyzout: XYZ output frequency
@@ -16,8 +16,8 @@ Nbins: number of histogram bins
 iters: number of learning iterations
 activation: activation function
 optimizer: type of optimizer
-η: learning rate
-μ: momentum coefficient
+rate: learning rate
+momentum: momentum coefficient
 xyzname: input configuration file
 rdfname: reference RDF file
 paircorr: type of pair correlations (RDF or histogram)
@@ -26,8 +26,8 @@ struct inputParms
     N::Int
     box::SVector{3, Float64}
     T::Float64
-    β::Float64
-    Δ::Float64  
+    beta::Float64
+    delta::Float64  
     steps::Int
     Eqsteps::Int
     xyzout::Int 
@@ -37,8 +37,8 @@ struct inputParms
     iters::Int
     activation::String
     optimizer::String
-    η::Float64
-    μ::Float64
+    rate::Float64
+    momentum::Float64
     xyzname::String
     rdfname::String
     paircorr::String
@@ -138,11 +138,11 @@ function readinput(inputname)
                     #println("$(field) = $(box)")            
                 elseif field == "T"
                     T = parse(Float64, line[3])
-                    β = 1/(kB * T)
+                    beta = 1/(kB * T)
                     append!(vars, T)  
-                    append!(vars, β)
+                    append!(vars, beta)
                     #println("T = $(T)")
-                    #println("β = $(β)")
+                    #println("beta = $(beta)")
                 else
                     #println("$(field) = $(line[3])")
                     if fieldtype != String

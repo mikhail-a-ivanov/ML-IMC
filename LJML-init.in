@@ -6,7 +6,7 @@ box           = 36.405 36.405 36.405 # Box vectors [Å]
 T             = 95.0                 # [K]
 
 # Monte Carlo parameters          
-Δ             = 0.75                 # Max displacement [Å]
+delta         = 0.75                 # Max displacement [Å]
 steps         = 2000000              # Total number of MC steps
 Eqsteps       = 1000000              # Equilibration MC steps
 
@@ -23,8 +23,8 @@ paircorr      = RDF                  # Type of pair correlations (RDF or histogr
 iters         = 5                    # Number of learning iterations
 activation    = identity             # Activation function
 optimizer     = Momentum             # Optimizer (other options - Descent)
-η             = 0.001                # Learning rate
-μ             = 0.9                  # Momentum coefficient
+rate          = 0.001                # Learning rate
+momentum      = 0.9                  # Momentum coefficient
 
 # Input files
 xyzname       = mcLJ/mctraj-p001.xyz   # Input configuration file
