@@ -6,6 +6,8 @@
 - Add the option to use additional types of reference data (angle distributions, etc.)
 - Introduce training with multiple reference data sets (obtained for different temperatures, densities or concentrations)
 - Add support for multilayered neural networks and different types of activation functions
+- Build a Julia module from my code
+- Implement auto-adjustment of MC step length
 
 ## How to run
 Clone the repository and run:
