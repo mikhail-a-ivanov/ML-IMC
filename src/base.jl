@@ -46,7 +46,7 @@ function normalizehist!(hist, parameters)
 end
 
 """
-neuralenergy(inputlayer, model)
+neuralenergy(inputlayer, model, parameters)
 
 Computes the potential energy of one particle
 from the input layer of the neural network
@@ -308,8 +308,10 @@ Initializes the model with repulsion term
 function modelinit(descriptor, parameters, shift=0.01, stiffness=5)
     if parameters.activation == "identity"
         model = Dense(length(descriptor), 1, identity, bias=true)
+    elseif parameters.activation == "tanh"
+        model = Dense(length(descriptor), 1, tanh, bias=true)
     else
-        println("Other types of activation are currently not supported.")
+        println("Other types of activations are not supported.")
     end
     # Nullify weights (subtract weights from themselves)
     Flux.Optimise.update!(model.weight, model.weight)
