@@ -6,7 +6,7 @@ using LinearAlgebra
 using Flux
 
 include("distances.jl")
-include("readLJ.jl")
+include("io.jl")
 
 """
 function histpart!(distanceVector, hist, binWidth)
@@ -263,57 +263,6 @@ function lossDerivative(descriptorNN, descriptorref)
         loss[i] = 2*(descriptorNN[i] - descriptorref[i])
     end
     return(loss)
-end
-
-"""
-function writedescriptor(outname, descriptor, parameters)
-
-Writes the descriptor into a file
-"""
-function writedescriptor(outname, descriptor, bins)
-    io = open(outname, "w")
-    print(io, "# r, Å; Descriptor \n")
-    print(io, @sprintf("%6.3f %12.3f", bins[1], 0), "\n")
-    for i in 2:length(descriptor)
-        print(io, @sprintf("%6.3f %12.3f", bins[i], descriptor[i]), "\n")
-    end
-    close(io)
-end
-
-"""
-function writeenergies(outname, energies)
-
-Writes the total energy to an output file
-"""
-function writeenergies(outname, energies, parameters, slicing=10)
-    steps = 0:parameters.outfreq*slicing:parameters.steps
-    io = open(outname, "w")
-    print(io, "# Total energy, kJ/mol \n")
-    for i in 1:length(energies[1:slicing:end])
-        print(io, "# Step = ", @sprintf("%d", steps[i]), "\n")
-        print(io, @sprintf("%10.3f", energies[1:slicing:end][i]), "\n")
-        print(io, "\n")
-    end
-    close(io)
-end
-
-"""
-function savemodel(outname, model)
-
-Saves model into a file
-"""
-function savemodel(outname, model)
-    io = open(outname, "w")
-    print(io, "# ML-IMC model: $(length(model.weight)) weights; $(length(model.bias)) biases\n")
-    print(io, "# Weights\n")
-    for weight in model.weight
-        print(io, @sprintf("%12.8f", weight), "\n")
-    end
-    print(io, "# Biases\n")
-    for bias in model.bias
-        print(io, @sprintf("%12.8f", bias), "\n")
-    end
-    close(io)
 end
 
 """

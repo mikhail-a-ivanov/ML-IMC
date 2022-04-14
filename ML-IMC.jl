@@ -8,8 +8,9 @@ BLAS.set_num_threads(1)
 
 @everywhere begin
     include("src/distances.jl")
+    include("src/base.jl")
+    include("src/io.jl")
     include("src/readLJ.jl")
-    include("src/ML-IMC.jl");
 end
 
 """

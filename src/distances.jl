@@ -1,5 +1,4 @@
 using StaticArrays
-using LinearAlgebra
 
 """
 pbcdx(x1, x2, xsize)

@@ -27,5 +27,5 @@ rate          = 0.001                # Learning rate
 momentum      = 0.9                  # Momentum coefficient
 
 # Input files
-xyzname       = mcLJ/mctraj-p001.xyz   # Input configuration file
-rdfname       = mcLJ/rdf-mean-p40.dat  # Reference RDF file
+xyzname       = LJ-data/mctraj-p001.xyz   # Input configuration file
+rdfname       = LJ-data/rdf-mean-p40.dat  # Reference RDF file
