@@ -7,8 +7,8 @@ T             = 95.0                 # [K]
 
 # Monte Carlo parameters          
 delta         = 0.75                 # Max displacement [Å]
-steps         = 2000000              # Total number of MC steps
-Eqsteps       = 1000000              # Equilibration MC steps
+steps         = 1000000              # Total number of MC steps
+Eqsteps       = 500000               # Equilibration MC steps
 
 # Output control          
 xyzout        = 0                    # XYZ output frequency
@@ -18,14 +18,16 @@ outfreq       = 1000                 # Output frequency
 binWidth      = 0.025                # [Å]
 Nbins         = 600                  # Number of bins
 
-# Learning parameters
+# Network parameters
+paramsInit    = repulsion            # Type of network parameter initialization (random or repulsion)
+neurons       = 25                   # Number of neurons in the hidden layer (0 for no hidden layers)
 paircorr      = RDF                  # Type of pair correlations (RDF or histogram)
 iters         = 5                    # Number of learning iterations
 activation    = tanh                 # Activation function
 optimizer     = Momentum             # Optimizer (other options - Descent)
-rate          = 0.001                # Learning rate
+rate          = 0.0005               # Learning rate
 momentum      = 0.9                  # Momentum coefficient
 
 # Input files
-xyzname       = LJ-data/mctraj-p001.xyz   # Input configuration file
-rdfname       = LJ-data/rdf-mean-p40.dat  # Reference RDF file
+xyzname       = LJ-data/95K/mctraj-p001.xyz   # Input configuration file
+rdfname       = LJ-data/95K/rdf-mean-p6.dat   # Reference RDF file

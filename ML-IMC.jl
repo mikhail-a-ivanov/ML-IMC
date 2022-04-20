@@ -8,13 +8,14 @@ BLAS.set_num_threads(1)
 
 @everywhere begin
     include("src/distances.jl")
+    include("src/network.jl")
     include("src/base.jl")
     include("src/io.jl")
     include("src/readLJ.jl")
 end
 
 """
-function inputdata(xyzname, rdfname, inputname)
+function inputdata()
 
 Reads input data
 """
@@ -97,9 +98,8 @@ function main()
 
         pairdescriptorNN = mean([output[1] for output in outputs])
         energies = mean([output[2] for output in outputs])
-        crossWeights = mean([output[3] for output in outputs])
-        crossBiases = mean([output[4] for output in outputs])
-        meanAcceptanceRatio = mean([output[5] for output in outputs])
+        crossAccumulators = mean([output[3] for output in outputs])
+        meanAcceptanceRatio = mean([output[4] for output in outputs])
 
         # Write averaged energies
         writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
@@ -107,19 +107,19 @@ function main()
         # Write the model (before training!)
         @save "model-iter-$(iterString).bson" model
 
-        println("Mean acceptance ratio = $(meanAcceptanceRatio)")
+        println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
         if parameters.paircorr == "RDF"
             loss(pairdescriptorNN, rdfref)
             writedescriptor("rdfNN-iter-$(iterString).dat", pairdescriptorNN, bins)
-            dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, pairdescriptorNN, rdfref, model, parameters)
+            lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, rdfref, model, parameters)
         elseif parameters.paircorr == "histogram"
             loss(pairdescriptorNN, histref)
             writedescriptor("histNN-iter-$(iterString).dat", pairdescriptorNN, bins)
-            dLdw, dLdb = computeDerivatives(crossWeights, crossBiases, pairdescriptorNN, histref, model, parameters)
+            lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, histref, model, parameters)
         end
 
         # Update the model
-        updatemodel!(model, opt, dLdw, dLdb)
+        updatemodel!(model, opt, lossGradients)
 
         # Load the reference configurations
         confs = copy(refconfs)

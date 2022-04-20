@@ -1,5 +1,5 @@
 """
-struct inputParms
+mutable struct inputParms
 
 Fields:
 N: number of particles
@@ -21,8 +21,10 @@ momentum: momentum coefficient
 xyzname: input configuration file
 rdfname: reference RDF file
 paircorr: type of pair correlations (RDF or histogram)
+neurons: number of neurons in the hidden layers
+paramsInit: type of network parameters initialization
 """
-struct inputParms
+mutable struct inputParms
     N::Int
     box::SVector{3, Float64}
     T::Float64
@@ -42,6 +44,8 @@ struct inputParms
     xyzname::String
     rdfname::String
     paircorr::String
+    neurons::Vector{Int64}
+    paramsInit::String
 end
 
 """
@@ -80,6 +84,16 @@ function readinput(inputname)
                     beta = 1/(kB * T)
                     append!(vars, T)  
                     append!(vars, beta)
+                elseif field == "neurons"
+                    neurons = []
+                    for (elementId, element) in enumerate(line)
+                        if elementId > 2 && element != "#"
+                            append!(neurons, parse(Int64, strip(element, ',')))
+                        elseif element == "#"
+                            break
+                        end
+                    end
+                    append!(vars, [neurons])
                 else
                     if fieldtype != String
                         append!(vars, parse(fieldtype, line[3]))
