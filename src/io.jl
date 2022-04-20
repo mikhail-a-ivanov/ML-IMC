@@ -141,22 +141,3 @@ function writeenergies(outname, energies, parameters, slicing=10)
     end
     close(io)
 end
-
-"""
-function savemodel(outname, model)
-
-Saves model into a file
-"""
-function savemodel(outname, model)
-    io = open(outname, "w")
-    print(io, "# ML-IMC model: $(length(model.weight)) weights; $(length(model.bias)) biases\n")
-    print(io, "# Weights\n")
-    for weight in model.weight
-        print(io, @sprintf("%12.8f", weight), "\n")
-    end
-    print(io, "# Biases\n")
-    for bias in model.bias
-        print(io, @sprintf("%12.8f", bias), "\n")
-    end
-    close(io)
-end
