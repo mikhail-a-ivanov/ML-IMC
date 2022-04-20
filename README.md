@@ -5,7 +5,6 @@
 - Add distance histograms with gaussian decay as an option for training
 - Add the option to use additional types of reference data (angle distributions, etc.)
 - Introduce training with multiple reference data sets (obtained for different temperatures, densities or concentrations)
-- Add support for multilayered neural networks and different types of activation functions
 - Introduce `training` and `simulation` modes for ML-IMC
 - Implement auto-adjustment of MC step length
 
