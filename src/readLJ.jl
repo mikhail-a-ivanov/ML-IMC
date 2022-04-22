@@ -21,7 +21,7 @@ function readXYZ(xyzname)
         if atomId > 0
             atomLine = split(lines[lineId])
             for i in 1:3
-                xyz[frameId][atomId][i] = parse(Float64, atomLine[i+1])
+                xyz[frameId][atomId][i] = parse(Float32, atomLine[i+1])
             end
         end
     end
@@ -48,9 +48,9 @@ function readRDF(rdfname)
     for i in (1 + ncomments):length(lines)
         rdfline = split(lines[i])
         if length(rdfline) == 3
-            bins[i - ncomments] = parse(Float64, rdfline[1])
-            rdf[i - ncomments] = parse(Float64, rdfline[2])
-            hist[i - ncomments] = parse(Float64, rdfline[3])
+            bins[i - ncomments] = parse(Float32, rdfline[1])
+            rdf[i - ncomments] = parse(Float32, rdfline[2])
+            hist[i - ncomments] = parse(Float32, rdfline[3])
         end
     end
     return(bins, rdf, hist)

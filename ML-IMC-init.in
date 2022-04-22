@@ -5,14 +5,15 @@ box           = 36.405 36.405 36.405 # Box vectors [Å]
 # Conditions
 T             = 95.0                 # [K]
 
-# Monte Carlo parameters          
+# Monte Carlo parameters
+mode          = training             # Run MC sampling (simulation) or ML-IMC optimization (training)          
 delta         = 0.75                 # Max displacement [Å]
 steps         = 1000000              # Total number of MC steps
 Eqsteps       = 500000               # Equilibration MC steps
 
 # Output control          
 xyzout        = 0                    # XYZ output frequency
-outfreq       = 1000                 # Output frequency
+outfreq       = 500                  # Output frequency
 
 # RDF parameters          
 binWidth      = 0.025                # [Å]
@@ -20,14 +21,18 @@ Nbins         = 600                  # Number of bins
 
 # Network parameters
 paramsInit    = repulsion            # Type of network parameter initialization (random or repulsion)
-neurons       = 25                   # Number of neurons in the hidden layer (0 for no hidden layers)
+shift         = 0.01                 # shift parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
+stiffness     = 10                   # stiffness parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
+neurons       = 0                    # Number of neurons in the hidden layer (0 for no hidden layers)
 paircorr      = RDF                  # Type of pair correlations (RDF or histogram)
 iters         = 5                    # Number of learning iterations
-activation    = tanh                 # Activation function
+activation    = identity             # Activation function
 optimizer     = Momentum             # Optimizer (other options - Descent)
-rate          = 0.0005               # Learning rate
-momentum      = 0.9                  # Momentum coefficient
+rate          = 0.05               # Learning rate
+rateAdjust    = 0.75                 # Rate multiplier (should be < 1 to reduce the rate)
+momentum      = 0.5                  # Momentum coefficient
 
 # Input files
 xyzname       = LJ-data/mctraj-p001.xyz    # Input configuration file
 rdfname       = LJ-data/rdf-mean-p40.dat   # Reference RDF file
+modelname     = model-iter-25.bson         # Name of a trained model file

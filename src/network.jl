@@ -1,6 +1,7 @@
 using StaticArrays
 using LinearAlgebra
 using Flux
+using BSON: @save, @load
 
 """
 function energyGradients(descriptor, model)
@@ -101,7 +102,7 @@ Computes the gradients of the descriptor with respect to the network parameters
 function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, parameters)
     descriptorGradients = []
     for (accumulator, ensemble) in zip(crossAccumulators, ensembleCorrelations)
-        gradients = -Float32(parameters.beta) .* (accumulator - ensemble)
+        gradients = -Float32(parameters.β) .* (accumulator - ensemble)
         append!(descriptorGradients, [gradients])
     end
     return(descriptorGradients)
@@ -211,29 +212,29 @@ function mindistance(descriptor, parameters)
 end
 
 """
-function repulsion(descriptor, parameters, shift=0.01, stiffness=5)
+function repulsion(descriptor, parameters)
 
 Returns repulsion weights for the neural network
 Functional form for repulsion: stiffness*[exp(-alpha*r)-shift]
 alpha is a coefficient that makes sure that the repulsion term
 goes to zero at minimal distance from the given pair correlation function (descriptor)
 """
-function repulsion(descriptor, parameters, shift=0.01, stiffness=5)
+function repulsion(descriptor, parameters)
     bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
     minDistance = mindistance(descriptor, parameters)
     # Find alpha so that [exp(-alpha*r) - shift] goes to zero at minDistance
-    alpha = -log(shift)/minDistance
+    alpha = -log(parameters.shift)/minDistance
     potential = zeros(Float32, parameters.Nbins)
     for i in 1:parameters.Nbins
         if bins[i] < minDistance
-            potential[i] = stiffness*(exp(-alpha*bins[i])-shift)
+            potential[i] = parameters.stiffness*(exp(-alpha*bins[i])-parameters.shift)
         end
     end
     return(potential)
 end
 
 """
-function modelinit(descriptor, parameters, shift=0.01, stiffness=5)
+function modelInit(descriptor, parameters)
 
 Generates a neural network with or without repulsion term in the input layer.
 If parameters.paramsInit is set to repulsion then the repulsion terms are applied 
@@ -241,7 +242,8 @@ for each set of weights associated with a single neuron in the next layer.
 Weights in all the other layers are set to unity.
 Otherwise all the weights are set to random and biases to zero
 """
-function modelinit(descriptor, parameters, shift=0.01, stiffness=5)
+function modelInit(descriptor, parameters)
+    println("Running ML-IMC in the training mode.\n")
     # Build initial model
     network = buildNetwork!(parameters)
     println("Building a model...")
@@ -257,7 +259,7 @@ function modelinit(descriptor, parameters, shift=0.01, stiffness=5)
             for column in eachrow(layer.weight)
                 Flux.Optimise.update!(column, column)
                 if layerId == 1
-                    Flux.Optimise.update!(column, -repulsion(descriptor, parameters, shift, stiffness))
+                    Flux.Optimise.update!(column, -repulsion(descriptor, parameters))
                 elseif layerId < nlayers
                     Flux.Optimise.update!(column, -ones(Float32, length(column)))
                 else
@@ -271,4 +273,109 @@ function modelinit(descriptor, parameters, shift=0.01, stiffness=5)
         end
     end
     return(model)
+end
+
+"""
+function optInit(parameters)
+
+Initializes the optimizer
+"""
+function optInit(parameters)
+    if parameters.optimizer == "Momentum"
+        opt = Momentum(parameters.rate, parameters.momentum)
+    elseif parameters.optimizer == "Descent"
+        opt = Descent(parameters.rate)
+    else
+        opt = Descent(parameters.rate)
+        println("Other types of optimizers are currently not supported!")
+    end
+    return(opt)
+end
+
+"""
+function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+
+Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) training iterations
+"""
+function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+    # Initialize the list of loss values
+    losses = []
+    # Run training iterations
+    iteration = 1
+    while iteration <= parameters.iters
+        iterString = lpad(iteration, 2, '0')
+        println("Iteration $(iteration)...")
+        inputs = [(confs[rand(rng_xor, 1:length(confs))], parameters, model) 
+                for worker in workers()]
+     
+        # Run the simulation in parallel
+        outputs = pmap(mcsample!, inputs)
+
+        pairdescriptorNN = mean([output[1] for output in outputs])
+        energies = mean([output[2] for output in outputs])
+        crossAccumulators = mean([output[3] for output in outputs])
+        meanAcceptanceRatio = mean([output[4] for output in outputs])
+
+        println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+
+        # Compute loss
+        lossvalue = loss(pairdescriptorNN, descriptorref)
+        append!(losses, lossvalue)
+
+        # Update the model or revert and update the learning rate
+        if iteration > 1
+            if losses[iteration] < losses[iteration - 1]
+                # Write the descriptor and compute the gradients
+                writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
+                lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
+
+                # Write averaged energies
+                writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
+
+                # Write the model (before training!)
+                @save "model-iter-$(iterString).bson" model
+
+                # Update the model if the loss decreased
+                println("The loss has decreased, updating the model...")
+                updatemodel!(model, opt, lossGradients)
+                # Move on to the next iteration
+                iteration += 1
+            else
+                # Future note: save the cross accumulators in a file, read it instead of rerunning the iteration!
+                println("The loss has increased, reverting to the previous model...")
+                println("Repeating iteration $((iteration - 1))...")
+                # Load the previous model
+                prevIterString = lpad((iteration - 1), 2, '0')
+                @load "model-iter-$(prevIterString).bson" model
+                # Reduce the rate and reinitialize the optimizer
+                println("Multiplying the learning rate by $(parameters.rateAdjust) and reinitializing the optimizer...")
+                parameters.rate *= parameters.rateAdjust
+                println("Learning rate: $(parameters.rate)")
+                opt = optInit(parameters)
+                # Remove the last loss values
+                deleteat!(losses, iteration)
+                # Rerun the iteration
+                iteration -= 1
+            end
+        else
+            # Write the descriptor and compute the gradients
+            writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
+            lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
+
+            # Write averaged energies
+            writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
+
+            # Write the model (before training!)
+            @save "model-iter-$(iterString).bson" model
+
+            # Update the model if the loss decreased
+            updatemodel!(model, opt, lossGradients)
+            # Move on to the next iteration
+            iteration += 1
+        end 
+
+        # Load the reference configurations
+        confs = copy(refconfs)
+    end
+    return
 end
