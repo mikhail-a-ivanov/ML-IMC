@@ -26,7 +26,6 @@ function main()
     if parameters.mode == "training"
         confs, model, opt, refconfs, descriptorref, rng_xor = inputs
     else
-        println("Running ML-IMC in the simulation mode.\n")
         confs, model, rng_xor = inputs
     end
 

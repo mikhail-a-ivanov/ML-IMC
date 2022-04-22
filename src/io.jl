@@ -128,6 +128,11 @@ function parametersInit()
 
     # Save parameters into the inputParms struct
     parameters = inputParms(vars...)
+    if parameters.mode == "training"
+        println("Running ML-IMC in the training mode.\n")
+    else
+        println("Running ML-IMC in the simulation mode.\n") 
+    end
     return(parameters)
 end
 
