@@ -317,6 +317,8 @@ function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
 
         println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
 
+        ### Add info about MC step adjustment ###
+
         # Compute loss
         lossvalue = loss(pairdescriptorNN, descriptorref)
         append!(losses, lossvalue)

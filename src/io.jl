@@ -14,6 +14,8 @@ T: temperature, K
 delta: max displacement, Å
 steps: total number of steps
 Eqsteps: equilibration steps
+stepAdjustFreq: frequency of MC step adjustment
+targetAR: target acceptance ratio
 xyzout: XYZ output frequency
 outfreq: output frequency
 binWidth: histogram bin width, Å
@@ -43,6 +45,8 @@ mutable struct inputParms
     delta::Float32  
     steps::Int
     Eqsteps::Int
+    stepAdjustFreq::Int
+    targetAR::Float64
     xyzout::Int 
     outfreq::Int
     binWidth::Float32

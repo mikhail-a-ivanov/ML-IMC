@@ -186,15 +186,24 @@ function mcsample!(input)
     # Initialize the energy array
     energies = zeros(totalDataPoints)
 
-    # Acceptance counter
+    # Acceptance counters
     acceptedTotal = 0
+    acceptedIntermediate = 0
 
     # Run MC simulation
     @inbounds @fastmath for step in 1:parameters.steps
         mcarrays, E, accepted = mcmove!(mcarrays, E, model, parameters, step, rng_xor)
         acceptedTotal += accepted
+        acceptedIntermediate += accepted
+
         if step % parameters.outfreq == 0
             energies[Int(step/parameters.outfreq)] = E
+        end
+
+        # Perform MC step adjustment during the equilibration
+        if parameters.stepAdjustFreq > 0 && step % parameters.stepAdjustFreq == 0 && step < parameters.Eqsteps
+            stepAdjustment!(parameters, acceptedIntermediate)
+            acceptedIntermediate = 0
         end
     end
     acceptanceRatio = acceptedTotal / parameters.steps
@@ -222,3 +231,15 @@ function mcsample!(input)
     end
 end
 
+"""
+function stepAdjustment!(parameters, acceptedIntermediate)
+
+MC step length adjustment
+"""
+function stepAdjustment!(parameters, acceptedIntermediate)
+    acceptanceRatio = acceptedIntermediate / parameters.stepAdjustFreq
+    #println("Current acceptance ratio = $(round(acceptanceRatio, digits=4))")
+    parameters.delta = acceptanceRatio * parameters.delta / parameters.targetAR
+    #println("New maximum displacement length = $(round((parameters.delta * parameters.sigma), digits=4)) Å")
+    return(parameters)
+end
