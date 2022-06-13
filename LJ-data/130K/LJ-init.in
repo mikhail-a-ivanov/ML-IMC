@@ -1,0 +1,27 @@
+# System
+latticePoints  = 8        # Number of LJ lattice points
+
+# Forcefield
+atomname       = Ar        # Atom chemical symbol
+μ              = 39.792    # [amu]
+σ              = 3.405     # [Å]
+ϵ              = 119.8     # ϵ/kB [K]
+
+# Conditions
+T              = 130.0     # [K]
+ρ              = 1374.0    # [kg/m3]
+
+# Monte Carlo parameters
+Δ              = 0.75       # Max displacement [Å]
+steps          = 200000000  # Total number of MC steps
+Eqsteps        = 10000000   # Equilibration MC steps
+stepAdjustFreq = 500000     # Frequency of MC step adjustment
+targetAR       = 0.5        # Target acceptance ratio
+
+# RDF parameters
+binWidth       = 0.025     # [Å]
+Nbins          = 400       # number of bins
+
+# Output control
+trajout        = 1000000   # Trajectory output frequency
+outfreq        = 1000000   # Output frequency

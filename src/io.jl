@@ -1,83 +1,121 @@
+using Chemfiles
 using BSON: @save, @load
 
-include("readLJ.jl")
-
 """
-mutable struct inputParms
+struct globalParameters
 
 Fields:
-N: number of particles
-box: box vector, Å
-V: volume, Å^3
-T: temperature, K
-β: 1/(kB*T), reciprocal kJ/mol
-delta: max displacement, Å
+systemFiles: 
+    list of input filenames for each system
+mode: 
+    ML-IMC mode - training with reference data or simulation using a trained model
+modelname: 
+    name of the trained model file
+descent: 
+    unrestrticted - mean loss can increase during training
+    restricted - decreases learning rate if the mean loss increases, proceeds 
+    to the next iteration only when the mean loss decreases 
+"""
+struct globalParameters
+    systemFiles::Vector{String}
+    mode::String
+    modelname::String
+    descent::String
+end
+
+"""
+struct MCparameters
+
+Fields:
 steps: total number of steps
 Eqsteps: equilibration steps
 stepAdjustFreq: frequency of MC step adjustment
-targetAR: target acceptance ratio
-xyzout: XYZ output frequency
+trajout: XTC trajectory output frequency
 outfreq: output frequency
-binWidth: histogram bin width, Å
-Nbins: number of histogram bins
+"""
+struct MCparameters
+    steps::Int
+    Eqsteps::Int
+    stepAdjustFreq::Int
+    trajout::Int 
+    outfreq::Int
+end
+
+"""
+struct NNparameters
+
+Fields:
+neurons: number of neurons in the network (excluding the energy output neuron)
 iters: number of learning iterations
 activation: activation function
 optimizer: type of optimizer
 rate: learning rate
 rateAdjust: learning rate multiplier
-momentum: momentum coefficient
-xyzname: input configuration file
-rdfname: reference RDF file
-paircorr: type of pair correlations (RDF or histogram)
-neurons: number of neurons in the hidden layers
-paramsInit: type of network parameters initialization
-shift: shift parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
-stiffness: stiffness parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
-modelname: name of the trained model file
-mode: ML-IMC mode: training with reference data or simulation using a trained model
+μ: momentum coefficient
+minR: min distance for G2 symmetry function, Å
+maxR: max distance for G2 symmetry function (cutoff), Å 
+η: η parameter in G2 symmetry function (gaussian width), Å
 """
-mutable struct inputParms
-    N::Int
-    box::SVector{3, Float32}
-    V::Float32
-    T::Float64
-    β::Float64
-    delta::Float32  
-    steps::Int
-    Eqsteps::Int
-    stepAdjustFreq::Int
-    targetAR::Float64
-    xyzout::Int 
-    outfreq::Int
-    binWidth::Float32
-    Nbins::Int
+mutable struct NNparameters
+    neurons::Vector{Int}
     iters::Int
     activation::String
     optimizer::String
     rate::Float64
     rateAdjust::Float64
-    momentum::Float64
-    xyzname::String
+    μ::Float64
+    minR::Float64
+    maxR::Float64
+    η::Float64
+end
+
+"""
+mutable struct systemParameters
+
+Fields:
+systemName: name of the system
+topname: name of the topology file
+trajfile: name of the trajectory file
+N: number of particles
+atomname: atomic symbol
+box: box vector, Å
+V: volume, Å^3
+rdfname: reference RDF file
+Nbins: number of histogram bins
+binWidth: histogram bin width, Å
+T: temperature, K
+β: 1/(kB*T), reciprocal kJ/mol
+Δ: max displacement, Å
+targetAR: target acceptance ratio
+"""
+mutable struct systemParameters
+    systemName::String
+    trajfile::String
+    topname::String
+    N::Int
+    atomname::String
+    box::Vector{Float64}
+    V::Float64
     rdfname::String
-    paircorr::String
-    neurons::Vector{Int}
-    paramsInit::String
-    shift::Float32
-    stiffness::Float32
-    modelname::String
-    mode::String
+    Nbins::Int
+    binWidth::Float64
+    T::Float64
+    β::Float64
+    Δ::Float64
+    targetAR::Float64
 end
 
 """
 parametersInit()
 
 Reads an input file for ML-IMC
-and saves the data into the
-inputParms struct
+and saves the data into
+parameter structs
 """
 function parametersInit()
     # Read the input name from the command line argument
     inputname = ARGS[1]
+    #inputname = "ML-IMC-init.in"
 
     # Constants
     NA::Float64 = 6.02214076E23 # [mol-1]
@@ -89,27 +127,68 @@ function parametersInit()
     splittedLines = [split(line) for line in lines]
 
     # Make a list of field names
-    fields = [String(field) for field in fieldnames(inputParms)]
+    globalFields = [String(field) for field in fieldnames(globalParameters)]
+    MCFields = [String(field) for field in fieldnames(MCparameters)]
+    NNFields = [String(field) for field in fieldnames(NNparameters)]
 
-    vars = [] # Array with input variables
+    # Input variable arrays
+    globalVars = []
+    MCVars = []
+    NNVars = []
+
     # Loop over fieldnames and fieldtypes and over splitted lines
-    for (field, fieldtype) in zip(fields, fieldtypes(inputParms))
+    # Global parameters
+    for (field, fieldtype) in zip(globalFields, fieldtypes(globalParameters))
         for line in splittedLines
             if length(line) != 0 && field == line[1]
-                if field == "box"
-                    box = zeros(3)
-                    box[1] = parse(Float32, line[3])
-                    box[2] = parse(Float32, line[4])
-                    box[3] = parse(Float32, line[5])
-                    append!(vars, [box])
-                    V = prod(box)
-                    append!(vars, V)       
-                elseif field == "T"
-                    T = parse(Float64, line[3])
-                    β = 1/(kB * T)
-                    append!(vars, T)  
-                    append!(vars, β)
-                elseif field == "neurons"
+                if field == "systemFiles"
+                    systemFiles = []
+                    for (elementId, element) in enumerate(line)
+                        if elementId > 2 && element != "#"
+                            append!(systemFiles, [strip(element, ',')])
+                        elseif element == "#"
+                            break
+                        end
+                    end
+                    append!(globalVars, [systemFiles])
+                elseif field == "mode"
+                    mode = [line[3]]
+                    append!(globalVars, mode) 
+                    if mode[1] == "training"
+                        modelname = " "
+                        append!(globalVars, [modelname])
+                    end
+                else
+                    if fieldtype != String
+                        append!(globalVars, parse(fieldtype, line[3]))
+                    else
+                        append!(globalVars, [line[3]])
+                    end
+                end
+            end
+        end
+    end
+    globalParms = globalParameters(globalVars...)
+
+    # MC parameters
+    for (field, fieldtype) in zip(MCFields, fieldtypes(MCparameters))
+        for line in splittedLines
+            if length(line) != 0 && field == line[1]
+                if fieldtype != String
+                    append!(MCVars, parse(fieldtype, line[3]))
+                else
+                    append!(MCVars, [line[3]])
+                end
+            end
+        end
+    end
+    MCParms = MCparameters(MCVars...)
+
+    # Loop over fieldnames and fieldtypes and over splitted lines
+    for (field, fieldtype) in zip(NNFields, fieldtypes(NNparameters))
+        for line in splittedLines
+            if length(line) != 0 && field == line[1]
+                if field == "neurons"
                     neurons = []
                     for (elementId, element) in enumerate(line)
                         if elementId > 2 && element != "#"
@@ -118,111 +197,145 @@ function parametersInit()
                             break
                         end
                     end
-                    append!(vars, [neurons])
+                    append!(NNVars, [neurons])   
                 else
                     if fieldtype != String
-                        append!(vars, parse(fieldtype, line[3]))
+                        append!(NNVars, parse(fieldtype, line[3]))
                     else
-                        append!(vars, [line[3]])
+                        append!(NNVars, [line[3]])
                     end
                 end
             end
         end
     end
+    NNParms = NNparameters(NNVars...)
 
-    # Save parameters into the inputParms struct
-    parameters = inputParms(vars...)
-    if parameters.mode == "training"
-        println("Running ML-IMC in the training mode.\n")
-    else
-        println("Running ML-IMC in the simulation mode.\n") 
+    # Read system input files
+    systemParmsList = [] # list of systemParameters structs
+    systemFields = [String(field) for field in fieldnames(systemParameters)]
+    for inputname in globalParms.systemFiles
+        systemVars = []
+        file = open(inputname, "r")
+        lines = readlines(file)
+        splittedLines = [split(line) for line in lines]
+        for (field, fieldtype) in zip(systemFields, fieldtypes(systemParameters))
+            for line in splittedLines
+                if length(line) != 0 && field == line[1]
+                    if field == "T"
+                        T = parse(fieldtype, line[3])
+                        β = 1/(kB * T)
+                        append!(systemVars, T)  
+                        append!(systemVars, β)
+                    elseif field == "topname"
+                        topname = [line[3]]
+                        pdb = Trajectory("$(topname[1])")
+                        pdb_frame = read(pdb)
+                        N = length(pdb_frame)
+                        atomname = name(Atom(pdb_frame, 1))
+                        box = lengths(UnitCell(pdb_frame))
+                        V = box[1] * box[2] * box[3]
+                        append!(systemVars, topname)
+                        append!(systemVars, N)
+                        append!(systemVars, [atomname])
+                        append!(systemVars, [box])
+                        append!(systemVars, V)
+                    elseif field == "rdfname"
+                        rdfname = [line[3]]
+                        bins, rdf, hist = readRDF("$(rdfname[1])")
+                        Nbins = length(bins)
+                        binWidth = bins[1]
+                        append!(systemVars, [rdfname[1]])
+                        append!(systemVars, Nbins)
+                        append!(systemVars, binWidth)
+                    else
+                        if fieldtype != String
+                            append!(systemVars, parse(fieldtype, line[3]))
+                        else
+                            append!(systemVars, [line[3]])
+                        end
+                    end
+                end
+            end
+        end
+        systemParms = systemParameters(systemVars...)
+        append!(systemParmsList, [systemParms])
     end
-    return(parameters)
+
+    if globalParms.mode == "training"
+        println("Running ML-IMC in the training mode.")
+    else
+        println("Running ML-IMC in the simulation mode.") 
+    end
+
+    return(globalParms, MCParms, NNParms, systemParmsList)
 end
 
 """
-function confsInit(parameters)
+readXTC(systemParms)
 
-Reads input configurations from XYZ file
+Reads input configurations from XTC file
 """
-function confsInit(parameters)
-    xyz = readXYZ(parameters.xyzname)
-    confs = xyz[2:end] # Omit the initial configuration
-    @assert parameters.N == length(confs[end]) "Given number of particles does not match with XYZ configuration!"
-    return(confs)
+function readXTC(systemParms)
+    traj = Trajectory(systemParms.trajfile)
+    return(traj)
 end
 
 """
-function inputInit(parameters)
+inputInit(globalParms, NNParms, systemParmsList)
 
 Initializes input data
 """
-function inputInit(parameters)
-    # Read reference histogram
-    bins, rdfref, histref = readRDF(parameters.rdfname)
-
-    # Allocate a vector for the reference descriptor data
-    descriptorref = zeros(Float32, length(bins))
-
-    if parameters.paircorr == "RDF"
-        descriptorref = rdfref
-    elseif parameters.paircorr == "histogram"
-        # Normalize the reference histogram to per particle histogram
-        histref ./= parameters.N / 2 # Number of pairs divided by the number of particles
-        descriptorref = histref
+function inputInit(globalParms, NNParms, systemParmsList)
+    # Read reference data
+    refRDFs = []
+    trajectories = []
+    for systemParms in systemParmsList
+        bins, refRDF, refhist = readRDF(systemParms.rdfname)
+        append!(refRDFs, [refRDF])
     end
 
-    # Read XYZ configurations
-    confs = confsInit(parameters)
-
-    if parameters.mode == "training"
+    # Set up a model and an optimizer for training
+    # or load a model from a file for MC sampling
+    if globalParms.mode == "training"
         # Initialize the optimizer
-        opt = optInit(parameters)
-        # Make a copy to read at the start of each iterations
-        refconfs = copy(confs)
+        opt = optInit(NNParms)
         # Initialize the model
-        model = modelInit(descriptorref, parameters)
+        model = modelInit(NNParms)
     else
-        @load parameters.modelname model
+        @load globalParms.modelname model
     end
 
-    # Initialize RNG for random input frame selection
-    rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-
-    if parameters.mode == "training"
-        return(confs, model, opt, refconfs, descriptorref, rng_xor)
+    if globalParms.mode == "training"
+        return(model, opt, refRDFs)
     else
-        return(confs, model, rng_xor)
+        return(model)
     end
 end
 
 """
-function writedescriptor(outname, descriptor, parameters)
-
-Writes the descriptor into a file
+writeRDF(outname, rdf, systemParms)
+Writes RDF into a file
 """
-function writedescriptor(outname, descriptor, parameters)
-    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
+function writeRDF(outname, rdf, systemParms)
+    bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
+    # Write the data
     io = open(outname, "w")
-    if parameters.paircorr == "RDF"
-        print(io, "# r, Å; RDF \n")
-    elseif parameters.paircorr == "histogram"
-        print(io, "# r, Å; Distance histogram \n")
-    end
-    print(io, @sprintf("%6.3f %12.3f", bins[1], 0), "\n")
-    for i in 2:length(descriptor)
-        print(io, @sprintf("%6.3f %12.3f", bins[i], descriptor[i]), "\n")
+    print(io, "# System: $(systemParms.systemName)\n")
+    print(io, "# RDF data ($(systemParms.atomname) - $(systemParms.atomname)) \n")
+    print(io, "# r, Å; g(r); \n")
+    for i in 1:length(rdf)
+        print(io, @sprintf("%6.3f %12.3f", bins[i], rdf[i]), "\n")
     end
     close(io)
 end
 
 """
-function writeenergies(outname, energies)
+writeenergies(outname, energies)
 
 Writes the total energy to an output file
 """
-function writeenergies(outname, energies, parameters, slicing=10)
-    steps = 0:parameters.outfreq*slicing:parameters.steps
+function writeenergies(outname, energies, MCParms, slicing=1)
+    steps = 0:MCParms.outfreq*slicing:MCParms.steps
     io = open(outname, "w")
     print(io, "# Total energy, kJ/mol \n")
     for i in 1:length(energies[1:slicing:end])
@@ -231,4 +344,31 @@ function writeenergies(outname, energies, parameters, slicing=10)
         print(io, "\n")
     end
     close(io)
+end
+
+"""
+readRDF(rdfname)
+
+Reads RDF and distance histogram produced
+by mcLJ.jl
+"""
+function readRDF(rdfname)
+    file = open(rdfname, "r")
+    #println("Reading reference data from $(rdfname)...")
+    lines = readlines(file)
+    ncomments = 2
+    nlines = length(lines) - ncomments
+    bins = zeros(nlines)
+    rdf = zeros(nlines)
+    hist = zeros(nlines)
+    for i in (1 + ncomments):length(lines)
+        rdfline = split(lines[i])
+        if length(rdfline) == 3
+            bins[i - ncomments] = parse(Float64, rdfline[1])
+            rdf[i - ncomments] = parse(Float64, rdfline[2])
+            hist[i - ncomments] = parse(Float64, rdfline[3])
+        end
+    end
+    return(bins, rdf, hist)
+    close(file)
 end

@@ -3,6 +3,7 @@ using RandomNumbers
 using Statistics
 using StaticArrays
 using LinearAlgebra
+using Chemfiles
 using Flux
 
 include("distances.jl")
@@ -10,17 +11,86 @@ include("network.jl")
 include("io.jl")
 
 """
-function histpart!(distanceVector, hist, binWidth)
+G2(distances, Rc, Rs, η)
 
-Accumulates pair distances from a distance vector
-(one particle) to a histogram
+Computes a single exponent
+of the G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function histpart!(distanceVector, hist, binWidth)
-    N = length(distanceVector)
-    @inbounds @fastmath for i in 1:N
-        if distanceVector[i] != 0
-            histIndex = floor(Int32, 0.5 + distanceVector[i]/binWidth)
-            if histIndex <= length(hist)
+function G2(R, Rc, Rs, η)
+    return(exp(-η*(R - Rs)^2) * distanceCutoff(R, Rc))
+end
+
+"""
+G2total(distances, Rc, Rs, η)
+
+Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
+"""
+function G2total(distances, Rc, Rs, η)
+    sum = 0
+    @fastmath @inbounds @simd for R in distances
+        sum += G2(R, Rc, Rs, η)
+    end
+    return(sum)
+end
+
+"""
+buildG2Matrix(distanceMatrix, NNParms)
+
+Builds a matrix of G2 values with varying Rs and η parameters for each atom in the configuration
+"""
+function buildG2Matrix(distanceMatrix, NNParms)
+    N = length(distanceMatrix[1, :])
+    npoints = NNParms.neurons[1]
+    Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
+    ηs = fill(NNParms.η, npoints)
+    G2Matrix = zeros(Float64, N, npoints)
+    for i in 1:N
+        for j in 1:npoints
+            G2Matrix[i, j] = G2total(distanceMatrix[i, :], NNParms.maxR, Rss[j], ηs[j])
+        end
+    end
+    return(G2Matrix)
+end
+
+"""
+updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+
+Updates the G2 matrix with the displacement of a single atom
+"""
+function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+    npoints = NNParms.neurons[1]
+    Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
+    ηs = fill(NNParms.η, npoints)    
+    for i in 1:systemParms.N
+        # Rebuild the whole G2 matrix column for the displaced particle
+        if i == pointIndex
+            for j in 1:npoints
+                G2Matrix[pointIndex, j] = G2total(distanceVector2, NNParms.maxR, Rss[j], ηs[j])
+            end
+        # Compute the change in G2 caused by the displacement of an atom
+        else
+            if distanceVector2[i] < NNParms.maxR
+                for j in 1:npoints
+                    G2_1 = G2(distanceVector1[i], NNParms.maxR, Rss[j], ηs[j])
+                    G2_2 = G2(distanceVector2[i], NNParms.maxR, Rss[j], ηs[j])
+                    ΔG2 = G2_2 - G2_1
+                    G2Matrix[i, j] += ΔG2
+                end
+            end
+        end
+    end
+    return(G2Matrix)
+end
+
+"""
+hist!(distanceMatrix, hist, systemParms)
+Accumulates pair distances in a histogram
+"""
+function hist!(distanceMatrix, hist, systemParms)
+    @inbounds for i in 1:systemParms.N
+        @inbounds @fastmath for j in 1:i-1
+            histIndex = floor(Int, 0.5 + distanceMatrix[i,j]/systemParms.binWidth)
+            if histIndex <= systemParms.Nbins
                 hist[histIndex] += 1
             end
         end
@@ -29,127 +99,111 @@ function histpart!(distanceVector, hist, binWidth)
 end
 
 """
-normalizehist!(hist, parameters)
+normalizehist!(hist, systemParms)
 
-Normalizes one particle distance histogram to RDF
+Normalizes distance histogram to RDF
 """
-function normalizehist!(hist, parameters)
-    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
-    shellVolumes = [4*π*parameters.binWidth*bins[i]^2 for i in 1:length(bins)]
-    rdfNorm = ones(Float32, parameters.Nbins)
-    for i in 2:length(rdfNorm)
-        rdfNorm[i] = parameters.V/parameters.N * 1/shellVolumes[i]
+function normalizehist!(hist, systemParms)
+    Npairs::Int = systemParms.N*(systemParms.N-1)/2
+    bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
+    shellVolumes = [4*π*systemParms.binWidth*bins[i]^2 for i in 1:length(bins)]
+    rdfNorm = ones(Float64, systemParms.Nbins)
+    for i in 1:length(rdfNorm)
+        rdfNorm[i] = systemParms.V/Npairs * 1/shellVolumes[i]
     end
     hist .*= rdfNorm
     return(hist)
 end
 
 """
-neuralenergy(inputlayer, model)
+atomicEnergy(inputlayer, model)
 
 Computes the potential energy of one particle
 from the input layer of the neural network
 """
-function neuralenergy(inputlayer, model)
+function atomicEnergy(inputlayer, model)
     E::Float64 = model(inputlayer)[1]
     return(E)
 end
 
 """
-mcmove!(mcarrays, E, model, parameters, step, rng)
+totalEnergy(symmFuncMatrix, model)
+
+Computes the total potential energy of the system
+"""
+function totalEnergy(symmFuncMatrix, model)
+    N = length(symmFuncMatrix[:, 1])
+    E = 0.
+    for i in 1:N
+        E += atomicEnergy(symmFuncMatrix[i, :], model)
+    end
+    return(E)
+end
+
+
+"""
+mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
 
 Performs a Metropolis Monte Carlo
 displacement move using a neural network
-to predict energies from pair correlation functions (pairdescriptor)
+to predict energies from the symmetry function matrix
 """
-function mcmove!(mcarrays, E, model, parameters, step, rng)
+function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
     # Unpack mcarrays
-    if parameters.mode == "training"
-        conf, distanceMatrix, pairdescriptorNN, crossAccumulators = mcarrays
-    else
-        conf, distanceMatrix, pairdescriptorNN = mcarrays
-    end
+    frame, distanceMatrix, G2Matrix1 = mcarrays
 
     # Pick a particle
-    pointIndex = rand(rng, Int32(1):Int32(length(conf)))
-    
-    # Allocate the distance vector
-    distanceVector = distanceMatrix[:, pointIndex]
+    pointIndex = rand(rng, Int32(1):Int32(systemParms.N))
 
-    # Allocate and compute the pair descriptor
-    pairdescriptor1 = zeros(Float32, parameters.Nbins)
-    histpart!(distanceVector, pairdescriptor1, parameters.binWidth)
-    if parameters.paircorr == "RDF"
-        normalizehist!(pairdescriptor1, parameters)
-    end
-    
+    # Allocate the distance vector
+    distanceVector1 = distanceMatrix[:, pointIndex]
+
     # Compute the energy
-    E1 = neuralenergy(pairdescriptor1, model)
-    
+    E1 = totalEnergy(G2Matrix1, model)
+
     # Displace the particle
-    dr = SVector{3, Float32}(parameters.delta*(rand(rng, Float32) - 0.5), 
-                             parameters.delta*(rand(rng, Float32) - 0.5), 
-                             parameters.delta*(rand(rng, Float32) - 0.5))
-    
-    conf[pointIndex] += dr
-    
-    # Update distance and compute the new descriptor
-    pairdescriptor2 = zeros(Float32, parameters.Nbins)
-    updatedistance!(conf, parameters.box, distanceVector, pointIndex)
-    histpart!(distanceVector, pairdescriptor2, parameters.binWidth)
-    if parameters.paircorr == "RDF"
-        normalizehist!(pairdescriptor2, parameters)
-    end
-    
+    dr = [systemParms.Δ*(rand(rng, Float64) - 0.5), 
+          systemParms.Δ*(rand(rng, Float64) - 0.5), 
+          systemParms.Δ*(rand(rng, Float64) - 0.5)]
+
+    positions(frame)[:, pointIndex] += dr
+
+    # Compute the updated distance vector
+    distanceVector2 = zeros(systemParms.N)
+    distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
+
+    # Make a copy of the original G2 matrix and update it
+    G2Matrix2 = copy(G2Matrix1)
+    updateG2Matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+
     # Compute the energy again
-    E2 = neuralenergy(pairdescriptor2, model)
+    E2 = totalEnergy(G2Matrix2, model)
     
     # Get energy difference
     ΔE = E2 - E1
     # Acceptance counter
     accepted = 0
     
-    if rand(rng, Float64) < exp(-ΔE*parameters.β)
+    # Accept or reject the move
+    if rand(rng, Float64) < exp(-ΔE*systemParms.β)
         accepted += 1
         E += ΔE
         # Update distance matrix
-        distanceMatrix[pointIndex, :] = distanceVector
-        distanceMatrix[:, pointIndex] = distanceVector
-        # Update the descriptor data
-        if step % parameters.outfreq == 0 && step > parameters.Eqsteps
-            for i in 1:parameters.Nbins
-                pairdescriptorNN[i] += pairdescriptor2[i] 
-            end
-            if parameters.mode == "training"
-                # Update cross correlation accumulators
-                updateCrossAccumulators!(crossAccumulators, pairdescriptor2, model)
-            end
-        end
+        distanceMatrix[pointIndex, :] = distanceVector2
+        distanceMatrix[:, pointIndex] = distanceVector2
+        # Pack mcarrays
+        mcarrays = (frame, distanceMatrix, G2Matrix2)
     else
-        conf[pointIndex] -= dr
-        # Update the descriptor data
-        if step % parameters.outfreq == 0 && step > parameters.Eqsteps
-            for i in 1:parameters.Nbins
-                pairdescriptorNN[i] += pairdescriptor1[i] 
-            end
-            if parameters.mode == "training"
-                # Update cross correlation accumulators
-                updateCrossAccumulators!(crossAccumulators, pairdescriptor1, model)
-            end
-        end
-    end
-    # Pack mcarrays
-    if parameters.mode == "training"
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
-    else
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN)
+        positions(frame)[:, pointIndex] -= dr
+        # Pack mcarrays
+        mcarrays = (frame, distanceMatrix, G2Matrix1)
     end
     return(mcarrays, E, accepted)
 end
 
 """
 mcsample!(input)
-(input = conf, parameters, model)
+(input = model, globalParms, MCParms, NNParms, systemParms)
 Runs the Monte Carlo simulation for a given
 input configuration, set of parameters
 and the neural network model
@@ -159,31 +213,41 @@ function mcsample!(input)
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Unpack the inputs
-    conf, parameters, model = input
+    model, globalParms, MCParms, NNParms, systemParms = input
+
+    # Take a random frame from the equilibrated trajectory
+    traj = readXTC(systemParms)
+    nframes = Int(size(traj)) - 1
+    frameId = rand(rng_xor, 1:nframes) # Don't take the first frame
+    frame = deepcopy(read_step(traj, frameId))
 
     # Get the number of data points
-    totalDataPoints = Int(parameters.steps / parameters.outfreq)
-    prodDataPoints = Int((parameters.steps - parameters.Eqsteps) / parameters.outfreq)
+    totalDataPoints = Int(MCParms.steps / MCParms.outfreq)
+    prodDataPoints = Int((MCParms.steps - MCParms.Eqsteps) / MCParms.outfreq)
 
     # Build the distance matrix
-    distanceMatrix = builddistanceMatrix(conf, parameters.box)
+    distanceMatrix = builddistanceMatrix(frame)
 
-    # Initialize the energy
-    E::Float64 = 0.
-
-    # Allocate the pair correlation functions
-    pairdescriptorNN = zeros(Float32, parameters.Nbins)
-
+    # Build the G2 matrix
+    G2Matrix = buildG2Matrix(distanceMatrix, NNParms)
+    
     # Prepare a tuple of arrays that change duing the mcmove!
-    # and optionally build the cross correlation arrays
-    if parameters.mode == "training"
-        crossAccumulators = crossAccumulatorsInit(parameters)
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
-    else
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN)
+    mcarrays = (frame, distanceMatrix, G2Matrix)
+
+    # Initialize the distance histogram accumulator
+    histAccumulator = zeros(Float64, systemParms.Nbins)
+
+    # Build the cross correlation arrays for training,
+    # an additional distance histogram array
+    # and the G2 matrix accumulator
+    if globalParms.mode == "training"
+        hist = zeros(Float64, systemParms.Nbins)
+        G2MatrixAccumulator = zeros(size(G2Matrix))
+        crossAccumulators = crossAccumulatorsInit(NNParms, systemParms)
     end
 
-    # Initialize the energy array
+    # Initialize the starting energy and the energy array
+    E = totalEnergy(G2Matrix, model)
     energies = zeros(totalDataPoints)
 
     # Acceptance counters
@@ -191,55 +255,73 @@ function mcsample!(input)
     acceptedIntermediate = 0
 
     # Run MC simulation
-    @inbounds @fastmath for step in 1:parameters.steps
-        mcarrays, E, accepted = mcmove!(mcarrays, E, model, parameters, step, rng_xor)
+    @inbounds @fastmath for step in 1:MCParms.steps
+        mcarrays, E, accepted = mcmove!(mcarrays, E, model, NNParms, systemParms, rng_xor)
         acceptedTotal += accepted
         acceptedIntermediate += accepted
 
-        if step % parameters.outfreq == 0
-            energies[Int(step/parameters.outfreq)] = E
-        end
-
         # Perform MC step adjustment during the equilibration
-        if parameters.stepAdjustFreq > 0 && step % parameters.stepAdjustFreq == 0 && step < parameters.Eqsteps
-            stepAdjustment!(parameters, acceptedIntermediate)
+        if MCParms.stepAdjustFreq > 0 && step % MCParms.stepAdjustFreq == 0 && step < MCParms.Eqsteps
+            stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
             acceptedIntermediate = 0
         end
-    end
-    acceptanceRatio = acceptedTotal / parameters.steps
 
-    # Unpack mcarrays and optionally normalize crossAccumulators
-    if parameters.mode == "training"
-        conf, distanceMatrix, pairdescriptorNN, crossAccumulators = mcarrays
+        # Collect the output energies
+        if step % MCParms.outfreq == 0
+            energies[Int(step/MCParms.outfreq)] = E
+        end
+
+        # Accumulate the distance histogram
+        if step % MCParms.outfreq == 0 && step > MCParms.Eqsteps
+            frame, distanceMatrix, G2Matrix = mcarrays
+            # Update the cross correlation array during the training
+            if globalParms.mode == "training"
+                hist = hist!(distanceMatrix, hist, systemParms)
+                histAccumulator .+= hist
+                G2MatrixAccumulator .+= G2Matrix
+                # Normalize the histogram to RDF
+                normalizehist!(hist, systemParms)
+                updateCrossAccumulators!(crossAccumulators, G2Matrix, hist, model)
+                # Nullify the hist array for the next training iteration
+                hist = zeros(Float64, systemParms.Nbins)
+            else
+                histAccumulator = hist!(distanceMatrix, histAccumulator, systemParms)
+            end
+        end
+
+    end
+    # Compute and report the final acceptance ratio
+    acceptanceRatio = acceptedTotal / MCParms.steps
+    println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
+
+    # Unpack mcarrays and optionally normalize cross and G2Matrix accumulators
+    frame, distanceMatrix, G2Matrix = mcarrays
+    if globalParms.mode == "training"
         # Normalize the cross correlation arrays
         for cross in crossAccumulators
             cross ./= prodDataPoints
         end
-    else
-        conf, distanceMatrix, pairdescriptorNN = mcarrays
+        G2MatrixAccumulator ./= prodDataPoints
     end
 
-    # Normalize the pair correlation functions
-    pairdescriptorNN ./= prodDataPoints
-
-    println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
-
-    if parameters.mode == "training"
-        return(pairdescriptorNN, energies, crossAccumulators, acceptanceRatio)
+    # Normalize the sampled distance histogram
+    histAccumulator ./= prodDataPoints
+    normalizehist!(histAccumulator, systemParms)
+    
+    if globalParms.mode == "training"
+        return(histAccumulator, energies, acceptanceRatio, crossAccumulators, G2MatrixAccumulator)
     else
-        return(pairdescriptorNN, energies, acceptanceRatio)
+        return(histAccumulator, energies, acceptanceRatio)
     end
 end
 
 """
-function stepAdjustment!(parameters, acceptedIntermediate)
+stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
 
 MC step length adjustment
 """
-function stepAdjustment!(parameters, acceptedIntermediate)
-    acceptanceRatio = acceptedIntermediate / parameters.stepAdjustFreq
-    #println("Current acceptance ratio = $(round(acceptanceRatio, digits=4))")
-    parameters.delta = acceptanceRatio * parameters.delta / parameters.targetAR
-    #println("New maximum displacement length = $(round((parameters.delta * parameters.sigma), digits=4)) Å")
-    return(parameters)
+function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
+    acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
+    systemParms.Δ = acceptanceRatio * systemParms.Δ / systemParms.targetAR
+    return(systemParms)
 end

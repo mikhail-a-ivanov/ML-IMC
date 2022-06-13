@@ -4,29 +4,26 @@ using Flux
 using BSON: @save, @load
 
 """
-function energyGradients(descriptor, model)
+function energyGradients(symmFuncMatrix, model)
 
 Computes all gradients of energy with respect
 to all parameters in the given network
-Assumes that the last layer does not contain bias parameters
 """
-function computeEnergyGradients(descriptor, model)
+function computeEnergyGradients(symmFuncMatrix, model)
+    N = length(symmFuncMatrix[:, 1])
     energyGradients = []
     # Compute energy gradients
-    gs = gradient(neuralenergy, descriptor, model)
+    gs = gradient(totalEnergy, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
-    for (layerId, layerGradients) in enumerate(gs[2][1]) 
-        if layerId != nlayers
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-            biasGradients = layerGradients[2]
-            append!(energyGradients, [biasGradients])
-        else
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-        end
+    # Need to divide the gradients by the number of atoms
+    # to get the average gradient per atomic subnet
+    for layerGradients in gs[2][1] 
+        weightGradients = layerGradients[1] ./ N
+        append!(energyGradients, [weightGradients])
+        biasGradients = layerGradients[2] ./ N
+        append!(energyGradients, [biasGradients])
     end
     return(energyGradients)
 end
@@ -46,23 +43,18 @@ function computeCrossCorrelation(descriptor, energyGradients)
 end
 
 """
-function crossAccumulatorsInit(parameters)
+function crossAccumulatorsInit(NNParms, systemParms)
 
 Initialize cross correlation accumulator arrays
 """
-function crossAccumulatorsInit(parameters)
+function crossAccumulatorsInit(NNParms, systemParms)
     crossAccumulators = []
-    nlayers = length(parameters.neurons)
+    nlayers = length(NNParms.neurons)
     for layerId in 2:nlayers
-        if layerId < nlayers
-            append!(crossAccumulators, [zeros(Float32, (parameters.Nbins, 
-                    parameters.neurons[layerId - 1] * parameters.neurons[layerId]))])
-            append!(crossAccumulators, [zeros(Float32, (parameters.Nbins, 
-                    parameters.neurons[layerId]))])
-        else
-            append!(crossAccumulators, [zeros(Float32, (parameters.Nbins, 
-                    parameters.neurons[layerId - 1] * parameters.neurons[layerId]))])
-        end
+        append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
+                NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
+        append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
+                NNParms.neurons[layerId]))])
     end
     return(crossAccumulators)
 end
@@ -73,8 +65,8 @@ function updateCrossAccumulators(crossAccumulators, descriptor, model)
 Updates cross accumulators by performing element-wise summation
 of the cross accumulators with the new cross correlation data
 """
-function updateCrossAccumulators!(crossAccumulators, descriptor, model)
-    energyGradients = computeEnergyGradients(descriptor, model)
+function updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, descriptor, model)
+    energyGradients = computeEnergyGradients(symmFuncMatrix, model)
     newCrossCorrelations = computeCrossCorrelation(descriptor, energyGradients)
     for (cross, newCross) in zip(crossAccumulators, newCrossCorrelations)
         cross .+= newCross
@@ -88,30 +80,30 @@ function computeEnsembleCorrelation(descriptor, model)
 Computes correlations of the ensemble averages of the descriptor
 and the energy gradients
 """
-function computeEnsembleCorrelation(descriptor, model)
-    energyGradients = computeEnergyGradients(descriptor, model)
+function computeEnsembleCorrelation(symmFuncMatrix, descriptor, model)
+    energyGradients = computeEnergyGradients(symmFuncMatrix, model)
     ensembleCorrelations = computeCrossCorrelation(descriptor, energyGradients)
     return(ensembleCorrelations)
 end
 
 """
-function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, parameters)
+function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
 
 Computes the gradients of the descriptor with respect to the network parameters
 """
-function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, parameters)
+function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     descriptorGradients = []
     for (accumulator, ensemble) in zip(crossAccumulators, ensembleCorrelations)
-        gradients = -Float32(parameters.β) .* (accumulator - ensemble)
+        gradients = -Float32(systemParms.β) .* (accumulator .- ensemble)
         append!(descriptorGradients, [gradients])
     end
     return(descriptorGradients)
 end
 
-function computeLossGradients(crossAccumulators, descriptorNN, descriptorref, model, parameters)
+function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, descriptorref, model, systemParms)
     lossGradients = []
-    ensembleCorrelations = computeEnsembleCorrelation(descriptorNN, model)
-    descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, parameters)
+    ensembleCorrelations = computeEnsembleCorrelation(symmFuncMatrix, descriptorNN, model)
+    descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     # Compute derivative of loss with respect to the descriptor
     dLdS = zeros(Float32, length(descriptorNN))
     for i in 1:length(dLdS)
@@ -153,27 +145,19 @@ function loss(descriptorNN, descriptorref)
 end
 
 """
-function buildNetwork!(parameters)
+function buildNetwork!(NNParms)
 
 Combines input arguments for neural network building
-Note: updates parameters.neurons
+Note: updates NNParms.neurons
 """
-function buildNetwork!(parameters)
-    if parameters.neurons == [0]
-        parameters.neurons = []
-    end
-    # Add input and output layers to the parameters.neurons
-    pushfirst!(parameters.neurons, parameters.Nbins)
-    push!(parameters.neurons, 1)
-    nlayers = length(parameters.neurons)
+function buildNetwork!(NNParms)
+    # Add output layer to the NNParms.neurons
+    push!(NNParms.neurons, 1)
+    nlayers = length(NNParms.neurons)
     network = []
     for layerId in 2:nlayers
-        if layerId < nlayers
-        append!(network, [(parameters.neurons[layerId - 1], parameters.neurons[layerId],
-                getfield(Main, Symbol(parameters.activation)))])
-        else
-            append!(network, [(parameters.neurons[layerId - 1], parameters.neurons[layerId])])
-        end
+        append!(network, [(NNParms.neurons[layerId - 1], NNParms.neurons[layerId],
+                getfield(Main, Symbol(NNParms.activation)))])
     end
     return(network)
 end
@@ -186,12 +170,8 @@ Build a multilayered neural network
 function buildchain(args...)
     nlayers = length(args)
     layers = []
-    for (layerId, arg) in enumerate(args)
-        if layerId < nlayers
-            layer = Dense(arg...)
-        else
-            layer = Dense(arg..., bias=false)
-        end
+    for arg in args
+        layer = Dense(arg...)
         append!(layers, [layer])
     end
     model = Chain(layers...)
@@ -199,194 +179,171 @@ function buildchain(args...)
 end
 
 """
-function mindistance(descriptor, parameters)
+function modelInit(NNParms)
 
-Returns the minimal occuring distance in the descriptor
+Generates a neural network with all the weights set to random value
+from -1 to 1 and biases to zero
 """
-function mindistance(descriptor, parameters)
-    for i in 1:parameters.Nbins
-        if descriptor[i] != 0
-            return((i - 1) * parameters.binWidth)
-        end
-    end
-end
-
-"""
-function repulsion(descriptor, parameters)
-
-Returns repulsion weights for the neural network
-Functional form for repulsion: stiffness*[exp(-alpha*r)-shift]
-alpha is a coefficient that makes sure that the repulsion term
-goes to zero at minimal distance from the given pair correlation function (descriptor)
-"""
-function repulsion(descriptor, parameters)
-    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
-    minDistance = mindistance(descriptor, parameters)
-    # Find alpha so that [exp(-alpha*r) - shift] goes to zero at minDistance
-    alpha = -log(parameters.shift)/minDistance
-    potential = zeros(Float32, parameters.Nbins)
-    for i in 1:parameters.Nbins
-        if bins[i] < minDistance
-            potential[i] = parameters.stiffness*(exp(-alpha*bins[i])-parameters.shift)
-        end
-    end
-    return(potential)
-end
-
-"""
-function modelInit(descriptor, parameters)
-
-Generates a neural network with or without repulsion term in the input layer.
-If parameters.paramsInit is set to repulsion then the repulsion terms are applied 
-for each set of weights associated with a single neuron in the next layer.
-Weights in all the other layers are set to unity.
-Otherwise all the weights are set to random and biases to zero
-"""
-function modelInit(descriptor, parameters)
+function modelInit(NNParms)
     # Build initial model
-    network = buildNetwork!(parameters)
+    network = buildNetwork!(NNParms)
     println("Building a model...")
     model = buildchain(network...)
     println(model)
-    println("   Number of layers: $(length(parameters.neurons)) ")
-    println("   Number of neurons in each layer: $(parameters.neurons)")
-    println("   Parameter initialization: $(parameters.paramsInit)")
-    if parameters.paramsInit == "repulsion"
-        nlayers = length(model.layers)
-        # Initialize weights
-        for (layerId, layer) in enumerate(model.layers)
-            for column in eachrow(layer.weight)
-                Flux.Optimise.update!(column, column)
-                if layerId == 1
-                    Flux.Optimise.update!(column, -repulsion(descriptor, parameters))
-                elseif layerId < nlayers
-                    Flux.Optimise.update!(column, -ones(Float32, length(column)))
-                else
-                    # Multiply the weights by the fraction of input neurons and second-to-last neurons
-                    # Migth be useful for many-layered networks, multiplier of unity is ok for one hidden layer 
-                    #weightMultiplier = network[1][1] / network[end][1]  
-                    weightMultiplier = 1
-                    Flux.Optimise.update!(column, -weightMultiplier * ones(Float32, length(column)))
-                end
-            end
-        end
-    end
+    println("   Number of layers: $(length(NNParms.neurons)) ")
+    println("   Number of neurons in each layer: $(NNParms.neurons)")
     return(model)
 end
 
 """
-function optInit(parameters)
+function optInit(NNParms)
 
 Initializes the optimizer
 """
-function optInit(parameters)
-    if parameters.optimizer == "Momentum"
-        opt = Momentum(parameters.rate, parameters.momentum)
-    elseif parameters.optimizer == "Descent"
-        opt = Descent(parameters.rate)
+function optInit(NNParms)
+    if NNParms.optimizer == "Momentum"
+        opt = Momentum(NNParms.rate, NNParms.μ)
+    elseif NNParms.optimizer == "Descent"
+        opt = Descent(NNParms.rate)
     else
-        opt = Descent(parameters.rate)
+        opt = Descent(NNParms.rate)
         println("Other types of optimizers are currently not supported!")
     end
     return(opt)
 end
 
 """
-function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
 
 Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) training iterations
 """
-function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     # Initialize the list of loss values
     losses = []
     # Run training iterations
     iteration = 1
-    while iteration <= parameters.iters
+    println("Running training in $(globalParms.descent) descent mode.")
+    while iteration <= NNParms.iters
         iterString = lpad(iteration, 2, '0')
         println("Iteration $(iteration)...")
-        inputs = [(confs[rand(rng_xor, 1:length(confs))], parameters, model) 
-                for worker in workers()]
+        # Create an empty array for input data
+        # for each reference system
+        nsystems = length(systemParmsList)
+        inputSet = []
+        for systemId in 1:nsystems
+            append!(inputSet, [(model, globalParms, MCParms, NNParms, systemParmsList[systemId])])
+        end 
+        # Generate as many input sets as the number of workers
+        # divided by the number of the reference systems
+        nsets = Int(nworkers()/nsystems)
+        inputs = []
+        for setId in 1:nsets
+            append!(inputs, inputSet)
+        end
      
         # Run the simulation in parallel
         outputs = pmap(mcsample!, inputs)
 
-        pairdescriptorNN = mean([output[1] for output in outputs])
-        energies = mean([output[2] for output in outputs])
-        crossAccumulators = mean([output[3] for output in outputs])
-        meanAcceptanceRatio = mean([output[4] for output in outputs])
+        # Create empty arrays for output data
+        NNRDFs = []
+        energies = []
+        meanAcceptanceRatios = []
+        crossAccumulators = []
+        G2MatrixAccumulators = []
 
-        println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+        for systemId in 1:nsystems
+            systemParms = systemParmsList[systemId]
+            println("System $(systemParms.systemName):")
+            NNRDF = mean([output[1] for output in outputs[systemId:nsets:end]])
+            append!(NNRDFs, [NNRDF])
+            meanSystemEnergy = mean([output[2] for output in outputs[systemId:nsets:end]])
+            append!(energies, [meanSystemEnergy])
+            meanAcceptanceRatio = mean([output[3] for output in outputs[systemId:nsets:end]])
+            println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+            append!(meanAcceptanceRatios, meanAcceptanceRatio)
+            crossAccumulator = mean([output[4] for output in outputs[systemId:nsets:end]])
+            append!(crossAccumulators, crossAccumulator)
+            G2MatrixAccumulator = mean([output[5] for output in outputs[systemId:nsets:end]])
+            append!(G2MatrixAccumulators, [G2MatrixAccumulator])
+        end
 
-        ### Add info about MC step adjustment ###
-
-        # Compute loss
-        lossvalue = loss(pairdescriptorNN, descriptorref)
+        # Compute average loss
+        lossvalue = 0
+        for systemId in 1:nsystems    
+            lossvalue += loss(NNRDFs[systemId], refRDFs[systemId])
+        end
+        lossvalue /= nsystems
         append!(losses, lossvalue)
 
         # Update the model or revert and update the learning rate
         if iteration == 1
+            lossGradients = []
             # Write the descriptor and compute the gradients
-            writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
-            lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
+            for systemId in 1:nsystems
+                systemParms = systemParmsList[systemId]
+                name = systemParms.systemName
+                writeRDF("RDFNN-$(name)-iter-$(iterString).dat", NNRDFs[systemId], systemParms)
+                lossGradient = computeLossGradients(crossAccumulators[systemId], G2MatrixAccumulators[systemId],
+                                                    NNRDFs[systemId], refRDFs[systemId], model, systemParms)
+                append!(lossGradients, [lossGradient])
 
-            # Write averaged energies
-            writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
+                # Write averaged energies
+                writeenergies("energies-$(name)-iter-$(iterString).dat", energies[systemId], MCParms, 1)
+            end
+            meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
 
             # Write the model (before training!) and the gradients
             @save "model-iter-$(iterString).bson" model
-            @save "gradients-iter-$(iterString).bson" lossGradients
+            @save "gradients-iter-$(iterString).bson" meanLossGradients
 
             # Update the model if the loss decreased
-            updatemodel!(model, opt, lossGradients)
+            updatemodel!(model, opt, meanLossGradients)
             # Move on to the next iteration
             iteration += 1
-        
         else
-            if losses[iteration] < losses[iteration - 1]
+            # Update the model if the mean loss decreased or if
+            # there are no restrictions on the loss decrease
+            if losses[iteration] < losses[iteration - 1] || globalParms.descent == "unrestricted"
+                lossGradients = []
                 # Write the descriptor and compute the gradients
-                writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
-                lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
-
-                # Write averaged energies
-                writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
-
-                # Write the model (before training!)
+                for systemId in 1:nsystems
+                    systemParms = systemParmsList[systemId]
+                    name = systemParms.systemName
+                    writeRDF("RDFNN-$(name)-iter-$(iterString).dat", NNRDFs[systemId], systemParms)
+                    lossGradient = computeLossGradients(crossAccumulators[systemId], G2MatrixAccumulators[systemId],
+                                                    NNRDFs[systemId], refRDFs[systemId], model, systemParms)
+                    append!(lossGradients, [lossGradient])
+    
+                    # Write averaged energies
+                    writeenergies("energies-$(name)-iter-$(iterString).dat", energies[systemId], MCParms, 1)
+                end
+                meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
+    
+                # Write the model (before training!) and the gradients
                 @save "model-iter-$(iterString).bson" model
-                @save "gradients-iter-$(iterString).bson" lossGradients
+                @save "gradients-iter-$(iterString).bson" meanLossGradients
 
                 # Update the model if the loss decreased
-                println("The loss has decreased, updating the model...")
-                updatemodel!(model, opt, lossGradients)
+                #println("The loss has decreased, updating the model...")
+                updatemodel!(model, opt, meanLossGradients)
                 # Move on to the next iteration
-                iteration += 1
-            elseif iteration == parameters.iters
-                # Write the final descriptor
-                writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
-                lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
-
-                # Write averaged energies
-                writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
-
-                # Write the final model and the final gradients
-                @save "model-iter-$(iterString).bson" model
-                @save "gradients-iter-$(iterString).bson" lossGradients
                 iteration += 1
             else
                 println("The loss has increased!")
                 # Reduce the rate and reinitialize the optimizer
-                println("Multiplying the learning rate by $(parameters.rateAdjust) and reinitializing the optimizer...")
-                parameters.rate *= parameters.rateAdjust
-                println("New learning rate: $(round(parameters.rate, digits=16))")
-                opt = optInit(parameters)
+                println("Multiplying the learning rate by $(NNParms.rateAdjust) and reinitializing the optimizer...")
+                NNParms.rate *= NNParms.rateAdjust
+                println("New learning rate: $(round(NNParms.rate, digits=16))")
+                opt = optInit(NNParms)
 
                 # Load the previous model and the gradients
                 prevIterString = lpad((iteration - 1), 2, '0')
                 println("Reverting to model-iter-$(prevIterString).bson...")
                 @load "model-iter-$(prevIterString).bson" model 
-                @load "gradients-iter-$(prevIterString).bson" lossGradients 
+                @load "gradients-iter-$(prevIterString).bson" meanLossGradients 
 
                 println("Updating the model with the new optimizer...")
-                updatemodel!(model, opt, lossGradients)
+                updatemodel!(model, opt, meanLossGradients)
 
                 # Remove the last loss value
                 deleteat!(losses, iteration)
@@ -394,9 +351,6 @@ function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
                 println("Repeating iteration $(iteration)...")
             end
         end 
-
-        # Load the reference configurations
-        confs = copy(refconfs)
     end
     println("The training is finished!")
     return

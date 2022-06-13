@@ -1,55 +1,54 @@
-using StaticArrays
+using Chemfiles
 
 """
-pbcdx(x1, x2, xsize)
-
-Computes periodic boundary distance along one axis
-"""
-function pbcdx(x1, x2, xsize)
-    dx = x2 - x1
-    dx += -xsize * convert(Int32, round(dx/xsize))
-    return(dx)
-end
-
-"""
-pbcdistance(p1, p2, box)
-
-Computes 3D periodic boundary distance between two points
-"""
-function pbcdistance(p1, p2, box)
-    R2::Float32 = 0.
-    @fastmath @inbounds for i in 1:3
-        R2 += pbcdx(p1[i], p2[i], box[i])^2
-    end
-    R = sqrt(R2)
-    return(R)
-end
-
-"""
-buildDistanceMatrix(conf, box)
+function builddistanceMatrix(frame)
 
 Builds the distance matrix for a given
-configuration
+Chemfiles frame
+
+Note that the Chemfiles distance
+function starts indexing atoms from 0!
 """
-function builddistanceMatrix(conf, box)
-    distanceMatrix = zeros(Float32, length(conf), length(conf))
-    @inbounds for i in 1:length(conf)
-        @inbounds for j in 1:length(conf)
-            distanceMatrix[i,j] = pbcdistance(conf[i], conf[j], box)
+function builddistanceMatrix(frame)
+    N = length(frame)
+    distanceMatrix = zeros(Float64, N, N)
+    @inbounds for i in 0:N-1
+        @inbounds for j in 0:N-1
+            distanceMatrix[i+1, j+1] = distance(frame, i, j)
         end
     end
     return(distanceMatrix)
 end
 
 """
-updatedistance(conf, box, distanceVector, pointIndex)
+function updatedistance!(frame, distanceVector, pointIndex)
 
 Updates all distances between a selected particle
 and all the others in a given configuration
+
+Note that the Chemfiles distance
+function starts indexing atoms from 0!
+
+pointIndex can be any number from 1 to N,
+so I need to shift it by -1 so it takes
+the same values as the iterator i
 """
-function updatedistance!(conf, box, distanceVector, pointIndex)
-    @fastmath @inbounds for i in 1:length(distanceVector)
-        distanceVector[i] = pbcdistance(conf[i], conf[pointIndex], box)
+function updatedistance!(frame, distanceVector, pointIndex)
+    @fastmath @inbounds for i in 0:length(distanceVector)-1
+        distanceVector[i+1] = distance(frame, i, pointIndex-1)
     end
     return(distanceVector)
+end
+
+"""
+distanceCutoff(R, Rc = 10)
+
+Cutoff distance function (J. Chem. Phys. 134, 074106 (2011))
+"""
+function distanceCutoff(R, Rc = 10)
+    if R > Rc
+        return(0.)
+    else
+        return(0.5 * (cos(π * R / Rc) + 1))
+    end
 end

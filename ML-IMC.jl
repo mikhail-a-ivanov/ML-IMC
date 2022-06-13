@@ -2,6 +2,7 @@ using Dates
 using Statistics
 using LinearAlgebra
 using Distributed
+using Chemfiles
 using BSON: @save, @load
 
 BLAS.set_num_threads(1)
@@ -11,7 +12,6 @@ BLAS.set_num_threads(1)
     include("src/network.jl")
     include("src/base.jl")
     include("src/io.jl")
-    include("src/readLJ.jl")
 end
 
 function main()
@@ -19,32 +19,36 @@ function main()
     startTime = Dates.now()
 
     # Initialize the parameters
-    parameters = parametersInit()
+    globalParms, MCParms, NNParms, systemParmsList = parametersInit()
+
+    # Check if the number of workers is divisble by the number of ref systems
+    @assert nworkers() % length(systemParmsList) == 0
 
     # Initialize the input data
-    inputs = inputInit(parameters)
-    if parameters.mode == "training"
-        confs, model, opt, refconfs, descriptorref, rng_xor = inputs
+    inputs = inputInit(globalParms, NNParms, systemParmsList)
+    if globalParms.mode == "training"
+        model, opt, refRDFs = inputs
     else
-        confs, model, rng_xor = inputs
+        model = inputs
     end
 
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Starting at: ", startTime)
-    println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
-    println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
-    println("Using $(parameters.paircorr) as a pair descriptor")
+    println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
+    println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
+    #println("Neural network architecture: $(NNParms.neurons)")
 
-    if parameters.mode == "training"
-        println("Using $(parameters.activation) activation")
-        println("Number of iterations: $(parameters.iters)")
-        println("Optimizer type: $(parameters.optimizer)")
-        println("Learning rate: $(parameters.rate)")
-        if parameters.optimizer == "Momentum"
-            println("Momentum coefficient: $(parameters.momentum)")
+    if globalParms.mode == "training"
+        println("Using $(NNParms.activation) activation")
+        println("Number of iterations: $(NNParms.iters)")
+        println("Optimizer type: $(NNParms.optimizer)")
+        println("Learning rate: $(NNParms.rate)")
+        if NNParms.optimizer == "Momentum"
+            println("Momentum coefficient: $(NNParms.μ)")
         end
+        
         # Run the training
-        train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+        train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     end
 
     # Stop the timer
