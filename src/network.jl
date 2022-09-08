@@ -254,16 +254,16 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         for systemId in 1:nsystems
             systemParms = systemParmsList[systemId]
             println("System $(systemParms.systemName):")
-            NNRDF = mean([output[1] for output in outputs[systemId:nsets:end]])
+            NNRDF = mean([output[1] for output in outputs[systemId:length(inputSet):end]])
             append!(NNRDFs, [NNRDF])
-            meanSystemEnergy = mean([output[2] for output in outputs[systemId:nsets:end]])
+            meanSystemEnergy = mean([output[2] for output in outputs[systemId:length(inputSet):end]])
             append!(energies, [meanSystemEnergy])
-            meanAcceptanceRatio = mean([output[3] for output in outputs[systemId:nsets:end]])
+            meanAcceptanceRatio = mean([output[3] for output in outputs[systemId:length(inputSet):end]])
             println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
             append!(meanAcceptanceRatios, meanAcceptanceRatio)
-            crossAccumulator = mean([output[4] for output in outputs[systemId:nsets:end]])
+            crossAccumulator = mean([output[4] for output in outputs[systemId:length(inputSet):end]])
             append!(crossAccumulators, crossAccumulator)
-            G2MatrixAccumulator = mean([output[5] for output in outputs[systemId:nsets:end]])
+            G2MatrixAccumulator = mean([output[5] for output in outputs[systemId:length(inputSet):end]])
             append!(G2MatrixAccumulators, [G2MatrixAccumulator])
         end
 
