@@ -23,6 +23,9 @@ Other packages:
 - `BSON`
 - `Statistics`
 
+## To do:
+- Continue training using existing model
+
 ## Authors
 - Prof. Alexander Lyubartsev (alexander.lyubartsev@mmk.su.se) - Principal investigator and method developer
 - Mikhail Ivanov (mikhail.ivanov@mmk.su.se) - Main software developer

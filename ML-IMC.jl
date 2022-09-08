@@ -17,6 +17,7 @@ end
 function main()
     # Start the timer
     startTime = Dates.now()
+    println("Starting at: ", startTime)
 
     # Initialize the parameters
     globalParms, MCParms, NNParms, systemParmsList = parametersInit()
@@ -33,12 +34,13 @@ function main()
     end
 
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
-    println("Starting at: ", startTime)
     println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
     println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
     #println("Neural network architecture: $(NNParms.neurons)")
 
     if globalParms.mode == "training"
+        nsystems = length(systemParmsList)
+        println("Training a model using $(nsystems) reference system(s)")
         println("Using $(NNParms.activation) activation")
         println("Number of iterations: $(NNParms.iters)")
         println("Optimizer type: $(NNParms.optimizer)")

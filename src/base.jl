@@ -323,5 +323,6 @@ MC step length adjustment
 function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
     systemParms.Δ = acceptanceRatio * systemParms.Δ / systemParms.targetAR
+    println("Updated max displacement = $(systemParms.Δ)")
     return(systemParms)
 end
