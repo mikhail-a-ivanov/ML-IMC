@@ -172,6 +172,22 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
     distanceVector2 = zeros(systemParms.N)
     distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
 
+    # Acceptance counter
+    accepted = 0
+
+    # Reject the move prematurely if a single pair distance
+    # is below the repulsion limit
+    for distance in distanceVector2
+        if distance <= systemParms.repulsionLimit && distance > 0.
+            # Revert to the previous configuration
+            positions(frame)[:, pointIndex] -= dr
+            # Pack mcarrays
+            mcarrays = (frame, distanceMatrix, G2Matrix1)
+            # Finish function execution
+            return(mcarrays, E, accepted)
+        end
+    end
+
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
     updateG2Matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
@@ -181,8 +197,6 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
     
     # Get energy difference
     ΔE = E2 - E1
-    # Acceptance counter
-    accepted = 0
     
     # Accept or reject the move
     if rand(rng, Float64) < exp(-ΔE*systemParms.β)
@@ -323,6 +337,6 @@ MC step length adjustment
 function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
     systemParms.Δ = acceptanceRatio * systemParms.Δ / systemParms.targetAR
-    println("Updated max displacement = $(systemParms.Δ)")
+    #println("Updated max displacement = $(systemParms.Δ)")
     return(systemParms)
 end

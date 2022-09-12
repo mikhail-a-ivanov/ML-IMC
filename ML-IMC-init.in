@@ -1,20 +1,20 @@
 # Global parameters
-systemFiles    = Ar_95K.in, Ar_130K.in # List of input filenames for each system
+systemFiles    = Ar_95K.in             # List of input filenames for each system
 mode           = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
 descent        = unrestricted          # Mean loss can increase during the training
 #modelname      = model-iter-25.bson    # Name of a trained model file (simulation mode)
 
 # Monte Carlo parameters
-steps          = 5000             # Total number of MC steps
-Eqsteps        = 500              # Equilibration MC steps
-stepAdjustFreq = 50               # Frequency of MC step adjustment   
-trajout        = 0                   # XTC trajectory frequency
-outfreq        = 500              # Output frequency
+steps          = 50000             # Total number of MC steps
+Eqsteps        = 25000              # Equilibration MC steps
+stepAdjustFreq = 2500               # Frequency of MC step adjustment   
+trajout        = 0                 # XTC trajectory frequency
+outfreq        = 2500              # Output frequency
 
 # Network parameters
-neurons        = 15, 15                # Number of neurons in the network (excluding the energy output neuron)
-iters          = 10                    # Number of learning iterations
-activation     = tanh                  # Activation function
+neurons        = 25                    # Number of neurons in the network (excluding the energy output neuron)
+iters          = 5                     # Number of learning iterations
+activation     = identity              # Activation function
 optimizer      = Momentum              # Optimizer (other options - Descent)
 rate           = 0.001                 # Learning rate
 rateAdjust     = 0.75                  # Rate multiplier (should be < 1 to reduce the rate)

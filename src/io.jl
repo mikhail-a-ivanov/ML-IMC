@@ -83,6 +83,7 @@ V: volume, Å^3
 rdfname: reference RDF file
 Nbins: number of histogram bins
 binWidth: histogram bin width, Å
+repulsionLimit: minimum allowed pair distance (at which RDF > 0), Å
 T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
 Δ: max displacement, Å
@@ -99,6 +100,7 @@ mutable struct systemParameters
     rdfname::String
     Nbins::Int
     binWidth::Float64
+    repulsionLimit::Float64
     T::Float64
     β::Float64
     Δ::Float64
@@ -241,12 +243,13 @@ function parametersInit()
                         append!(systemVars, V)
                     elseif field == "rdfname"
                         rdfname = [line[3]]
-                        bins, rdf, hist = readRDF("$(rdfname[1])")
+                        bins, rdf, hist, repulsionLimit = readRDF("$(rdfname[1])")
                         Nbins = length(bins)
                         binWidth = bins[1]
                         append!(systemVars, [rdfname[1]])
                         append!(systemVars, Nbins)
                         append!(systemVars, binWidth)
+                        append!(systemVars, repulsionLimit)
                     else
                         if fieldtype != String
                             append!(systemVars, parse(fieldtype, line[3]))
@@ -290,7 +293,7 @@ function inputInit(globalParms, NNParms, systemParmsList)
     refRDFs = []
     trajectories = []
     for systemParms in systemParmsList
-        bins, refRDF, refhist = readRDF(systemParms.rdfname)
+        bins, refRDF, refhist, repulsionLimit = readRDF(systemParms.rdfname)
         append!(refRDFs, [refRDF])
     end
 
@@ -369,6 +372,15 @@ function readRDF(rdfname)
             hist[i - ncomments] = parse(Float64, rdfline[3])
         end
     end
-    return(bins, rdf, hist)
+    # Find the repulsion limit
+    repulsionLimit = 0. # Default value
+    for i in 1:length(rdf)
+        if rdf[i] > 0.
+            repulsionLimit = bins[i - 1]
+            break
+        end
+    end
+
+    return(bins, rdf, hist, repulsionLimit)
     close(file)
 end
