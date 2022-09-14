@@ -25,7 +25,8 @@ Other packages:
 
 ## Authors
 - Prof. Alexander Lyubartsev (alexander.lyubartsev@mmk.su.se) - Principal investigator and method developer
-- Mikhail Ivanov (mikhail.ivanov@mmk.su.se) - Main software developer
+- Mikhail Ivanov (mikhail.ivanov@mmk.su.se) - Software developer
+- Maksim Posysoev (maksim.posysoev@mmk.su.se) - Software developer
 
 ## Acknowledgement
 We would like to thank the Åke Åkesons foundation as well as Swedish Research Council (Vetenskapsrådet) for the financial support, 
