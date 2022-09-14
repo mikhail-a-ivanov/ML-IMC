@@ -11,24 +11,25 @@ include("network.jl")
 include("io.jl")
 
 """
-G2(distances, Rc, Rs, η)
+G2(distances, Rc, Rs, sigma)
 
 Computes a single exponent
 of the G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function G2(R, Rc, Rs, η)
+function G2(R, Rc, Rs, sigma)
+    η = 1/(2*sigma^2)
     return(exp(-η*(R - Rs)^2) * distanceCutoff(R, Rc))
 end
 
 """
-G2total(distances, Rc, Rs, η)
+G2total(distances, Rc, Rs, sigma)
 
 Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function G2total(distances, Rc, Rs, η)
+function G2total(distances, Rc, Rs, sigma)
     sum = 0
     @fastmath @inbounds @simd for R in distances
-        sum += G2(R, Rc, Rs, η)
+        sum += G2(R, Rc, Rs, sigma)
     end
     return(sum)
 end
@@ -42,7 +43,7 @@ function buildG2Matrix(distanceMatrix, NNParms)
     N = length(distanceMatrix[1, :])
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
-    ηs = fill(NNParms.η, npoints)
+    ηs = fill(NNParms.sigma, npoints)
     G2Matrix = zeros(Float64, N, npoints)
     for i in 1:N
         for j in 1:npoints
@@ -60,7 +61,7 @@ Updates the G2 matrix with the displacement of a single atom
 function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
-    ηs = fill(NNParms.η, npoints)    
+    ηs = fill(NNParms.sigma, npoints)    
     for i in 1:systemParms.N
         # Rebuild the whole G2 matrix column for the displaced particle
         if i == pointIndex

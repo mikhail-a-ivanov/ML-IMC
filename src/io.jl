@@ -57,16 +57,18 @@ maxR: max distance for G2 symmetry function (cutoff), Å
 η: η parameter in G2 symmetry function (gaussian width), Å
 """
 mutable struct NNparameters
+    minR::Float64
+    maxR::Float64
+    sigma::Float64
     neurons::Vector{Int}
     iters::Int
     activation::String
     optimizer::String
     rate::Float64
     rateAdjust::Float64
-    μ::Float64
-    minR::Float64
-    maxR::Float64
-    η::Float64
+    momentum::Float64
+    decay1::Float64
+    decay2::Float64
 end
 
 """
@@ -120,8 +122,8 @@ function parametersInit()
     #inputname = "ML-IMC-init.in"
 
     # Constants
-    NA::Float64 = 6.02214076E23 # [mol-1]
-    kB::Float64 = 1.38064852E-23 * NA / 1000 # [kJ/(mol*K)]
+    NA::Float64 = 6.02214076 # [mol-1] * 10^-23
+    kB::Float64 = 1.38064852 * NA / 1000 # [kJ/(mol*K)]
 
     # Read the input file
     file = open(inputname, "r")

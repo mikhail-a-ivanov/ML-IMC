@@ -109,7 +109,7 @@ function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, d
     for i in 1:length(dLdS)
         dLdS[i] = 2*(descriptorNN[i] - descriptorref[i])
     end
-    for (gradient, parameters) in zip(descriptorGradients, params(model))
+    for (gradient, parameters) in zip(descriptorGradients, Flux.params(model))
         lossGradient = dLdS' * gradient
         lossGradient = reshape(lossGradient, size(parameters))
         append!(lossGradients, [lossGradient])
@@ -123,7 +123,7 @@ function updatemodel!(model, opt, lossGradients)
 Updates the network parameters
 """
 function updatemodel!(model, opt, lossGradients)
-    for (gradient, parameters) in zip(lossGradients, params(model))
+    for (gradient, parameters) in zip(lossGradients, Flux.params(model))
         Flux.Optimise.update!(opt, parameters, gradient)
     end
     return
@@ -200,38 +200,29 @@ function optInit(NNParms)
 
 Initializes the optimizer
 """
-# TODO: нужно разобраться с файлами инициализации параметров,
-# потому что у разных оптимизаторов разный набор параметров. 
-# Хорошо бы ещё прописать какую-то инструкцию с рекомендуемыми значениями
 function optInit(NNParms)
+
+
     if NNParms.optimizer == "Momentum"
-        opt = Momentum(NNParms.rate, NNParms.μ)
+        opt = Momentum(NNParms.rate, NNParms.momentum)
 
     elseif NNParms.optimizer == "Descent"
         opt = Descent(NNParms.rate)
 
     elseif NNParms.optimizer == "Nesterov"
-        opt = Nesterov(NNParms.rate, NNParms.μ)
+        opt = Nesterov(NNParms.rate, NNParms.momentum)
 
     elseif NNParms.optimizer == "RMSProp"
-        opt = RMSProp(NNParms.rate, NNParms.μ)
+        opt = RMSProp(NNParms.rate, NNParms.momentum)
 
     elseif NNParms.optimizer == "Adam" 
-        # require more parameters in init file, 
-        # look at the doc: 
-        # https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.Adam
-        opt = Adam(NNParms.rate)
+        opt = Adam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "RAdam" 
-        # require more parameters in init file, 
-        # look at the doc: https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.RAdam
-        opt = RAdam(NNParms.rate)
+        opt = RAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "AdaMax"
-        # require more parameters in init file, 
-        # look at the doc: 
-        # https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.AdaMax
-        opt = AdaMax(NNParms.rate)
+        opt = AdaMax(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "AdaGrad"
         opt = AdaGrad(NNParms.rate)
@@ -240,34 +231,19 @@ function optInit(NNParms)
         opt = AdaDelta(NNParms.rate)
     
     elseif NNParms.optimizer == "AMSGrad"
-        # require more parameters in init file, 
-        # look at the doc: 
-        # https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.AMSGrad
-        opt = AMSGrad(NNParms.rate)
+        opt = AMSGrad(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "NAdam"
-        # require more parameters in init file, 
-        # look at the doc: 
-        # https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.NAdam
-        opt = NAdam(NNParms.rate)
+        opt = NAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "AdamW"
-        # require more parameters in init file, 
-        # look at the doc:
-        # https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.AdamW
-        opt = AdamW(NNParms.rate)
+        opt = AdamW(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "OAdam"
-        # require more parameters in init file, 
-        # look at the doc:
-        # https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.OAdam
-        opt = OAdam(NNParms.rate)
+        opt = OAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "AdaBelief"
-        # require more parameters in init file, 
-        # look at the doc:
-        # https://fluxml.ai/Flux.jl/stable/training/optimisers/#Flux.Optimise.AdaBelief
-        opt = AdaBelief(NNParms.rate)
+        opt = AdaBelief(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     else
         opt = Descent(NNParms.rate)

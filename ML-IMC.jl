@@ -45,8 +45,8 @@ function main()
         println("Number of iterations: $(NNParms.iters)")
         println("Optimizer type: $(NNParms.optimizer)")
         println("Learning rate: $(NNParms.rate)")
-        if NNParms.optimizer == "Momentum"
-            println("Momentum coefficient: $(NNParms.μ)")
+        if NNParms.optimizer == "Momentum" #TODO: not only momentum, but many other optimizers
+            println("Momentum coefficient: $(NNParms.momentum)")
         end
         
         # Run the training
