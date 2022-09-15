@@ -1,6 +1,6 @@
 # System
-N              = 1000                 # Number of particles
-box            = 36.405 36.405 36.405 # Box vectors [Å]
+N              = 512                  # Number of particles
+box            = 29.124 29.124 29.124 # Box vectors [Å]
 
 # Conditions
 T              = 95.0                 # [K]
@@ -19,7 +19,7 @@ outfreq        = 500                  # Output frequency
 
 # RDF parameters          
 binWidth       = 0.025                # [Å]
-Nbins          = 600                  # Number of bins
+Nbins          = 400                  # Number of bins
 
 # Network parameters
 paramsInit     = repulsion            # Type of network parameter initialization (random or repulsion)
@@ -27,14 +27,13 @@ shift          = 0.01                 # shift parameter in the repulsion guess (
 stiffness      = 10                   # stiffness parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
 neurons        = 0                    # Number of neurons in the hidden layer (0 for no hidden layers)
 paircorr       = RDF                  # Type of pair correlations (RDF or histogram)
-iters          = 5                    # Number of learning iterations
+iters          = 10                    # Number of learning iterations
 activation     = identity             # Activation function
 optimizer      = Momentum             # Optimizer (other options - Descent)
-rate           = 0.001                # Learning rate
-rateAdjust     = 0.75                 # Rate multiplier (should be < 1 to reduce the rate)
-momentum       = 0.5                  # Momentum coefficient
+rate           = 0.0005                # Learning rate
+momentum       = 0.75                  # Momentum coefficient
 
 # Input files
-xyzname        = LJ-data/mctraj-p001.xyz    # Input configuration file
-rdfname        = LJ-data/rdf-mean-p40.dat   # Reference RDF file
+xyzname        = LJ-data/512Ar/mctraj-p001.xyz    # Input configuration file
+rdfname        = LJ-data/512Ar/rdf-mean-p6.dat   # Reference RDF file
 modelname      = model-iter-25.bson         # Name of a trained model file (simulation mode)

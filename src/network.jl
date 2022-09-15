@@ -117,7 +117,7 @@ function computeLossGradients(crossAccumulators, descriptorNN, descriptorref, mo
     for i in 1:length(dLdS)
         dLdS[i] = 2*(descriptorNN[i] - descriptorref[i])
     end
-    for (gradient, parameters) in zip(descriptorGradients, params(model))
+    for (gradient, parameters) in zip(descriptorGradients, Flux.params(model))
         lossGradient = dLdS' * gradient
         lossGradient = reshape(lossGradient, size(parameters))
         append!(lossGradients, [lossGradient])
@@ -131,7 +131,7 @@ function updatemodel!(model, opt, lossGradients)
 Updates the network parameters
 """
 function updatemodel!(model, opt, lossGradients)
-    for (gradient, parameters) in zip(lossGradients, params(model))
+    for (gradient, parameters) in zip(lossGradients, Flux.params(model))
         Flux.Optimise.update!(opt, parameters, gradient)
     end
     return
@@ -317,84 +317,26 @@ function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
 
         println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
 
-        ### Add info about MC step adjustment ###
-
         # Compute loss
         lossvalue = loss(pairdescriptorNN, descriptorref)
         append!(losses, lossvalue)
-
-        # Update the model or revert and update the learning rate
-        if iteration == 1
-            # Write the descriptor and compute the gradients
-            writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
-            lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
-
-            # Write averaged energies
-            writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
-
-            # Write the model (before training!) and the gradients
-            @save "model-iter-$(iterString).bson" model
-            @save "gradients-iter-$(iterString).bson" lossGradients
-
-            # Update the model if the loss decreased
-            updatemodel!(model, opt, lossGradients)
-            # Move on to the next iteration
-            iteration += 1
         
-        else
-            if losses[iteration] < losses[iteration - 1]
-                # Write the descriptor and compute the gradients
-                writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
-                lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
+        # Write the descriptor and compute the gradients
+        writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
+        lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
 
-                # Write averaged energies
-                writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
+        # Write averaged energies
+        writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
 
-                # Write the model (before training!)
-                @save "model-iter-$(iterString).bson" model
-                @save "gradients-iter-$(iterString).bson" lossGradients
+        # Write the model (before training!) and the gradients
+        @save "model-iter-$(iterString).bson" model
+        @save "gradients-iter-$(iterString).bson" lossGradients
 
-                # Update the model if the loss decreased
-                println("The loss has decreased, updating the model...")
-                updatemodel!(model, opt, lossGradients)
-                # Move on to the next iteration
-                iteration += 1
-            elseif iteration == parameters.iters
-                # Write the final descriptor
-                writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
-                lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
-
-                # Write averaged energies
-                writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
-
-                # Write the final model and the final gradients
-                @save "model-iter-$(iterString).bson" model
-                @save "gradients-iter-$(iterString).bson" lossGradients
-                iteration += 1
-            else
-                println("The loss has increased!")
-                # Reduce the rate and reinitialize the optimizer
-                println("Multiplying the learning rate by $(parameters.rateAdjust) and reinitializing the optimizer...")
-                parameters.rate *= parameters.rateAdjust
-                println("New learning rate: $(round(parameters.rate, digits=16))")
-                opt = optInit(parameters)
-
-                # Load the previous model and the gradients
-                prevIterString = lpad((iteration - 1), 2, '0')
-                println("Reverting to model-iter-$(prevIterString).bson...")
-                @load "model-iter-$(prevIterString).bson" model 
-                @load "gradients-iter-$(prevIterString).bson" lossGradients 
-
-                println("Updating the model with the new optimizer...")
-                updatemodel!(model, opt, lossGradients)
-
-                # Remove the last loss value
-                deleteat!(losses, iteration)
-
-                println("Repeating iteration $(iteration)...")
-            end
-        end 
-
+        # Update the model if the loss decreased
+        updatemodel!(model, opt, lossGradients)
+        # Move on to the next iteration
+        iteration += 1
+        
         # Load the reference configurations
         confs = copy(refconfs)
     end

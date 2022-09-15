@@ -24,7 +24,6 @@ iters: number of learning iterations
 activation: activation function
 optimizer: type of optimizer
 rate: learning rate
-rateAdjust: learning rate multiplier
 momentum: momentum coefficient
 xyzname: input configuration file
 rdfname: reference RDF file
@@ -55,7 +54,6 @@ mutable struct inputParms
     activation::String
     optimizer::String
     rate::Float64
-    rateAdjust::Float64
     momentum::Float64
     xyzname::String
     rdfname::String
@@ -80,8 +78,8 @@ function parametersInit()
     inputname = ARGS[1]
 
     # Constants
-    NA::Float64 = 6.02214076E23 # [mol-1]
-    kB::Float64 = 1.38064852E-23 * NA / 1000 # [kJ/(mol*K)]
+    NA::Float64 = 6.02214076 # [mol-1] * 10^-23
+    kB::Float64 = 1.38064852 * NA / 1000 # [kJ/(mol*K)]
 
     # Read the input file
     file = open(inputname, "r")
