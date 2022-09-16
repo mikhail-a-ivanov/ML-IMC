@@ -36,7 +36,6 @@ function main()
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
     println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
-    #println("Neural network architecture: $(NNParms.neurons)")
 
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)
@@ -51,6 +50,11 @@ function main()
         
         # Run the training
         train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
+    else
+        @assert length(systemParmsList) == 1
+        println("Running simulation with a trained model")
+        # Run the simulation
+        simulate!(model, globalParms, MCParms, NNParms, systemParmsList[1])
     end
 
     # Stop the timer
