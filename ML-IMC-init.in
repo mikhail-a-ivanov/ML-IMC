@@ -19,7 +19,7 @@ outfreq        = 500                  # Output frequency
 
 # RDF parameters          
 binWidth       = 0.025                # [Å]
-Nbins          = 400                  # Number of binsz
+Nbins          = 400                  # Number of bins
 
 # Network parameters
 paramsInit     = repulsion            # Type of network parameter initialization (random or repulsion)
@@ -34,7 +34,6 @@ rate           = 0.0005                # Learning rate
 momentum       = 0.75                  # Momentum coefficient
 
 # Input files
-topname        = LJ-data/512Ar/confout-p001.pdb   # Topology file
-trajfile       = LJ-data/512Ar/mctraj-p001.xtc    # Input configuration file
+xyzname       = LJ-data/512Ar/mctraj-p001.xyz    # Input configuration file
 rdfname        = LJ-data/512Ar/rdf-mean-p6.dat   # Reference RDF file
 modelname      = model-iter-25.bson         # Name of a trained model file (simulation mode)
