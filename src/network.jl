@@ -249,7 +249,7 @@ function optInit(NNParms)
         opt = Descent(NNParms.rate)
         println(
             "Unsupported type of optimizer! \n
-            Default optimizer is 'Decent' \n
+            Default optimizer is 'Descent' \n
             For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n")
     end
     return (opt)
@@ -265,7 +265,6 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
     losses = []
     # Run training iterations
     iteration = 1
-    println("Running training in $(globalParms.descent) descent mode.")
     while iteration <= NNParms.iters
         iterString = lpad(iteration, 2, '0')
         println("Iteration $(iteration)...")
@@ -318,83 +317,56 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         lossvalue /= nsystems
         append!(losses, lossvalue)
 
-        # Update the model or revert and update the learning rate
-        if iteration == 1
-            lossGradients = []
-            # Write the descriptor and compute the gradients
-            for systemId in 1:nsystems
-                systemParms = systemParmsList[systemId]
-                name = systemParms.systemName
-                writeRDF("RDFNN-$(name)-iter-$(iterString).dat", NNRDFs[systemId], systemParms)
-                lossGradient = computeLossGradients(crossAccumulators[systemId], G2MatrixAccumulators[systemId],
-                                                    NNRDFs[systemId], refRDFs[systemId], model, systemParms)
-                append!(lossGradients, [lossGradient])
+        # Compute the gradients and update the model
+        lossGradients = []
+        # Write the descriptor and compute the gradients
+        for systemId in 1:nsystems
+            systemParms = systemParmsList[systemId]
+            name = systemParms.systemName
+            writeRDF("RDFNN-$(name)-iter-$(iterString).dat", NNRDFs[systemId], systemParms)
+            lossGradient = computeLossGradients(crossAccumulators[systemId], G2MatrixAccumulators[systemId],
+                                                NNRDFs[systemId], refRDFs[systemId], model, systemParms)
+            append!(lossGradients, [lossGradient])
 
-                # Write averaged energies
-                writeenergies("energies-$(name)-iter-$(iterString).dat", energies[systemId], MCParms, 1)
-            end
-            meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
+            # Write averaged energies
+            writeenergies("energies-$(name)-iter-$(iterString).dat", energies[systemId], MCParms, 1)
+        end
+        meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
 
-            # Write the model (before training!) and the gradients
-            @save "model-iter-$(iterString).bson" model
-            @save "gradients-iter-$(iterString).bson" meanLossGradients
+        # Write the model (before training!) and the gradients
+        @save "model-iter-$(iterString).bson" model
+        @save "gradients-iter-$(iterString).bson" meanLossGradients
 
-            # Update the model if the loss decreased
-            updatemodel!(model, opt, meanLossGradients)
-            # Move on to the next iteration
-            iteration += 1
-        else
-            # Update the model if the mean loss decreased or if
-            # there are no restrictions on the loss decrease
-            if losses[iteration] < losses[iteration - 1] || globalParms.descent == "unrestricted"
-                lossGradients = []
-                # Write the descriptor and compute the gradients
-                for systemId in 1:nsystems
-                    systemParms = systemParmsList[systemId]
-                    name = systemParms.systemName
-                    writeRDF("RDFNN-$(name)-iter-$(iterString).dat", NNRDFs[systemId], systemParms)
-                    lossGradient = computeLossGradients(crossAccumulators[systemId], G2MatrixAccumulators[systemId],
-                                                    NNRDFs[systemId], refRDFs[systemId], model, systemParms)
-                    append!(lossGradients, [lossGradient])
-    
-                    # Write averaged energies
-                    writeenergies("energies-$(name)-iter-$(iterString).dat", energies[systemId], MCParms, 1)
-                end
-                meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
-    
-                # Write the model (before training!) and the gradients
-                @save "model-iter-$(iterString).bson" model
-                @save "gradients-iter-$(iterString).bson" meanLossGradients
-
-                # Update the model if the loss decreased
-                #println("The loss has decreased, updating the model...")
-                updatemodel!(model, opt, meanLossGradients)
-                # Move on to the next iteration
-                iteration += 1
-            else
-                println("The loss has increased!")
-                # Reduce the rate and reinitialize the optimizer
-                println("Multiplying the learning rate by $(NNParms.rateAdjust) and reinitializing the optimizer...")
-                NNParms.rate *= NNParms.rateAdjust
-                println("New learning rate: $(round(NNParms.rate, digits=16))")
-                opt = optInit(NNParms)
-
-                # Load the previous model and the gradients
-                prevIterString = lpad((iteration - 1), 2, '0')
-                println("Reverting to model-iter-$(prevIterString).bson...")
-                @load "model-iter-$(prevIterString).bson" model 
-                @load "gradients-iter-$(prevIterString).bson" meanLossGradients 
-
-                println("Updating the model with the new optimizer...")
-                updatemodel!(model, opt, meanLossGradients)
-
-                # Remove the last loss value
-                deleteat!(losses, iteration)
-
-                println("Repeating iteration $(iteration)...")
-            end
-        end 
+        # Update the model if the loss decreased
+        updatemodel!(model, opt, meanLossGradients)
+        # Move on to the next iteration
+        iteration += 1
     end
     println("The training is finished!")
+    return
+end
+
+"""
+simulate!(model, globalParms, MCParms, NNParms, systemParms)
+
+Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) sampling
+"""
+function simulate!(model, globalParms, MCParms, NNParms, systemParms)
+    # Pack inputs
+    inputs = (model, globalParms, MCParms, NNParms, systemParms)
+    
+    # Run the simulation in parallel
+    outputs = pmap(mcsample!, inputs)
+
+    # Average the data from workers
+    NNRDF = mean([output[1] for output in outputs])
+    meanSystemEnergy = mean([output[2] for output in outputs])
+    meanAcceptanceRatio = mean([output[3] for output in outputs])
+    println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+
+    # Write averaged descriptor and energies
+    name = systemParms.systemName
+    writeRDF("RDFNN-$(name).dat", NNRDF, systemParms)
+    writeenergies("energies-$(name).dat", meanSystemEnergy, MCParms, 1)
     return
 end

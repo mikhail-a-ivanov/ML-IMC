@@ -11,16 +11,11 @@ mode:
     ML-IMC mode - training with reference data or simulation using a trained model
 modelname: 
     name of the trained model file
-descent: 
-    unrestrticted - mean loss can increase during training
-    restricted - decreases learning rate if the mean loss increases, proceeds 
-    to the next iteration only when the mean loss decreases 
 """
 struct globalParameters
     systemFiles::Vector{String}
     mode::String
     modelname::String
-    descent::String
 end
 
 """
@@ -50,7 +45,6 @@ iters: number of learning iterations
 activation: activation function
 optimizer: type of optimizer
 rate: learning rate
-rateAdjust: learning rate multiplier
 μ: momentum coefficient
 minR: min distance for G2 symmetry function, Å
 maxR: max distance for G2 symmetry function (cutoff), Å 
@@ -65,7 +59,6 @@ mutable struct NNparameters
     activation::String
     optimizer::String
     rate::Float64
-    rateAdjust::Float64
     momentum::Float64
     decay1::Float64
     decay2::Float64
@@ -349,6 +342,28 @@ function writeenergies(outname, energies, MCParms, slicing=1)
         print(io, "\n")
     end
     close(io)
+end
+
+"""
+function writetraj(conf, parameters, outname, mode='w')
+Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
+"""
+function writetraj(conf, systemParms, outname, mode='w')
+    # Create an empty Frame object
+    frame = Frame() 
+    # Set PBC vectors
+    boxCenter = systemParms.box ./ 2
+    set_cell!(frame, UnitCell(systemParms.box))
+    # Add wrapped atomic coordinates to the frame
+    for i in 1:systemParms.N
+        wrappedAtomCoords = wrap!(UnitCell(frame), conf[:, i]) .+ boxCenter
+        add_atom!(frame, Atom(systemParms.atomname), wrappedAtomCoords)
+    end
+    # Write to file
+    Trajectory(outname, mode) do traj
+        write(traj, frame)
+    end
+    return
 end
 
 """

@@ -175,11 +175,11 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
 
     # Acceptance counter
     accepted = 0
-
+    """
     # Reject the move prematurely if a single pair distance
     # is below the repulsion limit
     for distance in distanceVector2
-        if distance <= systemParms.repulsionLimit && distance > 0.
+        if distance < systemParms.repulsionLimit && distance > 0.
             # Revert to the previous configuration
             positions(frame)[:, pointIndex] -= dr
             # Pack mcarrays
@@ -188,7 +188,7 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
             return(mcarrays, E, accepted)
         end
     end
-
+    """
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
     updateG2Matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
@@ -224,6 +224,17 @@ input configuration, set of parameters
 and the neural network model
 """
 function mcsample!(input)
+    # Get the worker id and the output filenames
+    if nprocs() == 1
+        id = myid()
+    else
+        id = myid() - 1
+    end
+    idString = lpad(id, 3, '0')
+
+    trajFile = "mctraj-p$(idString).xtc"
+    pdbFile = "confin-p$(idString).pdb"
+
     # Initialize RNG
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
@@ -235,6 +246,10 @@ function mcsample!(input)
     nframes = Int(size(traj)) - 1
     frameId = rand(rng_xor, 1:nframes) # Don't take the first frame
     frame = deepcopy(read_step(traj, frameId))
+
+    # Start writing MC trajectory
+    writetraj(positions(frame), systemParms, trajFile, 'w')
+    writetraj(positions(frame), systemParms, pdbFile, 'w')
 
     # Get the number of data points
     totalDataPoints = Int(MCParms.steps / MCParms.outfreq)
@@ -286,6 +301,12 @@ function mcsample!(input)
             energies[Int(step/MCParms.outfreq)] = E
         end
 
+        # MC trajectory output
+        if step % MCParms.trajout == 0
+            frame, distanceMatrix, G2Matrix = mcarrays
+            writetraj(positions(frame), systemParms, trajFile, 'a')
+        end
+
         # Accumulate the distance histogram
         if step % MCParms.outfreq == 0 && step > MCParms.Eqsteps
             frame, distanceMatrix, G2Matrix = mcarrays
@@ -307,6 +328,7 @@ function mcsample!(input)
     end
     # Compute and report the final acceptance ratio
     acceptanceRatio = acceptedTotal / MCParms.steps
+    println("Max displacement = ", round(systemParms.Δ, digits=4))
     println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     # Unpack mcarrays and optionally normalize cross and G2Matrix accumulators
@@ -338,6 +360,5 @@ MC step length adjustment
 function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
     systemParms.Δ = acceptanceRatio * systemParms.Δ / systemParms.targetAR
-    #println("Updated max displacement = $(systemParms.Δ)")
     return(systemParms)
 end
