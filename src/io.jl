@@ -12,6 +12,7 @@ V: volume, Å^3
 T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
 delta: max displacement, Å
+repulsionLimit: hard wall potential limit, Å
 steps: total number of steps
 Eqsteps: equilibration steps
 stepAdjustFreq: frequency of MC step adjustment
@@ -41,7 +42,8 @@ mutable struct inputParms
     V::Float32
     T::Float64
     β::Float64
-    delta::Float32  
+    delta::Float32
+    repulsionLimit::Float32  
     steps::Int
     Eqsteps::Int
     stepAdjustFreq::Int

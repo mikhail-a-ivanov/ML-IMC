@@ -63,6 +63,9 @@ displacement move using a neural network
 to predict energies from pair correlation functions (pairdescriptor)
 """
 function mcmove!(mcarrays, E, model, parameters, step, rng)
+    # Acceptance counter
+    accepted = 0
+
     # Unpack mcarrays
     if parameters.mode == "training"
         conf, distanceMatrix, pairdescriptorNN, crossAccumulators = mcarrays
@@ -92,10 +95,39 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
                              parameters.delta*(rand(rng, Float32) - 0.5))
     
     conf[pointIndex] += dr
-    
-    # Update distance and compute the new descriptor
-    pairdescriptor2 = zeros(Float32, parameters.Nbins)
+
+    # Update distance
     updatedistance!(conf, parameters.box, distanceVector, pointIndex)
+
+    # Reject the move prematurely if a single pair distance
+    # is below the repulsion limit
+    for distance in distanceVector
+        if distance < parameters.repulsionLimit && distance > 0.
+            # Revert to the previous configuration
+            conf[pointIndex] -= dr
+            # Update the descriptor data
+            if step % parameters.outfreq == 0 && step > parameters.Eqsteps
+                for i in 1:parameters.Nbins
+                    pairdescriptorNN[i] += pairdescriptor1[i] 
+                end
+                if parameters.mode == "training"
+                    # Update cross correlation accumulators
+                    updateCrossAccumulators!(crossAccumulators, pairdescriptor1, model)
+                end
+            end
+            # Pack mcarrays
+            if parameters.mode == "training"
+                mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
+            else
+                mcarrays = (conf, distanceMatrix, pairdescriptorNN)
+            end
+            # Finish function execution
+            return(mcarrays, E, accepted)
+        end
+    end
+    
+    # Compute the new descriptor
+    pairdescriptor2 = zeros(Float32, parameters.Nbins)
     histpart!(distanceVector, pairdescriptor2, parameters.binWidth)
     if parameters.paircorr == "RDF"
         normalizehist!(pairdescriptor2, parameters)
@@ -106,8 +138,6 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     
     # Get energy difference
     ΔE = E2 - E1
-    # Acceptance counter
-    accepted = 0
     
     if rand(rng, Float64) < exp(-ΔE*parameters.β)
         accepted += 1
