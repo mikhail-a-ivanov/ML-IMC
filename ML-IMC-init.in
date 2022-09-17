@@ -8,7 +8,7 @@ T              = 95.0                 # [K]
 # Monte Carlo parameters
 mode           = training             # Run MC sampling (simulation) or ML-IMC optimization (training)          
 delta          = 0.75                 # Max displacement [Å]
-repulsionLimit = 3.0                  # Hard wall potential limit [Å]
+repulsionLimit = 3.1                  # Hard wall potential limit [Å]
 steps          = 1000000              # Total number of MC steps
 Eqsteps        = 500000               # Equilibration MC steps
 stepAdjustFreq = 50000                # Frequency of MC step adjustment
@@ -23,18 +23,16 @@ binWidth       = 0.025                # [Å]
 Nbins          = 400                  # Number of bins
 
 # Network parameters
-paramsInit     = repulsion            # Type of network parameter initialization (random or repulsion)
-shift          = 0.01                 # shift parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
-stiffness      = 100                  # stiffness parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
-neurons        = 0                    # Number of neurons in the hidden layer (0 for no hidden layers)
-paircorr       = RDF                  # Type of pair correlations (RDF or histogram)
+paramsInit     = zero                  # Type of network parameter initialization (random or zero)
+neurons        = 0                     # Number of neurons in the hidden layer (0 for no hidden layers)
+paircorr       = RDF                   # Type of pair correlations (RDF or histogram)
 iters          = 10                    # Number of learning iterations
-activation     = identity             # Activation function
-optimizer      = Momentum             # Optimizer (other options - Descent)
+activation     = tanh                  # Activation function
+optimizer      = Momentum              # Optimizer (other options - Descent)
 rate           = 0.0005                # Learning rate
 momentum       = 0.75                  # Momentum coefficient
 
 # Input files
-xyzname       = LJ-data/512Ar/mctraj-p001.xyz    # Input configuration file
+xyzname        = LJ-data/512Ar/mctraj-p001.xyz   # Input configuration file
 rdfname        = LJ-data/512Ar/rdf-mean-p6.dat   # Reference RDF file
-modelname      = model-iter-25.bson         # Name of a trained model file (simulation mode)
+modelname      = model-iter-25.bson              # Name of a trained model file (simulation mode)

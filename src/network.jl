@@ -199,41 +199,6 @@ function buildchain(args...)
 end
 
 """
-function mindistance(descriptor, parameters)
-
-Returns the minimal occuring distance in the descriptor
-"""
-function mindistance(descriptor, parameters)
-    for i in 1:parameters.Nbins
-        if descriptor[i] != 0
-            return((i - 1) * parameters.binWidth)
-        end
-    end
-end
-
-"""
-function repulsion(descriptor, parameters)
-
-Returns repulsion weights for the neural network
-Functional form for repulsion: stiffness*[exp(-alpha*r)-shift]
-alpha is a coefficient that makes sure that the repulsion term
-goes to zero at minimal distance from the given pair correlation function (descriptor)
-"""
-function repulsion(descriptor, parameters)
-    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
-    minDistance = mindistance(descriptor, parameters)
-    # Find alpha so that [exp(-alpha*r) - shift] goes to zero at minDistance
-    alpha = -log(parameters.shift)/minDistance
-    potential = zeros(Float32, parameters.Nbins)
-    for i in 1:parameters.Nbins
-        if bins[i] < minDistance
-            potential[i] = parameters.stiffness*(exp(-alpha*bins[i])-parameters.shift)
-        end
-    end
-    return(potential)
-end
-
-"""
 function modelInit(descriptor, parameters)
 
 Generates a neural network with or without repulsion term in the input layer.
@@ -251,22 +216,13 @@ function modelInit(descriptor, parameters)
     println("   Number of layers: $(length(parameters.neurons)) ")
     println("   Number of neurons in each layer: $(parameters.neurons)")
     println("   Parameter initialization: $(parameters.paramsInit)")
-    if parameters.paramsInit == "repulsion"
+    if parameters.paramsInit == "zero"
         nlayers = length(model.layers)
         # Initialize weights
         for (layerId, layer) in enumerate(model.layers)
             for column in eachrow(layer.weight)
-                Flux.Optimise.update!(column, column)
                 if layerId == 1
-                    Flux.Optimise.update!(column, -repulsion(descriptor, parameters))
-                elseif layerId < nlayers
-                    Flux.Optimise.update!(column, -ones(Float32, length(column)))
-                else
-                    # Multiply the weights by the fraction of input neurons and second-to-last neurons
-                    # Migth be useful for many-layered networks, multiplier of unity is ok for one hidden layer 
-                    #weightMultiplier = network[1][1] / network[end][1]  
-                    weightMultiplier = 1
-                    Flux.Optimise.update!(column, -weightMultiplier * ones(Float32, length(column)))
+                    Flux.Optimise.update!(column, column)
                 end
             end
         end

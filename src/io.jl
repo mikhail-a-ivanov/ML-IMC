@@ -62,8 +62,6 @@ mutable struct inputParms
     paircorr::String
     neurons::Vector{Int}
     paramsInit::String
-    shift::Float32
-    stiffness::Float32
     modelname::String
     mode::String
 end
