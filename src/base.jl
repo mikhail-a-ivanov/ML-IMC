@@ -101,28 +101,30 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
 
     # Reject the move prematurely if a single pair distance
     # is below the repulsion limit
-    for distance in distanceVector
-        if distance < parameters.repulsionLimit && distance > 0.
-            # Revert to the previous configuration
-            conf[pointIndex] -= dr
-            # Update the descriptor data
-            if step % parameters.outfreq == 0 && step > parameters.Eqsteps
-                for i in 1:parameters.Nbins
-                    pairdescriptorNN[i] += pairdescriptor1[i] 
+    if parameters.repulsionLimit > 0
+        for distance in distanceVector
+            if distance < parameters.repulsionLimit && distance > 0.
+                # Revert to the previous configuration
+                conf[pointIndex] -= dr
+                # Update the descriptor data
+                if step % parameters.outfreq == 0 && step > parameters.Eqsteps
+                    for i in 1:parameters.Nbins
+                        pairdescriptorNN[i] += pairdescriptor1[i] 
+                    end
+                    if parameters.mode == "training"
+                        # Update cross correlation accumulators
+                        updateCrossAccumulators!(crossAccumulators, pairdescriptor1, model)
+                    end
                 end
+                # Pack mcarrays
                 if parameters.mode == "training"
-                    # Update cross correlation accumulators
-                    updateCrossAccumulators!(crossAccumulators, pairdescriptor1, model)
+                    mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
+                else
+                    mcarrays = (conf, distanceMatrix, pairdescriptorNN)
                 end
+                # Finish function execution
+                return(mcarrays, E, accepted)
             end
-            # Pack mcarrays
-            if parameters.mode == "training"
-                mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
-            else
-                mcarrays = (conf, distanceMatrix, pairdescriptorNN)
-            end
-            # Finish function execution
-            return(mcarrays, E, accepted)
         end
     end
     
@@ -252,6 +254,7 @@ function mcsample!(input)
     # Normalize the pair correlation functions
     pairdescriptorNN ./= prodDataPoints
 
+    println("Max displacement = ", round(parameters.delta, digits=4))
     println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     if parameters.mode == "training"

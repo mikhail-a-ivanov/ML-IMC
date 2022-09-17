@@ -32,6 +32,11 @@ function main()
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Starting at: ", startTime)
     println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
+    if parameters.repulsionLimit > 0
+        println("Using hard wall potential for distances shorter than $(parameters.repulsionLimit) A")
+    else
+        println("Running simulation without hard wall potential.")
+    end
     println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
     println("Using $(parameters.paircorr) as a pair descriptor")
 

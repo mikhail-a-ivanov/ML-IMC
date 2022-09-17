@@ -8,7 +8,7 @@ T              = 95.0                 # [K]
 # Monte Carlo parameters
 mode           = training             # Run MC sampling (simulation) or ML-IMC optimization (training)          
 delta          = 0.75                 # Max displacement [Å]
-repulsionLimit = 0.0                  # Hard wall potential limit [Å]
+repulsionLimit = 3.0                  # Hard wall potential limit [Å]
 steps          = 1000000              # Total number of MC steps
 Eqsteps        = 500000               # Equilibration MC steps
 stepAdjustFreq = 50000                # Frequency of MC step adjustment
