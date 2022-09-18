@@ -112,7 +112,7 @@ function parametersInit()
                     rdfname = [line[3]]
                     bins, rdf = readRDF("$(rdfname[1])")
                     Nbins = length(bins)
-                    binWidth = bins[1]
+                    binWidth = bins[2] - bins[1]
                     append!(vars, [rdfname[1]])
                     append!(vars, Nbins)
                     append!(vars, binWidth)
