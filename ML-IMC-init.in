@@ -19,20 +19,21 @@ xyzout         = 0                    # XYZ output frequency
 outfreq        = 500                  # Output frequency
 
 # RDF parameters          
-binWidth       = 0.025                # [Å]
-Nbins          = 400                  # Number of bins
+binWidth       = 0.1                  # [Å]
+Nbins          = 100                  # Number of bins
 
 # Network parameters
 paramsInit     = zero                  # Type of network parameter initialization (random or zero)
 neurons        = 0                     # Number of neurons in the hidden layer (0 for no hidden layers)
 paircorr       = RDF                   # Type of pair correlations (RDF or histogram)
-iters          = 10                    # Number of learning iterations
+iters          = 5                     # Number of learning iterations
 activation     = tanh                  # Activation function
 optimizer      = Momentum              # Optimizer (other options - Descent)
 rate           = 0.0005                # Learning rate
 momentum       = 0.75                  # Momentum coefficient
 
 # Input files
-xyzname        = LJ-data/512Ar/mctraj-p001.xyz   # Input configuration file
+trajfile       = LJ-data/512Ar/mctraj-p001.xtc   # Input configuration file
+topname        = LJ-data/512Ar/confout-p001.pdb   # Topology name
 rdfname        = LJ-data/512Ar/rdf-mean-p6.dat   # Reference RDF file
 modelname      = model-iter-25.bson              # Name of a trained model file (simulation mode)

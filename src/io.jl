@@ -26,7 +26,8 @@ activation: activation function
 optimizer: type of optimizer
 rate: learning rate
 momentum: momentum coefficient
-xyzname: input configuration file
+topname: name of the topology file
+trajfile: name of the trajectory file
 rdfname: reference RDF file
 paircorr: type of pair correlations (RDF or histogram)
 neurons: number of neurons in the hidden layers
@@ -38,7 +39,7 @@ mode: ML-IMC mode: training with reference data or simulation using a trained mo
 """
 mutable struct inputParms
     N::Int
-    box::SVector{3, Float32}
+    box::Vector{Float32}
     V::Float32
     T::Float64
     β::Float64
@@ -57,7 +58,8 @@ mutable struct inputParms
     optimizer::String
     rate::Float64
     momentum::Float64
-    xyzname::String
+    trajfile::String
+    topname::String
     rdfname::String
     paircorr::String
     neurons::Vector{Int}
@@ -139,18 +141,6 @@ function parametersInit()
 end
 
 """
-function confsInit(parameters)
-
-Reads input configurations from XYZ file
-"""
-function confsInit(parameters)
-    xyz = readXYZ(parameters.xyzname)
-    confs = xyz[2:end] # Omit the initial configuration
-    @assert parameters.N == length(confs[end]) "Given number of particles does not match with XYZ configuration!"
-    return(confs)
-end
-
-"""
 function inputInit(parameters)
 
 Initializes input data
@@ -170,27 +160,19 @@ function inputInit(parameters)
         descriptorref = histref
     end
 
-    # Read XYZ configurations
-    confs = confsInit(parameters)
-
     if parameters.mode == "training"
         # Initialize the optimizer
         opt = optInit(parameters)
-        # Make a copy to read at the start of each iterations
-        refconfs = copy(confs)
         # Initialize the model
         model = modelInit(descriptorref, parameters)
     else
         @load parameters.modelname model
     end
 
-    # Initialize RNG for random input frame selection
-    rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-
     if parameters.mode == "training"
-        return(confs, model, opt, refconfs, descriptorref, rng_xor)
+        return(model, opt, descriptorref)
     else
-        return(confs, model, rng_xor)
+        return(model)
     end
 end
 

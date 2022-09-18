@@ -3,6 +3,7 @@ using RandomNumbers
 using Statistics
 using StaticArrays
 using LinearAlgebra
+using Chemfiles
 using Flux
 
 include("distances.jl")
@@ -68,13 +69,13 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
 
     # Unpack mcarrays
     if parameters.mode == "training"
-        conf, distanceMatrix, pairdescriptorNN, crossAccumulators = mcarrays
+        frame, distanceMatrix, pairdescriptorNN, crossAccumulators = mcarrays
     else
-        conf, distanceMatrix, pairdescriptorNN = mcarrays
+        frame, distanceMatrix, pairdescriptorNN = mcarrays
     end
 
     # Pick a particle
-    pointIndex = rand(rng, Int32(1):Int32(length(conf)))
+    pointIndex = rand(rng, Int32(1):Int32(length(frame)))
     
     # Allocate the distance vector
     distanceVector = distanceMatrix[:, pointIndex]
@@ -90,14 +91,15 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     E1 = neuralenergy(pairdescriptor1, model)
     
     # Displace the particle
-    dr = SVector{3, Float32}(parameters.delta*(rand(rng, Float32) - 0.5), 
-                             parameters.delta*(rand(rng, Float32) - 0.5), 
-                             parameters.delta*(rand(rng, Float32) - 0.5))
+    dr = [parameters.delta*(rand(rng, Float64) - 0.5), 
+          parameters.delta*(rand(rng, Float64) - 0.5), 
+          parameters.delta*(rand(rng, Float64) - 0.5)]
+
     
-    conf[pointIndex] += dr
+    positions(frame)[:, pointIndex] += dr
 
     # Update distance
-    updatedistance!(conf, parameters.box, distanceVector, pointIndex)
+    updatedistance!(frame, distanceVector, pointIndex)
 
     # Reject the move prematurely if a single pair distance
     # is below the repulsion limit
@@ -105,7 +107,7 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
         for distance in distanceVector
             if distance < parameters.repulsionLimit && distance > 0.
                 # Revert to the previous configuration
-                conf[pointIndex] -= dr
+                positions(frame)[:, pointIndex] -= dr
                 # Update the descriptor data
                 if step % parameters.outfreq == 0 && step > parameters.Eqsteps
                     for i in 1:parameters.Nbins
@@ -118,9 +120,9 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
                 end
                 # Pack mcarrays
                 if parameters.mode == "training"
-                    mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
+                    mcarrays = (frame, distanceMatrix, pairdescriptorNN, crossAccumulators)
                 else
-                    mcarrays = (conf, distanceMatrix, pairdescriptorNN)
+                    mcarrays = (frame, distanceMatrix, pairdescriptorNN)
                 end
                 # Finish function execution
                 return(mcarrays, E, accepted)
@@ -158,7 +160,7 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
             end
         end
     else
-        conf[pointIndex] -= dr
+        positions(frame)[:, pointIndex] -= dr
         # Update the descriptor data
         if step % parameters.outfreq == 0 && step > parameters.Eqsteps
             for i in 1:parameters.Nbins
@@ -172,16 +174,16 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     end
     # Pack mcarrays
     if parameters.mode == "training"
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
+        mcarrays = (frame, distanceMatrix, pairdescriptorNN, crossAccumulators)
     else
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN)
+        mcarrays = (frame, distanceMatrix, pairdescriptorNN)
     end
     return(mcarrays, E, accepted)
 end
 
 """
 mcsample!(input)
-(input = conf, parameters, model)
+(input = parameters, model)
 Runs the Monte Carlo simulation for a given
 input configuration, set of parameters
 and the neural network model
@@ -191,14 +193,20 @@ function mcsample!(input)
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Unpack the inputs
-    conf, parameters, model = input
+    parameters, model = input
 
     # Get the number of data points
     totalDataPoints = Int(parameters.steps / parameters.outfreq)
     prodDataPoints = Int((parameters.steps - parameters.Eqsteps) / parameters.outfreq)
 
+    # Take a random frame from the equilibrated trajectory
+    traj = Trajectory(parameters.trajfile)
+    nframes = Int(size(traj)) - 1
+    frameId = rand(rng_xor, Int(nframes/2):nframes) # Take frames from the second half
+    frame = deepcopy(read_step(traj, frameId))
+
     # Build the distance matrix
-    distanceMatrix = builddistanceMatrix(conf, parameters.box)
+    distanceMatrix = builddistanceMatrix(frame)
 
     # Initialize the energy
     E::Float64 = 0.
@@ -210,9 +218,9 @@ function mcsample!(input)
     # and optionally build the cross correlation arrays
     if parameters.mode == "training"
         crossAccumulators = crossAccumulatorsInit(parameters)
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN, crossAccumulators)
+        mcarrays = (frame, distanceMatrix, pairdescriptorNN, crossAccumulators)
     else
-        mcarrays = (conf, distanceMatrix, pairdescriptorNN)
+        mcarrays = (frame, distanceMatrix, pairdescriptorNN)
     end
 
     # Initialize the energy array
@@ -242,13 +250,13 @@ function mcsample!(input)
 
     # Unpack mcarrays and optionally normalize crossAccumulators
     if parameters.mode == "training"
-        conf, distanceMatrix, pairdescriptorNN, crossAccumulators = mcarrays
+        frame, distanceMatrix, pairdescriptorNN, crossAccumulators = mcarrays
         # Normalize the cross correlation arrays
         for cross in crossAccumulators
             cross ./= prodDataPoints
         end
     else
-        conf, distanceMatrix, pairdescriptorNN = mcarrays
+        frame, distanceMatrix, pairdescriptorNN = mcarrays
     end
 
     # Normalize the pair correlation functions

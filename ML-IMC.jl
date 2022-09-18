@@ -24,9 +24,9 @@ function main()
     # Initialize the input data
     inputs = inputInit(parameters)
     if parameters.mode == "training"
-        confs, model, opt, refconfs, descriptorref, rng_xor = inputs
+        model, opt, descriptorref = inputs
     else
-        confs, model, rng_xor = inputs
+        model = inputs
     end
 
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
@@ -49,7 +49,7 @@ function main()
             println("Momentum coefficient: $(parameters.momentum)")
         end
         # Run the training
-        train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+        train!(parameters, model, opt, descriptorref)
     end
 
     # Stop the timer

@@ -248,11 +248,11 @@ function optInit(parameters)
 end
 
 """
-function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+function train!(parameters, model, opt, descriptorref)
 
 Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) training iterations
 """
-function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
+function train!(parameters, model, opt, descriptorref)
     # Initialize the list of loss values
     losses = []
     # Run training iterations
@@ -260,8 +260,7 @@ function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
     while iteration <= parameters.iters
         iterString = lpad(iteration, 2, '0')
         println("Iteration $(iteration)...")
-        inputs = [(confs[rand(rng_xor, 1:length(confs))], parameters, model) 
-                for worker in workers()]
+        inputs = [(parameters, model) for worker in workers()]
      
         # Run the simulation in parallel
         outputs = pmap(mcsample!, inputs)
@@ -292,9 +291,6 @@ function train!(parameters, confs, model, opt, refconfs, descriptorref, rng_xor)
         updatemodel!(model, opt, lossGradients)
         # Move on to the next iteration
         iteration += 1
-        
-        # Load the reference configurations
-        confs = copy(refconfs)
     end
     println("The training is finished!")
     return
