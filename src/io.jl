@@ -212,7 +212,6 @@ Reads RDF produced by mcLJ.jl
 """
 function readRDF(rdfname)
     file = open(rdfname, "r")
-    println("Reading reference data from $(rdfname)...")
     lines = readlines(file)
     ncomments = 2
     nlines = length(lines) - ncomments
