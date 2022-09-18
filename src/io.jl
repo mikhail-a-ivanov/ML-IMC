@@ -1,14 +1,9 @@
 using BSON: @save, @load
 
-include("readLJ.jl")
-
 """
 mutable struct inputParms
 
 Fields:
-N: number of particles
-box: box vector, Å
-V: volume, Å^3
 T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
 delta: max displacement, Å
@@ -19,28 +14,25 @@ stepAdjustFreq: frequency of MC step adjustment
 targetAR: target acceptance ratio
 xyzout: XYZ output frequency
 outfreq: output frequency
-binWidth: histogram bin width, Å
-Nbins: number of histogram bins
 iters: number of learning iterations
 activation: activation function
 optimizer: type of optimizer
 rate: learning rate
 momentum: momentum coefficient
 topname: name of the topology file
+N: number of particles
+atomname: atomic symbol
+box: box vector, Å
+V: volume, Å^3
 trajfile: name of the trajectory file
 rdfname: reference RDF file
-paircorr: type of pair correlations (RDF or histogram)
+Nbins: number of histogram bins
+binWidth: histogram bin width, Å
 neurons: number of neurons in the hidden layers
-paramsInit: type of network parameters initialization
-shift: shift parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
-stiffness: stiffness parameter in the repulsion guess (stiffness*[exp(-alpha*r)-shift])
 modelname: name of the trained model file
 mode: ML-IMC mode: training with reference data or simulation using a trained model
 """
 mutable struct inputParms
-    N::Int
-    box::Vector{Float32}
-    V::Float32
     T::Float64
     β::Float64
     delta::Float32
@@ -51,8 +43,6 @@ mutable struct inputParms
     targetAR::Float64
     xyzout::Int 
     outfreq::Int
-    binWidth::Float32
-    Nbins::Int
     iters::Int
     activation::String
     optimizer::String
@@ -60,10 +50,14 @@ mutable struct inputParms
     momentum::Float64
     trajfile::String
     topname::String
+    N::Int
+    atomname::String
+    box::Vector{Float32}
+    V::Float32
     rdfname::String
-    paircorr::String
+    Nbins::Int
+    binWidth::Float32
     neurons::Vector{Int}
-    paramsInit::String
     modelname::String
     mode::String
 end
@@ -96,19 +90,32 @@ function parametersInit()
     for (field, fieldtype) in zip(fields, fieldtypes(inputParms))
         for line in splittedLines
             if length(line) != 0 && field == line[1]
-                if field == "box"
-                    box = zeros(3)
-                    box[1] = parse(Float32, line[3])
-                    box[2] = parse(Float32, line[4])
-                    box[3] = parse(Float32, line[5])
-                    append!(vars, [box])
-                    V = prod(box)
-                    append!(vars, V)       
-                elseif field == "T"
+                if field == "T"
                     T = parse(Float64, line[3])
                     β = 1/(kB * T)
                     append!(vars, T)  
                     append!(vars, β)
+                elseif field == "topname"
+                    topname = [line[3]]
+                    pdb = Trajectory("$(topname[1])")
+                    pdb_frame = read(pdb)
+                    N = length(pdb_frame)
+                    atomname = name(Atom(pdb_frame, 1))
+                    box = lengths(UnitCell(pdb_frame))
+                    V = box[1] * box[2] * box[3]
+                    append!(vars, topname)
+                    append!(vars, N)
+                    append!(vars, [atomname])
+                    append!(vars, [box])
+                    append!(vars, V)
+                elseif field == "rdfname"
+                    rdfname = [line[3]]
+                    bins, rdf = readRDF("$(rdfname[1])")
+                    Nbins = length(bins)
+                    binWidth = bins[1]
+                    append!(vars, [rdfname[1]])
+                    append!(vars, Nbins)
+                    append!(vars, binWidth)
                 elseif field == "neurons"
                     neurons = []
                     for (elementId, element) in enumerate(line)
@@ -147,30 +154,19 @@ Initializes input data
 """
 function inputInit(parameters)
     # Read reference histogram
-    bins, rdfref, histref = readRDF(parameters.rdfname)
-
-    # Allocate a vector for the reference descriptor data
-    descriptorref = zeros(Float32, length(bins))
-
-    if parameters.paircorr == "RDF"
-        descriptorref = rdfref
-    elseif parameters.paircorr == "histogram"
-        # Normalize the reference histogram to per particle histogram
-        histref ./= parameters.N / 2 # Number of pairs divided by the number of particles
-        descriptorref = histref
-    end
+    bins, rdfref = readRDF(parameters.rdfname)
 
     if parameters.mode == "training"
         # Initialize the optimizer
         opt = optInit(parameters)
         # Initialize the model
-        model = modelInit(descriptorref, parameters)
+        model = modelInit(parameters)
     else
         @load parameters.modelname model
     end
 
     if parameters.mode == "training"
-        return(model, opt, descriptorref)
+        return(model, opt, rdfref)
     else
         return(model)
     end
@@ -184,11 +180,7 @@ Writes the descriptor into a file
 function writedescriptor(outname, descriptor, parameters)
     bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
     io = open(outname, "w")
-    if parameters.paircorr == "RDF"
-        print(io, "# r, Å; RDF \n")
-    elseif parameters.paircorr == "histogram"
-        print(io, "# r, Å; Distance histogram \n")
-    end
+    print(io, "# r, Å; RDF \n")
     print(io, @sprintf("%6.3f %12.3f", bins[1], 0), "\n")
     for i in 2:length(descriptor)
         print(io, @sprintf("%6.3f %12.3f", bins[i], descriptor[i]), "\n")
@@ -211,4 +203,28 @@ function writeenergies(outname, energies, parameters, slicing=10)
         print(io, "\n")
     end
     close(io)
+end
+
+"""
+readRDF(rdfname)
+
+Reads RDF produced by mcLJ.jl
+"""
+function readRDF(rdfname)
+    file = open(rdfname, "r")
+    println("Reading reference data from $(rdfname)...")
+    lines = readlines(file)
+    ncomments = 2
+    nlines = length(lines) - ncomments
+    bins = zeros(nlines)
+    rdf = zeros(nlines)
+    for i in (1 + ncomments):length(lines)
+        rdfline = split(lines[i])
+        if rdfline[1] != "#"
+            bins[i - ncomments] = parse(Float32, rdfline[1])
+            rdf[i - ncomments] = parse(Float32, rdfline[2])
+        end
+    end
+    return(bins, rdf)
+    close(file)
 end

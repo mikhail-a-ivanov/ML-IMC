@@ -199,15 +199,12 @@ function buildchain(args...)
 end
 
 """
-function modelInit(descriptor, parameters)
+function modelInit(parameters)
 
-Generates a neural network with or without repulsion term in the input layer.
-If parameters.paramsInit is set to repulsion then the repulsion terms are applied 
-for each set of weights associated with a single neuron in the next layer.
-Weights in all the other layers are set to unity.
-Otherwise all the weights are set to random and biases to zero
+Generates a neural network with zero weigths
+in the first layer and random values in other layers
 """
-function modelInit(descriptor, parameters)
+function modelInit(parameters)
     # Build initial model
     network = buildNetwork!(parameters)
     println("Building a model...")
@@ -215,15 +212,12 @@ function modelInit(descriptor, parameters)
     println(model)
     println("   Number of layers: $(length(parameters.neurons)) ")
     println("   Number of neurons in each layer: $(parameters.neurons)")
-    println("   Parameter initialization: $(parameters.paramsInit)")
-    if parameters.paramsInit == "zero"
-        nlayers = length(model.layers)
-        # Initialize weights
-        for (layerId, layer) in enumerate(model.layers)
-            for column in eachrow(layer.weight)
-                if layerId == 1
-                    Flux.Optimise.update!(column, column)
-                end
+    nlayers = length(model.layers)
+    # Initialize weights
+    for (layerId, layer) in enumerate(model.layers)
+        for column in eachrow(layer.weight)
+            if layerId == 1
+                Flux.Optimise.update!(column, column)
             end
         end
     end

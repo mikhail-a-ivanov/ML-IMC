@@ -11,7 +11,6 @@ BLAS.set_num_threads(1)
     include("src/network.jl")
     include("src/base.jl")
     include("src/io.jl")
-    include("src/readLJ.jl")
 end
 
 function main()
@@ -38,10 +37,11 @@ function main()
         println("Running simulation without hard wall potential.")
     end
     println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
-    println("Using $(parameters.paircorr) as a pair descriptor")
 
     if parameters.mode == "training"
-        println("Using $(parameters.activation) activation")
+        if length(model) > 1
+            println("Using $(parameters.activation) activation in the hidden layers")
+        end
         println("Number of iterations: $(parameters.iters)")
         println("Optimizer type: $(parameters.optimizer)")
         println("Learning rate: $(parameters.rate)")

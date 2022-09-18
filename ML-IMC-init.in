@@ -1,7 +1,3 @@
-# System
-N              = 512                  # Number of particles
-box            = 29.124 29.124 29.124 # Box vectors [Å]
-
 # Conditions
 T              = 95.0                 # [K]
 
@@ -16,11 +12,7 @@ targetAR       = 0.5                  # Target acceptance ratio
 
 # Output control          
 xyzout         = 0                    # XYZ output frequency
-outfreq        = 500                  # Output frequency
-
-# RDF parameters          
-binWidth       = 0.1                  # [Å]
-Nbins          = 100                  # Number of bins
+outfreq        = 500                  # Output frequency      
 
 # Network parameters
 paramsInit     = zero                  # Type of network parameter initialization (random or zero)
@@ -34,6 +26,6 @@ momentum       = 0.75                  # Momentum coefficient
 
 # Input files
 trajfile       = LJ-data/512Ar/mctraj-p001.xtc   # Input configuration file
-topname        = LJ-data/512Ar/confout-p001.pdb   # Topology name
+topname        = LJ-data/512Ar/confout-p001.pdb  # Topology name
 rdfname        = LJ-data/512Ar/rdf-mean-p6.dat   # Reference RDF file
 modelname      = model-iter-25.bson              # Name of a trained model file (simulation mode)

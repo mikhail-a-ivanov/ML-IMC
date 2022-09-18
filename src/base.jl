@@ -83,9 +83,7 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     # Allocate and compute the pair descriptor
     pairdescriptor1 = zeros(Float32, parameters.Nbins)
     histpart!(distanceVector, pairdescriptor1, parameters.binWidth)
-    if parameters.paircorr == "RDF"
-        normalizehist!(pairdescriptor1, parameters)
-    end
+    normalizehist!(pairdescriptor1, parameters)
     
     # Compute the energy
     E1 = neuralenergy(pairdescriptor1, model)
@@ -133,9 +131,7 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     # Compute the new descriptor
     pairdescriptor2 = zeros(Float32, parameters.Nbins)
     histpart!(distanceVector, pairdescriptor2, parameters.binWidth)
-    if parameters.paircorr == "RDF"
-        normalizehist!(pairdescriptor2, parameters)
-    end
+    normalizehist!(pairdescriptor2, parameters)
     
     # Compute the energy again
     E2 = neuralenergy(pairdescriptor2, model)
@@ -279,8 +275,6 @@ MC step length adjustment
 """
 function stepAdjustment!(parameters, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / parameters.stepAdjustFreq
-    #println("Current acceptance ratio = $(round(acceptanceRatio, digits=4))")
     parameters.delta = acceptanceRatio * parameters.delta / parameters.targetAR
-    #println("New maximum displacement length = $(round((parameters.delta * parameters.sigma), digits=4)) Å")
     return(parameters)
 end
