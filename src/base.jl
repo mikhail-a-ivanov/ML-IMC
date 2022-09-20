@@ -189,7 +189,9 @@ function mcsample!(input)
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Unpack the inputs
-    parameters, systemParms, model = input
+    parameters = input.parameters
+    systemParms = input.systemParms
+    model = input.model
 
     # Get the number of data points
     totalDataPoints = Int(parameters.steps / parameters.outfreq)
@@ -262,9 +264,10 @@ function mcsample!(input)
     println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     if parameters.mode == "training"
-        return(pairdescriptorNN, energies, crossAccumulators, acceptanceRatio)
+        MCoutput = MCTrainingOutputs(pairdescriptorNN, energies, crossAccumulators, acceptanceRatio, systemParms)
+        return(MCoutput)
     else
-        return(pairdescriptorNN, energies, acceptanceRatio)
+        return(pairdescriptorNN, energies, acceptanceRatio, systemParms)
     end
 end
 

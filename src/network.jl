@@ -3,6 +3,20 @@ using LinearAlgebra
 using Flux
 using BSON: @save, @load
 
+struct MCInput
+    parameters
+    systemParms
+    model
+end
+
+struct MCTrainingOutputs
+    descriptor
+    energies
+    crossAccumulators
+    acceptanceRatio
+    systemParms
+end
+
 """
 function energyGradients(descriptor, model)
 
@@ -237,6 +251,21 @@ function optInit(parameters)
 end
 
 """
+function collectAverages(name, outputs, outputIDs)
+
+USE THIS: getfield(structName, fieldnames(struct))!!!
+
+Collects averages of a given name from pmap outputs
+"""
+function collectAverages(propertyName, outputs, outputIDs)
+    averages = []
+    for outputID in outputIDs
+        append!(averages, [outputs[outputID].propertyName])
+    end
+    return(mean(average for average in averages))
+end
+
+"""
 function train!(parameters, systemParmsList, model, opt, refRDFs)
 
 Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) training iterations
@@ -253,35 +282,79 @@ function train!(parameters, systemParmsList, model, opt, refRDFs)
     while iteration <= parameters.iters
         iterString = lpad(iteration, 2, '0')
         println("Iteration $(iteration)...")
-        inputs = [(parameters, systemParms, model) for worker in workers()]
+        # Prepare multireference input
+        nsystems = length(systemParmsList)
+        multiReferenceInput = []
+        for systemId in 1:nsystems
+            input = MCInput(parameters, systemParmsList[systemId], model)
+            append!(multiReferenceInput, [input])
+        end 
+        nsets = Int(nworkers()/nsystems)
+        inputs = []
+        for setId in 1:nsets
+            append!(inputs, multiReferenceInput)
+        end
      
         # Run the simulation in parallel
         outputs = pmap(mcsample!, inputs)
 
-        pairdescriptorNN = mean([output[1] for output in outputs])
-        energies = mean([output[2] for output in outputs])
-        crossAccumulators = mean([output[3] for output in outputs])
-        meanAcceptanceRatio = mean([output[4] for output in outputs])
+        NNRDFs = []
+        energies = []
+        meanAcceptanceRatios = []
+        crossAccumulators = []
 
-        println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+        for systemId in 1:nsystems
+            systemParms = systemParmsList[systemId]
+            println("System $(systemParms.systemName):")
+            # Find the corresponding outputs
+            outputIDs = []
+            for outputID in eachindex(outputs)
+                if systemParms.systemName == outputs[outputID].systemParms
+                    append!(outputIDs, outputID)
+                end
+            end
+            NNRDF = collectAverages(descriptor, outputs, outputIDs)
+            append!(NNRDFs, [NNRDF])
+            meanSystemEnergy = collectAverages(energies, outputs, outputIDs)
+            append!(energies, [meanSystemEnergy])
+            meanAcceptanceRatio = collectAverages(acceptanceRatio, outputs, outputIDs)
+            println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+            append!(meanAcceptanceRatios, meanAcceptanceRatio)
+            crossAccumulator = collectAverages(crossAccumulators, outputs, outputIDs)
+            append!(crossAccumulators, crossAccumulator)
+        end
 
-        # Compute loss
-        lossvalue = loss(pairdescriptorNN, descriptorref)
+        # Compute average loss
+        lossvalue = 0
+        for systemId in 1:nsystems    
+            lossvalue += loss(NNRDFs[systemId], refRDFs[systemId])
+        end
+        lossvalue /= nsystems
         append!(losses, lossvalue)
-        
-        # Write the descriptor and compute the gradients
-        writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, systemParms)
-        lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, systemParms)
 
-        # Write averaged energies
-        writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)
+        # Compute the gradients and update the model
+        lossGradients = []
+
+        # Write the descriptor and compute the gradients
+        for systemId in 1:nsystems
+            systemParms = systemParmsList[systemId]
+            name = systemParms.systemName
+            writedescriptor("RDFNN-$(name)-iter-$(iterString).dat", NNRDFs[systemId], systemParms)
+            lossGradient = computeLossGradients(crossAccumulators[systemId], 
+                                                NNRDFs[systemId], refRDFs[systemId], model, systemParms)
+            append!(lossGradients, [lossGradient])
+
+            # Write averaged energies
+            writeenergies("energies-$(name)-iter-$(iterString).dat", energies[systemId], parameters, 10)
+        end
+        meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
 
         # Write the model (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
-        @save "gradients-iter-$(iterString).bson" lossGradients
+        @save "gradients-iter-$(iterString).bson" meanLossGradients
 
         # Update the model if the loss decreased
-        updatemodel!(model, opt, lossGradients)
+        updatemodel!(model, opt, meanLossGradients)
         # Move on to the next iteration
         iteration += 1
     end

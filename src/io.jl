@@ -214,7 +214,6 @@ function inputInit(parameters, systemParmsList)
         bins, rdfref = readRDF(systemParms.rdfname)
         append!(refRDFs, [rdfref])
     end
-    println(refRDFs[1])
 
     if parameters.mode == "training"
         # Initialize the optimizer
