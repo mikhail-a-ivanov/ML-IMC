@@ -46,21 +46,21 @@ function computeCrossCorrelation(descriptor, energyGradients)
 end
 
 """
-function crossAccumulatorsInit(parameters)
+function crossAccumulatorsInit(parameters, systemParms)
 
 Initialize cross correlation accumulator arrays
 """
-function crossAccumulatorsInit(parameters)
+function crossAccumulatorsInit(parameters, systemParms)
     crossAccumulators = []
     nlayers = length(parameters.neurons)
     for layerId in 2:nlayers
         if layerId < nlayers
-            append!(crossAccumulators, [zeros(Float32, (parameters.Nbins, 
+            append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
                     parameters.neurons[layerId - 1] * parameters.neurons[layerId]))])
-            append!(crossAccumulators, [zeros(Float32, (parameters.Nbins, 
+            append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
                     parameters.neurons[layerId]))])
         else
-            append!(crossAccumulators, [zeros(Float32, (parameters.Nbins, 
+            append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
                     parameters.neurons[layerId - 1] * parameters.neurons[layerId]))])
         end
     end
@@ -95,23 +95,23 @@ function computeEnsembleCorrelation(descriptor, model)
 end
 
 """
-function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, parameters)
+function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
 
 Computes the gradients of the descriptor with respect to the network parameters
 """
-function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, parameters)
+function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     descriptorGradients = []
     for (accumulator, ensemble) in zip(crossAccumulators, ensembleCorrelations)
-        gradients = -Float32(parameters.β) .* (accumulator - ensemble)
+        gradients = -Float32(systemParms.β) .* (accumulator - ensemble)
         append!(descriptorGradients, [gradients])
     end
     return(descriptorGradients)
 end
 
-function computeLossGradients(crossAccumulators, descriptorNN, descriptorref, model, parameters)
+function computeLossGradients(crossAccumulators, descriptorNN, descriptorref, model, systemParms)
     lossGradients = []
     ensembleCorrelations = computeEnsembleCorrelation(descriptorNN, model)
-    descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, parameters)
+    descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     # Compute derivative of loss with respect to the descriptor
     dLdS = zeros(Float32, length(descriptorNN))
     for i in 1:length(dLdS)
@@ -159,11 +159,6 @@ Combines input arguments for neural network building
 Note: updates parameters.neurons
 """
 function buildNetwork!(parameters)
-    if parameters.neurons == [0]
-        parameters.neurons = []
-    end
-    # Add input and output layers to the parameters.neurons
-    pushfirst!(parameters.neurons, parameters.Nbins)
     push!(parameters.neurons, 1)
     nlayers = length(parameters.neurons)
     network = []
@@ -242,19 +237,23 @@ function optInit(parameters)
 end
 
 """
-function train!(parameters, model, opt, descriptorref)
+function train!(parameters, systemParmsList, model, opt, refRDFs)
 
 Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) training iterations
 """
-function train!(parameters, model, opt, descriptorref)
+function train!(parameters, systemParmsList, model, opt, refRDFs)
     # Initialize the list of loss values
     losses = []
     # Run training iterations
     iteration = 1
+    ### REMOVE LATER
+    descriptorref = refRDFs[1]
+    systemParms = systemParmsList[1] # I will check the new parameters structs only
+    ###
     while iteration <= parameters.iters
         iterString = lpad(iteration, 2, '0')
         println("Iteration $(iteration)...")
-        inputs = [(parameters, model) for worker in workers()]
+        inputs = [(parameters, systemParms, model) for worker in workers()]
      
         # Run the simulation in parallel
         outputs = pmap(mcsample!, inputs)
@@ -271,8 +270,8 @@ function train!(parameters, model, opt, descriptorref)
         append!(losses, lossvalue)
         
         # Write the descriptor and compute the gradients
-        writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, parameters)
-        lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, parameters)
+        writedescriptor("descriptorNN-iter-$(iterString).dat", pairdescriptorNN, systemParms)
+        lossGradients = computeLossGradients(crossAccumulators, pairdescriptorNN, descriptorref, model, systemParms)
 
         # Write averaged energies
         writeenergies("energies-iter-$(iterString).dat", energies, parameters, 10)

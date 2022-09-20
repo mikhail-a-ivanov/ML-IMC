@@ -30,16 +30,16 @@ function histpart!(distanceVector, hist, binWidth)
 end
 
 """
-normalizehist!(hist, parameters)
+normalizehist!(hist, systemParms)
 
 Normalizes one particle distance histogram to RDF
 """
-function normalizehist!(hist, parameters)
-    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
-    shellVolumes = [4*π*parameters.binWidth*bins[i]^2 for i in 1:length(bins)]
-    rdfNorm = ones(Float32, parameters.Nbins)
+function normalizehist!(hist, systemParms)
+    bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
+    shellVolumes = [4*π*systemParms.binWidth*bins[i]^2 for i in 1:length(bins)]
+    rdfNorm = ones(Float32, systemParms.Nbins)
     for i in 2:length(rdfNorm)
-        rdfNorm[i] = parameters.V/parameters.N * 1/shellVolumes[i]
+        rdfNorm[i] = systemParms.V/systemParms.N * 1/shellVolumes[i]
     end
     hist .*= rdfNorm
     return(hist)
@@ -57,13 +57,13 @@ function neuralenergy(inputlayer, model)
 end
 
 """
-mcmove!(mcarrays, E, model, parameters, step, rng)
+mcmove!(mcarrays, E, model, parameters, systemParms, step, rng)
 
 Performs a Metropolis Monte Carlo
 displacement move using a neural network
 to predict energies from pair correlation functions (pairdescriptor)
 """
-function mcmove!(mcarrays, E, model, parameters, step, rng)
+function mcmove!(mcarrays, E, model, parameters, systemParms, step, rng)
     # Acceptance counter
     accepted = 0
 
@@ -81,17 +81,17 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     distanceVector = distanceMatrix[:, pointIndex]
 
     # Allocate and compute the pair descriptor
-    pairdescriptor1 = zeros(Float32, parameters.Nbins)
-    histpart!(distanceVector, pairdescriptor1, parameters.binWidth)
-    normalizehist!(pairdescriptor1, parameters)
+    pairdescriptor1 = zeros(Float32, systemParms.Nbins)
+    histpart!(distanceVector, pairdescriptor1, systemParms.binWidth)
+    normalizehist!(pairdescriptor1, systemParms)
     
     # Compute the energy
     E1 = neuralenergy(pairdescriptor1, model)
     
     # Displace the particle
-    dr = [parameters.delta*(rand(rng, Float64) - 0.5), 
-          parameters.delta*(rand(rng, Float64) - 0.5), 
-          parameters.delta*(rand(rng, Float64) - 0.5)]
+    dr = [systemParms.delta*(rand(rng, Float64) - 0.5), 
+    systemParms.delta*(rand(rng, Float64) - 0.5), 
+    systemParms.delta*(rand(rng, Float64) - 0.5)]
 
     
     positions(frame)[:, pointIndex] += dr
@@ -101,14 +101,14 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
 
     # Reject the move prematurely if a single pair distance
     # is below the repulsion limit
-    if parameters.repulsionLimit > 0
+    if systemParms.repulsionLimit > 0
         for distance in distanceVector
-            if distance < parameters.repulsionLimit && distance > 0.
+            if distance < systemParms.repulsionLimit && distance > 0.
                 # Revert to the previous configuration
                 positions(frame)[:, pointIndex] -= dr
                 # Update the descriptor data
                 if step % parameters.outfreq == 0 && step > parameters.Eqsteps
-                    for i in 1:parameters.Nbins
+                    for i in 1:systemParms.Nbins
                         pairdescriptorNN[i] += pairdescriptor1[i] 
                     end
                     if parameters.mode == "training"
@@ -129,9 +129,9 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     end
     
     # Compute the new descriptor
-    pairdescriptor2 = zeros(Float32, parameters.Nbins)
-    histpart!(distanceVector, pairdescriptor2, parameters.binWidth)
-    normalizehist!(pairdescriptor2, parameters)
+    pairdescriptor2 = zeros(Float32, systemParms.Nbins)
+    histpart!(distanceVector, pairdescriptor2, systemParms.binWidth)
+    normalizehist!(pairdescriptor2, systemParms)
     
     # Compute the energy again
     E2 = neuralenergy(pairdescriptor2, model)
@@ -139,7 +139,7 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
     # Get energy difference
     ΔE = E2 - E1
     
-    if rand(rng, Float64) < exp(-ΔE*parameters.β)
+    if rand(rng, Float64) < exp(-ΔE*systemParms.β)
         accepted += 1
         E += ΔE
         # Update distance matrix
@@ -147,7 +147,7 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
         distanceMatrix[:, pointIndex] = distanceVector
         # Update the descriptor data
         if step % parameters.outfreq == 0 && step > parameters.Eqsteps
-            for i in 1:parameters.Nbins
+            for i in 1:systemParms.Nbins
                 pairdescriptorNN[i] += pairdescriptor2[i] 
             end
             if parameters.mode == "training"
@@ -159,7 +159,7 @@ function mcmove!(mcarrays, E, model, parameters, step, rng)
         positions(frame)[:, pointIndex] -= dr
         # Update the descriptor data
         if step % parameters.outfreq == 0 && step > parameters.Eqsteps
-            for i in 1:parameters.Nbins
+            for i in 1:systemParms.Nbins
                 pairdescriptorNN[i] += pairdescriptor1[i] 
             end
             if parameters.mode == "training"
@@ -179,7 +179,7 @@ end
 
 """
 mcsample!(input)
-(input = parameters, model)
+(input = parameters, systemParms, model)
 Runs the Monte Carlo simulation for a given
 input configuration, set of parameters
 and the neural network model
@@ -189,14 +189,14 @@ function mcsample!(input)
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Unpack the inputs
-    parameters, model = input
+    parameters, systemParms, model = input
 
     # Get the number of data points
     totalDataPoints = Int(parameters.steps / parameters.outfreq)
     prodDataPoints = Int((parameters.steps - parameters.Eqsteps) / parameters.outfreq)
 
     # Take a random frame from the equilibrated trajectory
-    traj = Trajectory(parameters.trajfile)
+    traj = Trajectory(systemParms.trajfile)
     nframes = Int(size(traj)) - 1
     frameId = rand(rng_xor, Int(nframes/2):nframes) # Take frames from the second half
     frame = deepcopy(read_step(traj, frameId))
@@ -208,12 +208,12 @@ function mcsample!(input)
     E::Float64 = 0.
 
     # Allocate the pair correlation functions
-    pairdescriptorNN = zeros(Float32, parameters.Nbins)
+    pairdescriptorNN = zeros(Float32, systemParms.Nbins)
 
     # Prepare a tuple of arrays that change duing the mcmove!
     # and optionally build the cross correlation arrays
     if parameters.mode == "training"
-        crossAccumulators = crossAccumulatorsInit(parameters)
+        crossAccumulators = crossAccumulatorsInit(parameters, systemParms)
         mcarrays = (frame, distanceMatrix, pairdescriptorNN, crossAccumulators)
     else
         mcarrays = (frame, distanceMatrix, pairdescriptorNN)
@@ -228,7 +228,7 @@ function mcsample!(input)
 
     # Run MC simulation
     @inbounds @fastmath for step in 1:parameters.steps
-        mcarrays, E, accepted = mcmove!(mcarrays, E, model, parameters, step, rng_xor)
+        mcarrays, E, accepted = mcmove!(mcarrays, E, model, parameters, systemParms, step, rng_xor)
         acceptedTotal += accepted
         acceptedIntermediate += accepted
 
@@ -238,7 +238,7 @@ function mcsample!(input)
 
         # Perform MC step adjustment during the equilibration
         if parameters.stepAdjustFreq > 0 && step % parameters.stepAdjustFreq == 0 && step < parameters.Eqsteps
-            stepAdjustment!(parameters, acceptedIntermediate)
+            stepAdjustment!(systemParms, parameters, acceptedIntermediate)
             acceptedIntermediate = 0
         end
     end
@@ -258,7 +258,7 @@ function mcsample!(input)
     # Normalize the pair correlation functions
     pairdescriptorNN ./= prodDataPoints
 
-    println("Max displacement = ", round(parameters.delta, digits=4))
+    println("Max displacement = ", round(systemParms.delta, digits=4))
     println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     if parameters.mode == "training"
@@ -269,12 +269,12 @@ function mcsample!(input)
 end
 
 """
-function stepAdjustment!(parameters, acceptedIntermediate)
+function stepAdjustment!(systemParms, parameters, acceptedIntermediate)
 
 MC step length adjustment
 """
-function stepAdjustment!(parameters, acceptedIntermediate)
+function stepAdjustment!(systemParms, parameters, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / parameters.stepAdjustFreq
-    parameters.delta = acceptanceRatio * parameters.delta / parameters.targetAR
-    return(parameters)
+    systemParms.delta = acceptanceRatio * systemParms.delta / systemParms.targetAR
+    return(systemParms)
 end

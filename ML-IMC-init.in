@@ -1,36 +1,19 @@
-# Conditions
-T              = 95.0                 # [K]
+# Global parameters
+systemFiles    = 100CH3OH-CG.in       # List of input filenames for each system
+mode           = training             # Run MC sampling (simulation) or ML-IMC optimization (training)         
+#modelname      = model-iter-25.bson   # Name of a trained model file (simulation mode)
 
 # Monte Carlo parameters
-mode           = training             # Run MC sampling (simulation) or ML-IMC optimization (training)          
-delta          = 0.75                 # Max displacement [Å]
-repulsionLimit = 2.75                 # Hard wall potential limit [Å]
 steps          = 1000000              # Total number of MC steps
 Eqsteps        = 500000               # Equilibration MC steps
-stepAdjustFreq = 50000                # Frequency of MC step adjustment
-targetAR       = 0.5                  # Target acceptance ratio
-
-# Output control          
+stepAdjustFreq = 50000                # Frequency of MC step adjustment     
 xyzout         = 0                    # XYZ output frequency
 outfreq        = 500                  # Output frequency      
 
 # Network parameters
-paramsInit     = zero                  # Type of network parameter initialization (random or zero)
-neurons        = 30                     # Number of neurons in the hidden layer (0 for no hidden layers)
-paircorr       = RDF                   # Type of pair correlations (RDF or histogram)
-iters          = 10                    # Number of learning iterations
+neurons        = 300, 50               # Number of neurons in the network (without the output neuron)
+iters          = 5                     # Number of learning iterations
 activation     = tanh                  # Activation function
 optimizer      = Momentum              # Optimizer (other options - Descent)
-rate           = 0.0005                # Learning rate
+rate           = 0.005                 # Learning rate
 momentum       = 0.75                  # Momentum coefficient
-
-# Input files
-trajfile       = methanol-data/100CH3OH/100CH3OH-CG-200.xtc  # Input configuration file
-topname        = methanol-data/100CH3OH/100CH3OH-CG.pdb      # Topology name
-rdfname        = methanol-data/100CH3OH/100CH3OH-CG.rdf      # Reference RDF file
-modelname      = model-iter-25.bson                         # Name of a trained model file (simulation mode)
-
-#trajfile       = LJ-data/512Ar/mctraj-p001.xtc   # Input configuration file
-#topname        = LJ-data/512Ar/confout-p001.pdb  # Topology name
-#rdfname        = LJ-data/512Ar/rdf-mean-p6.dat   # Reference RDF file
-#modelname      = model-iter-25.bson              # Name of a trained model file (simulation mode)

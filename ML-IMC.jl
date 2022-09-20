@@ -18,12 +18,15 @@ function main()
     startTime = Dates.now()
 
     # Initialize the parameters
-    parameters = parametersInit()
+    parameters, systemParmsList = parametersInit()
+    
+    # Check if the number of workers is divisble by the number of ref systems
+    @assert nworkers() % length(systemParmsList) == 0
 
     # Initialize the input data
-    inputs = inputInit(parameters)
+    inputs = inputInit(parameters, systemParmsList)
     if parameters.mode == "training"
-        model, opt, descriptorref = inputs
+        model, opt, refRDFs = inputs
     else
         model = inputs
     end
@@ -31,11 +34,6 @@ function main()
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Starting at: ", startTime)
     println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
-    if parameters.repulsionLimit > 0
-        println("Using hard wall potential for distances shorter than $(parameters.repulsionLimit) A")
-    else
-        println("Running simulation without hard wall potential.")
-    end
     println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
 
     if parameters.mode == "training"
@@ -49,7 +47,7 @@ function main()
             println("Momentum coefficient: $(parameters.momentum)")
         end
         # Run the training
-        train!(parameters, model, opt, descriptorref)
+        train!(parameters, systemParmsList, model, opt, refRDFs)
     end
 
     # Stop the timer

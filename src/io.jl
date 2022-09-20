@@ -4,10 +4,7 @@ using BSON: @save, @load
 mutable struct inputParms
 
 Fields:
-T: temperature, K
-β: 1/(kB*T), reciprocal kJ/mol
-delta: max displacement, Å
-repulsionLimit: hard wall potential limit, Å
+systemFiles: list of input filenames for each system
 steps: total number of steps
 Eqsteps: equilibration steps
 stepAdjustFreq: frequency of MC step adjustment
@@ -19,28 +16,15 @@ activation: activation function
 optimizer: type of optimizer
 rate: learning rate
 momentum: momentum coefficient
-topname: name of the topology file
-N: number of particles
-atomname: atomic symbol
-box: box vector, Å
-V: volume, Å^3
-trajfile: name of the trajectory file
-rdfname: reference RDF file
-Nbins: number of histogram bins
-binWidth: histogram bin width, Å
 neurons: number of neurons in the hidden layers
 modelname: name of the trained model file
 mode: ML-IMC mode: training with reference data or simulation using a trained model
 """
 mutable struct inputParms
-    T::Float64
-    β::Float64
-    delta::Float32
-    repulsionLimit::Float32  
+    systemFiles::Vector{String}
     steps::Int
     Eqsteps::Int
     stepAdjustFreq::Int
-    targetAR::Float64
     xyzout::Int 
     outfreq::Int
     iters::Int
@@ -48,18 +32,46 @@ mutable struct inputParms
     optimizer::String
     rate::Float64
     momentum::Float64
+    neurons::Vector{Int}
+    mode::String
+    modelname::String
+end
+
+"""
+mutable struct systemParameters
+Fields:
+systemName: name of the system
+topname: name of the topology file
+trajfile: name of the trajectory file
+N: number of particles
+atomname: atomic symbol
+box: box vector, Å
+V: volume, Å^3
+rdfname: reference RDF file
+Nbins: number of histogram bins
+binWidth: histogram bin width, Å
+repulsionLimit: minimum allowed pair distance (at which RDF > 0), Å
+T: temperature, K
+β: 1/(kB*T), reciprocal kJ/mol
+delta: max displacement, Å
+targetAR: target acceptance ratio
+"""
+mutable struct systemParameters
+    systemName::String
     trajfile::String
     topname::String
     N::Int
     atomname::String
-    box::Vector{Float32}
-    V::Float32
+    box::Vector{Float64}
+    V::Float64
     rdfname::String
     Nbins::Int
-    binWidth::Float32
-    neurons::Vector{Int}
-    modelname::String
-    mode::String
+    binWidth::Float64
+    repulsionLimit::Float64
+    T::Float64
+    β::Float64
+    delta::Float64
+    targetAR::Float64
 end
 
 """
@@ -90,32 +102,16 @@ function parametersInit()
     for (field, fieldtype) in zip(fields, fieldtypes(inputParms))
         for line in splittedLines
             if length(line) != 0 && field == line[1]
-                if field == "T"
-                    T = parse(Float64, line[3])
-                    β = 1/(kB * T)
-                    append!(vars, T)  
-                    append!(vars, β)
-                elseif field == "topname"
-                    topname = [line[3]]
-                    pdb = Trajectory("$(topname[1])")
-                    pdb_frame = read(pdb)
-                    N = length(pdb_frame)
-                    atomname = name(Atom(pdb_frame, 1))
-                    box = lengths(UnitCell(pdb_frame))
-                    V = box[1] * box[2] * box[3]
-                    append!(vars, topname)
-                    append!(vars, N)
-                    append!(vars, [atomname])
-                    append!(vars, [box])
-                    append!(vars, V)
-                elseif field == "rdfname"
-                    rdfname = [line[3]]
-                    bins, rdf = readRDF("$(rdfname[1])")
-                    Nbins = length(bins)
-                    binWidth = bins[2] - bins[1]
-                    append!(vars, [rdfname[1]])
-                    append!(vars, Nbins)
-                    append!(vars, binWidth)
+                if field == "systemFiles"
+                    systemFiles = []
+                    for (elementId, element) in enumerate(line)
+                        if elementId > 2 && element != "#"
+                            append!(systemFiles, [strip(element, ',')])
+                        elseif element == "#"
+                            break
+                        end
+                    end
+                    append!(vars, [systemFiles])
                 elseif field == "neurons"
                     neurons = []
                     for (elementId, element) in enumerate(line)
@@ -126,6 +122,13 @@ function parametersInit()
                         end
                     end
                     append!(vars, [neurons])
+                elseif field == "mode"
+                    mode = [line[3]]
+                    append!(vars, mode) 
+                    if mode[1] == "training"
+                        modelname = " "
+                        append!(vars, [modelname])
+                    end
                 else
                     if fieldtype != String
                         append!(vars, parse(fieldtype, line[3]))
@@ -144,17 +147,74 @@ function parametersInit()
     else
         println("Running ML-IMC in the simulation mode.\n") 
     end
-    return(parameters)
+
+    # Read system input files
+    systemParmsList = [] # list of systemParameters structs
+    systemFields = [String(field) for field in fieldnames(systemParameters)]
+    for inputname in parameters.systemFiles
+        systemVars = []
+        file = open(inputname, "r")
+        lines = readlines(file)
+        splittedLines = [split(line) for line in lines]
+        for (field, fieldtype) in zip(systemFields, fieldtypes(systemParameters))
+            for line in splittedLines
+                if length(line) != 0 && field == line[1]
+                    if field == "T"
+                        T = parse(fieldtype, line[3])
+                        β = 1/(kB * T)
+                        append!(systemVars, T)  
+                        append!(systemVars, β)
+                    elseif field == "topname"
+                        topname = [line[3]]
+                        pdb = Trajectory("$(topname[1])")
+                        pdb_frame = read(pdb)
+                        N = length(pdb_frame)
+                        atomname = name(Atom(pdb_frame, 1))
+                        box = lengths(UnitCell(pdb_frame))
+                        V = box[1] * box[2] * box[3]
+                        append!(systemVars, topname)
+                        append!(systemVars, N)
+                        append!(systemVars, [atomname])
+                        append!(systemVars, [box])
+                        append!(systemVars, V)
+                    elseif field == "rdfname"
+                        rdfname = [line[3]]
+                        bins, rdf = readRDF("$(rdfname[1])")
+                        Nbins = length(bins)
+                        binWidth = bins[1]
+                        append!(systemVars, [rdfname[1]])
+                        append!(systemVars, Nbins)
+                        append!(systemVars, binWidth)
+                    else
+                        if fieldtype != String
+                            append!(systemVars, parse(fieldtype, line[3]))
+                        else
+                            append!(systemVars, [line[3]])
+                        end
+                    end
+                end
+            end
+        end
+        systemParms = systemParameters(systemVars...)
+        append!(systemParmsList, [systemParms])
+    end
+
+    return(parameters, systemParmsList)
 end
 
 """
-function inputInit(parameters)
+function inputInit(parameters, systemParmsList)
 
 Initializes input data
 """
-function inputInit(parameters)
-    # Read reference histogram
-    bins, rdfref = readRDF(parameters.rdfname)
+function inputInit(parameters, systemParmsList)
+    refRDFs = []
+    # Read reference RDFs
+    for systemParms in systemParmsList
+        bins, rdfref = readRDF(systemParms.rdfname)
+        append!(refRDFs, [rdfref])
+    end
+    println(refRDFs[1])
 
     if parameters.mode == "training"
         # Initialize the optimizer
@@ -166,19 +226,19 @@ function inputInit(parameters)
     end
 
     if parameters.mode == "training"
-        return(model, opt, rdfref)
+        return(model, opt, refRDFs)
     else
         return(model)
     end
 end
 
 """
-function writedescriptor(outname, descriptor, parameters)
+function writedescriptor(outname, descriptor, systemParms)
 
 Writes the descriptor into a file
 """
-function writedescriptor(outname, descriptor, parameters)
-    bins = [bin*parameters.binWidth for bin in 1:parameters.Nbins]
+function writedescriptor(outname, descriptor, systemParms)
+    bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
     io = open(outname, "w")
     print(io, "# r, Å; RDF \n")
     print(io, @sprintf("%6.3f %12.3f", bins[1], 0), "\n")
