@@ -264,10 +264,11 @@ function mcsample!(input)
     println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     if parameters.mode == "training"
-        MCoutput = MCTrainingOutputs(pairdescriptorNN, energies, crossAccumulators, acceptanceRatio, systemParms)
+        MCoutput = MCAverages(pairdescriptorNN, energies, crossAccumulators, acceptanceRatio, systemParms)
         return(MCoutput)
     else
-        return(pairdescriptorNN, energies, acceptanceRatio, systemParms)
+        MCoutput = MCAverages(pairdescriptorNN, energies, nothing, acceptanceRatio, systemParms)
+        return(MCoutput)
     end
 end
 
