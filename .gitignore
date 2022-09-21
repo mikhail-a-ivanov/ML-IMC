@@ -11,3 +11,6 @@
 
 # Do not commit svg
 *.svg
+
+# Do not commit ipynb files
+*.ipynb
