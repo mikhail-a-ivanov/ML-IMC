@@ -3,6 +3,8 @@
 *.xyz
 *.out
 *.bson
+*.pdb
+*.xtc
 
 # Do not commit sh scripts
 *.sh

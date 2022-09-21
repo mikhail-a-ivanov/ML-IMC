@@ -3,12 +3,22 @@ using LinearAlgebra
 using Flux
 using BSON: @save, @load
 
+"""
+struct MCSampleInput
+
+Used for packaging mcsample! inputs
+"""
 struct MCSampleInput
     parameters
     systemParms
     model
 end
 
+"""
+struct MCAverages
+
+Used for packaging mcsample! outputs
+"""
 struct MCAverages
     descriptor
     energies
@@ -122,7 +132,13 @@ function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, sys
     return(descriptorGradients)
 end
 
-function computeLossGradients(crossAccumulators, descriptorNN, descriptorref, model, systemParms)
+"""
+function computeLossGradients(gradientInput)
+
+Computes the final loss-network gradients
+"""
+function computeLossGradients(gradientInput)
+    crossAccumulators, descriptorNN, descriptorref, model, systemParms = gradientInput
     lossGradients = []
     ensembleCorrelations = computeEnsembleCorrelation(descriptorNN, model)
     descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
@@ -348,16 +364,17 @@ function train!(parameters, systemParmsList, model, opt, refRDFs)
         # Collect averages corresponding to each reference system
         systemOutputs = collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, iterString)
 
-        # Compute loss and the gradients
-        lossGradients = []
+        # Collect inputs for gradient computation
+        gradientInputs = []
         for (systemId, systemOutput) in enumerate(systemOutputs)
             systemParms = systemParmsList[systemId]   
-            lossGradient = computeLossGradients(systemOutput.crossAccumulators, 
-                                                systemOutput.descriptor, refRDFs[systemId], 
-                                                model, systemParms)
-            append!(lossGradients, [lossGradient])
+            gradientInput = (systemOutput.crossAccumulators, 
+                            systemOutput.descriptor, refRDFs[systemId], 
+                            model, systemParms)
+            append!(gradientInputs, [gradientInput])
         end
-        # Average the gradients
+        # Compute and average the gradients
+        lossGradients = pmap(computeLossGradients, gradientInputs)
         meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
 
         # Write the model (before training!) and the gradients
