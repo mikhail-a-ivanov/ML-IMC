@@ -162,7 +162,7 @@ function loss(descriptorNN, descriptorref)
         loss[i] = (descriptorNN[i] - descriptorref[i])^2
     end
     totalLoss = sum(loss)
-    println("Loss = ", round(totalLoss, digits=8))
+    println("       Loss = ", round(totalLoss, digits=8))
     return(totalLoss)
 end
 
@@ -271,35 +271,58 @@ function prepMCInputs(parameters, systemParmsList, model)
 end
 
 """
-function collectSystemAverages(outputs, systemParmsList)
+function collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, iterString)
 
 Collects averages from different workers corresponding to one reference system
 """
-function collectSystemAverages(outputs, systemParmsList)
+function collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, iterString)
     systemOutputs = []
-    for systemParms in systemParmsList
+    for (systemId, systemParms) in enumerate(systemParmsList)
+        println("   System $(systemParms.systemName):") 
         meanDescriptor = []
         meanEnergies = []
-        meanCrossAccumulators = []
+        if parameters.mode == "training"
+            meanCrossAccumulators = []
+        end
         meanAcceptanceRatio = []
-        println("System $(systemParms.systemName):")
+        meanMaxDisplacement = []
         # Find the corresponding outputs
         for outputID in eachindex(outputs)
             if systemParms.systemName == outputs[outputID].systemParms.systemName
                 append!(meanDescriptor, [outputs[outputID].descriptor])
                 append!(meanEnergies, [outputs[outputID].energies])
-                append!(meanCrossAccumulators, [outputs[outputID].crossAccumulators])
+                if parameters.mode == "training"
+                    append!(meanCrossAccumulators, [outputs[outputID].crossAccumulators])
+                end
                 append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
+                append!(meanMaxDisplacement, [outputs[outputID].systemParms.delta])
             end
         end
         # Take averages from each worker
         meanDescriptor = mean(meanDescriptor)
         meanEnergies = mean(meanEnergies)
-        meanCrossAccumulators = mean(meanCrossAccumulators)
+        if parameters.mode == "training"
+            meanCrossAccumulators = mean(meanCrossAccumulators)
+        end
         meanAcceptanceRatio = mean(meanAcceptanceRatio)
-        systemOutput = MCAverages(meanDescriptor, meanEnergies, 
-                                      meanCrossAccumulators, meanAcceptanceRatio, systemParms)
+        meanMaxDisplacement = mean(meanMaxDisplacement)
+        if parameters.mode == "training"
+            systemOutput = MCAverages(meanDescriptor, meanEnergies, meanCrossAccumulators, 
+            meanAcceptanceRatio, systemParms)
+        else
+            systemOutput = MCAverages(meanDescriptor, meanEnergies, nothing, 
+            meanAcceptanceRatio, systemParms)
+        end
+        # Compute loss and print some output info
+        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+        println("       Max displacement = ", round(meanMaxDisplacement, digits=4))
+        loss(systemOutput.descriptor, refRDFs[systemId])
+
         append!(systemOutputs, [systemOutput])
+        # Write descriptors and energies
+        name = systemParms.systemName
+        writedescriptor("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
+        writeenergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, parameters, 10)
     end
     return(systemOutputs)
 end
@@ -314,7 +337,7 @@ function train!(parameters, systemParmsList, model, opt, refRDFs)
     iteration = 1
     while iteration <= parameters.iters
         iterString = lpad(iteration, 2, '0')
-        println("Iteration $(iteration)...")
+        println("\nIteration $(iteration)...")
         
         # Prepare multi-reference inputs
         inputs = prepMCInputs(parameters, systemParmsList, model)
@@ -323,21 +346,16 @@ function train!(parameters, systemParmsList, model, opt, refRDFs)
         outputs = pmap(mcsample!, inputs)
 
         # Collect averages corresponding to each reference system
-        systemOutputs = collectSystemAverages(outputs, systemParmsList)
+        systemOutputs = collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, iterString)
 
         # Compute loss and the gradients
         lossGradients = []
         for (systemId, systemOutput) in enumerate(systemOutputs)
-            systemParms = systemParmsList[systemId]    
-            loss(systemOutput.descriptor, refRDFs[systemId])
+            systemParms = systemParmsList[systemId]   
             lossGradient = computeLossGradients(systemOutput.crossAccumulators, 
                                                 systemOutput.descriptor, refRDFs[systemId], 
                                                 model, systemParms)
             append!(lossGradients, [lossGradient])
-            # Write descriptors and energies
-            name = systemParms.systemName
-            writedescriptor("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
-            writeenergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, parameters, 10)
         end
         # Average the gradients
         meanLossGradients = mean([lossGradient for lossGradient in lossGradients])

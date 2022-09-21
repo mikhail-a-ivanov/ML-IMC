@@ -1,14 +1,15 @@
 # Global parameters
-systemFiles    = 100CH3OH-CG.in       # List of input filenames for each system
-mode           = training             # Run MC sampling (simulation) or ML-IMC optimization (training)         
+# List of input filenames for each system
+systemFiles    = 100CH3OH-CG.in, 80CH3OH-CG.in, 60CH3OH-CG.in, 40CH3OH-CG.in 
+mode           = training              # Run MC sampling (simulation) or ML-IMC optimization (training)         
 #modelname      = model-iter-25.bson   # Name of a trained model file (simulation mode)
 
 # Monte Carlo parameters
 steps          = 1000000              # Total number of MC steps
 Eqsteps        = 500000               # Equilibration MC steps
 stepAdjustFreq = 50000                # Frequency of MC step adjustment     
-xyzout         = 0                    # XYZ output frequency
-outfreq        = 500                  # Output frequency      
+outfreq        = 500                  # Output frequency
+trajout        = 250000               # Trajectory output frequency      
 
 # Network parameters
 neurons        = 300, 50               # Number of neurons in the network (without the output neuron)

@@ -21,7 +21,8 @@ function main()
     parameters, systemParmsList = parametersInit()
     
     # Check if the number of workers is divisble by the number of ref systems
-    @assert nworkers() % length(systemParmsList) == 0
+    nsystems = length(systemParmsList)
+    @assert nworkers() % nsystems == 0
 
     # Initialize the input data
     inputs = inputInit(parameters, systemParmsList)
@@ -37,6 +38,10 @@ function main()
     println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
 
     if parameters.mode == "training"
+        println("Training a model using $(nsystems) reference system(s):")
+        for i in 1:nsystems
+            println("   $(systemParmsList[i].systemName)")
+        end
         if length(model) > 1
             println("Using $(parameters.activation) activation in the hidden layers")
         end

@@ -203,6 +203,11 @@ function mcsample!(input)
     frameId = rand(rng_xor, Int(nframes/2):nframes) # Take frames from the second half
     frame = deepcopy(read_step(traj, frameId))
 
+    # Get xtc and pdb filenames and write the first reference configuration
+    xtcFile = "traj-$(systemParms.systemName).xtc"
+    pdbFile = "confin-$(systemParms.systemName).pdb"
+    writetraj(positions(frame), systemParms, pdbFile, 'w')
+
     # Build the distance matrix
     distanceMatrix = builddistanceMatrix(frame)
 
@@ -238,6 +243,15 @@ function mcsample!(input)
             energies[Int(step/parameters.outfreq)] = E
         end
 
+        # Write XTC trajectory
+        if step % parameters.trajout == 0
+            if isfile(xtcFile)
+                writetraj(positions(mcarrays[1]), systemParms, xtcFile, 'a')
+            else
+                writetraj(positions(mcarrays[1]), systemParms, xtcFile, 'w')
+            end
+        end
+
         # Perform MC step adjustment during the equilibration
         if parameters.stepAdjustFreq > 0 && step % parameters.stepAdjustFreq == 0 && step < parameters.Eqsteps
             stepAdjustment!(systemParms, parameters, acceptedIntermediate)
@@ -260,8 +274,8 @@ function mcsample!(input)
     # Normalize the pair correlation functions
     pairdescriptorNN ./= prodDataPoints
 
-    println("Max displacement = ", round(systemParms.delta, digits=4))
-    println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
+    #println("Max displacement = ", round(systemParms.delta, digits=4))
+    #println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     if parameters.mode == "training"
         MCoutput = MCAverages(pairdescriptorNN, energies, crossAccumulators, acceptanceRatio, systemParms)

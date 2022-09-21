@@ -9,8 +9,8 @@ steps: total number of steps
 Eqsteps: equilibration steps
 stepAdjustFreq: frequency of MC step adjustment
 targetAR: target acceptance ratio
-xyzout: XYZ output frequency
 outfreq: output frequency
+trajout: trajectory output frequency
 iters: number of learning iterations
 activation: activation function
 optimizer: type of optimizer
@@ -25,8 +25,8 @@ mutable struct inputParms
     steps::Int
     Eqsteps::Int
     stepAdjustFreq::Int
-    xyzout::Int 
     outfreq::Int
+    trajout::Int
     iters::Int
     activation::String
     optimizer::String
@@ -262,6 +262,28 @@ function writeenergies(outname, energies, parameters, slicing=10)
         print(io, "\n")
     end
     close(io)
+end
+
+"""
+function writetraj(conf, systemParms, outname, mode='w')
+Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
+"""
+function writetraj(conf, systemParms, outname, mode='w')
+    # Create an empty Frame object
+    frame = Frame() 
+    # Set PBC vectors
+    boxCenter = systemParms.box ./ 2
+    set_cell!(frame, UnitCell(systemParms.box))
+    # Add wrapped atomic coordinates to the frame
+    for i in 1:systemParms.N
+        wrappedAtomCoords = wrap!(UnitCell(frame), conf[:, i]) .+ boxCenter
+        add_atom!(frame, Atom(systemParms.atomname), wrappedAtomCoords)
+    end
+    # Write to file
+    Trajectory(outname, mode) do traj
+        write(traj, frame)
+    end
+    return
 end
 
 """
