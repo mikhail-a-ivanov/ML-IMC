@@ -34,7 +34,11 @@ function main()
 
     println("Running MC simulation on $(nworkers()) rank(s)...\n")
     println("Starting at: ", startTime)
-    println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
+    if parameters.mode == "training"
+        println("Total number of steps per system: $(parameters.steps * nworkers() / 1E6 / nsystems)M")
+    else
+        println("Total number of steps: $(parameters.steps * nworkers() / 1E6)M")
+    end
     println("Number of equilibration steps per rank: $(parameters.Eqsteps / 1E6)M")
 
     if parameters.mode == "training"
@@ -53,6 +57,10 @@ function main()
         end
         # Run the training
         train!(parameters, systemParmsList, model, opt, refRDFs)
+    else
+        @assert nsystems == 1
+        println("MC sampling of $(systemParmsList[1].systemName) system using existing model")
+        simulate!(parameters, systemParmsList[1], model)
     end
 
     # Stop the timer

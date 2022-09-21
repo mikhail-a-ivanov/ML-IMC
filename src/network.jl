@@ -1,6 +1,7 @@
 using StaticArrays
 using LinearAlgebra
 using Flux
+using Distributed
 using BSON: @save, @load
 
 """
@@ -137,8 +138,7 @@ function computeLossGradients(gradientInput)
 
 Computes the final loss-network gradients
 """
-function computeLossGradients(gradientInput)
-    crossAccumulators, descriptorNN, descriptorref, model, systemParms = gradientInput
+function computeLossGradients(crossAccumulators, descriptorNN, descriptorref, model, systemParms)
     lossGradients = []
     ensembleCorrelations = computeEnsembleCorrelation(descriptorNN, model)
     descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
@@ -292,6 +292,7 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, it
 Collects averages from different workers corresponding to one reference system
 """
 function collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, iterString)
+    meanLoss = 0.
     systemOutputs = []
     for (systemId, systemParms) in enumerate(systemParmsList)
         println("   System $(systemParms.systemName):") 
@@ -304,6 +305,7 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, it
         meanMaxDisplacement = []
         # Find the corresponding outputs
         for outputID in eachindex(outputs)
+            # Save the outputID if the system names from input and output match
             if systemParms.systemName == outputs[outputID].systemParms.systemName
                 append!(meanDescriptor, [outputs[outputID].descriptor])
                 append!(meanEnergies, [outputs[outputID].energies])
@@ -332,14 +334,25 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, it
         # Compute loss and print some output info
         println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
         println("       Max displacement = ", round(meanMaxDisplacement, digits=4))
-        loss(systemOutput.descriptor, refRDFs[systemId])
+        if parameters.mode == "training" 
+            meanLoss += loss(systemOutput.descriptor, refRDFs[systemId])
+        end
 
         append!(systemOutputs, [systemOutput])
         # Write descriptors and energies
         name = systemParms.systemName
-        writedescriptor("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
-        writeenergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, parameters, 10)
+        if parameters.mode == "training" 
+            writedescriptor("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
+            writeenergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, parameters, 10)
+        else
+            writedescriptor("RDFNN-$(name).dat", systemOutput.descriptor, systemParms)
+            writeenergies("energies-$(name).dat", systemOutput.energies, parameters, 10)
+        end
     end
+    if parameters.mode == "training" 
+        meanLoss /= length(systemParmsList)
+    end
+    println("   \nAverage Loss = ", round(meanLoss, digits=8))
     return(systemOutputs)
 end
 
@@ -364,18 +377,22 @@ function train!(parameters, systemParmsList, model, opt, refRDFs)
         # Collect averages corresponding to each reference system
         systemOutputs = collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, iterString)
 
-        # Collect inputs for gradient computation
-        gradientInputs = []
+        # Compute loss and the gradients
+        lossGradients = []
         for (systemId, systemOutput) in enumerate(systemOutputs)
-            systemParms = systemParmsList[systemId]   
-            gradientInput = (systemOutput.crossAccumulators, 
-                            systemOutput.descriptor, refRDFs[systemId], 
-                            model, systemParms)
-            append!(gradientInputs, [gradientInput])
+            systemParms = systemParmsList[systemId]    
+            lossGradient = computeLossGradients(systemOutput.crossAccumulators, 
+                                                systemOutput.descriptor, refRDFs[systemId], 
+                                                model, systemParms)
+            append!(lossGradients, [lossGradient])
+            # Write descriptors and energies
+            name = systemParms.systemName
+            writedescriptor("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
+            writeenergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, parameters, 10)
         end
-        # Compute and average the gradients
-        lossGradients = pmap(computeLossGradients, gradientInputs)
+        # Average the gradients
         meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
+
 
         # Write the model (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
@@ -387,5 +404,22 @@ function train!(parameters, systemParmsList, model, opt, refRDFs)
         iteration += 1
     end
     println("The training is finished!")
+    return
+end
+
+"""
+simulate!(parameters, systemParms, model)
+Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) sampling
+"""
+function simulate!(parameters, systemParms, model)
+    # Pack inputs
+    input = MCSampleInput(parameters, systemParms, model)
+    inputs = [input for worker in workers()]
+    
+    # Run the simulation in parallel
+    outputs = pmap(mcsample!, inputs)
+
+    # Collect averages corresponding to each reference system
+    systemOutputs = collectSystemAverages(outputs, nothing, [systemParms], parameters, nothing)
     return
 end

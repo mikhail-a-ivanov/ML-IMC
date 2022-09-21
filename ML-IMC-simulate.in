@@ -1,0 +1,21 @@
+# Global parameters
+
+# List of input filenames for each system
+systemFiles    = 100CH3OH-CG.in
+mode           = simulation                  # Run MC sampling (simulation) or ML-IMC optimization (training)         
+modelname      = methanol-NN-300-50-1.bson   # Name of a trained model file (simulation mode)
+
+# Monte Carlo parameters
+steps          = 10000000              # Total number of MC steps
+Eqsteps        = 5000000               # Equilibration MC steps
+stepAdjustFreq = 500000                # Frequency of MC step adjustment     
+outfreq        = 500                   # Output frequency
+trajout        = 2500000               # Trajectory output frequency      
+
+# Network parameters
+neurons        = 300, 50               # Number of neurons in the network (without the output neuron)
+iters          = 5                     # Number of learning iterations
+activation     = tanh                  # Activation function
+optimizer      = Momentum              # Optimizer (other options - Descent)
+rate           = 0.005                 # Learning rate
+momentum       = 0.75                  # Momentum coefficient
