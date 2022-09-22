@@ -351,8 +351,8 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, parameters, it
     end
     if parameters.mode == "training" 
         meanLoss /= length(systemParmsList)
+        println("   \nAverage Loss = ", round(meanLoss, digits=8))
     end
-    println("   \nAverage Loss = ", round(meanLoss, digits=8))
     return(systemOutputs)
 end
 
