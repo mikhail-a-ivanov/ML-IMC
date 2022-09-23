@@ -3,9 +3,14 @@
 *.xyz
 *.out
 *.bson
+*.xtc
+*.pdb
 
 # Do not commit sh scripts
 *.sh
 
 # Do not commit svg
 *.svg
+
+# Do not commit jupyter notebooks
+*.ipynb
