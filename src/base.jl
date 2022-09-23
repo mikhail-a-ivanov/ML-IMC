@@ -16,8 +16,7 @@ G2(distances, Rc, Rs, sigma)
 Computes a single exponent
 of the G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function G2(R, Rc, Rs, sigma)
-    η = 1/(2*sigma^2)
+function G2(R, Rc, Rs, η)
     return(exp(-η*(R - Rs)^2) * distanceCutoff(R, Rc))
 end
 
@@ -28,8 +27,9 @@ Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function G2total(distances, Rc, Rs, sigma)
     sum = 0
+    η = 1/(2*sigma^2)
     @fastmath @inbounds @simd for R in distances
-        sum += G2(R, Rc, Rs, sigma)
+        sum += G2(R, Rc, Rs, η)
     end
     return(sum)
 end
@@ -223,6 +223,13 @@ input configuration, set of parameters
 and the neural network model
 """
 function mcsample!(input)
+    # Unpack the inputs
+    model = input.model
+    globalParms = input.globalParms
+    MCParms = input.MCParms
+    NNParms = input.NNParms
+    systemParms = input.systemParms
+
     # Get the worker id and the output filenames
     if nprocs() == 1
         id = myid()
@@ -236,9 +243,6 @@ function mcsample!(input)
 
     # Initialize RNG
     rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-
-    # Unpack the inputs
-    model, globalParms, MCParms, NNParms, systemParms = input
 
     # Take a random frame from the equilibrated trajectory
     traj = readXTC(systemParms)
@@ -327,8 +331,8 @@ function mcsample!(input)
     end
     # Compute and report the final acceptance ratio
     acceptanceRatio = acceptedTotal / MCParms.steps
-    println("Max displacement = ", round(systemParms.Δ, digits=4))
-    println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
+    #println("Max displacement = ", round(systemParms.Δ, digits=4))
+    #println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     # Unpack mcarrays and optionally normalize cross and G2Matrix accumulators
     frame, distanceMatrix, G2Matrix = mcarrays
@@ -345,9 +349,11 @@ function mcsample!(input)
     normalizehist!(histAccumulator, systemParms)
     
     if globalParms.mode == "training"
-        return(histAccumulator, energies, acceptanceRatio, crossAccumulators, G2MatrixAccumulator)
+        MCoutput = MCAverages(histAccumulator, energies, crossAccumulators, G2MatrixAccumulator, acceptanceRatio, systemParms)
+        return(MCoutput)
     else
-        return(histAccumulator, energies, acceptanceRatio)
+        MCoutput = MCAverages(histAccumulator, energies, nothing, nothing, acceptanceRatio, systemParms)
+        return(MCoutput)
     end
 end
 
