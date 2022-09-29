@@ -11,7 +11,7 @@ include("network.jl")
 include("io.jl")
 
 """
-G2(distances, Rc, Rs, sigma)
+function G2(R, Rc, Rs, η)
 
 Computes a single exponent
 of the G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
@@ -21,7 +21,7 @@ function G2(R, Rc, Rs, η)
 end
 
 """
-G2total(distances, Rc, Rs, sigma)
+function G2total(distances, Rc, Rs, sigma)
 
 Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
@@ -35,7 +35,7 @@ function G2total(distances, Rc, Rs, sigma)
 end
 
 """
-buildG2Matrix(distanceMatrix, NNParms)
+function buildG2Matrix(distanceMatrix, NNParms)
 
 Builds a matrix of G2 values with varying Rs and η parameters for each atom in the configuration
 """
@@ -54,7 +54,7 @@ function buildG2Matrix(distanceMatrix, NNParms)
 end
 
 """
-updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
 
 Updates the G2 matrix with the displacement of a single atom
 """
@@ -84,7 +84,8 @@ function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms
 end
 
 """
-hist!(distanceMatrix, hist, systemParms)
+function hist!(distanceMatrix, hist, systemParms)
+
 Accumulates pair distances in a histogram
 """
 function hist!(distanceMatrix, hist, systemParms)
@@ -100,7 +101,7 @@ function hist!(distanceMatrix, hist, systemParms)
 end
 
 """
-normalizehist!(hist, systemParms)
+function normalizehist!(hist, systemParms)
 
 Normalizes distance histogram to RDF
 """
@@ -117,7 +118,7 @@ function normalizehist!(hist, systemParms)
 end
 
 """
-atomicEnergy(inputlayer, model)
+function atomicEnergy(inputlayer, model)
 
 Computes the potential energy of one particle
 from the input layer of the neural network
@@ -128,7 +129,7 @@ function atomicEnergy(inputlayer, model)
 end
 
 """
-totalEnergy(symmFuncMatrix, model)
+function totalEnergy(symmFuncMatrix, model)
 
 Computes the total potential energy of the system
 """
@@ -142,7 +143,7 @@ function totalEnergy(symmFuncMatrix, model)
 end
 
 """
-mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
+function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
 
 Performs a Metropolis Monte Carlo
 displacement move using a neural network
@@ -158,7 +159,7 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
     # Allocate the distance vector
     distanceVector1 = distanceMatrix[:, pointIndex]
 
-    # Compute the energy
+    # Take a copy of the previous energy value
     E1 = copy(E)
     
     # Displace the particle
@@ -216,7 +217,8 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
 end
 
 """
-mcsample!(input)
+function mcsample!(input)
+
 (input = model, globalParms, MCParms, NNParms, systemParms)
 Runs the Monte Carlo simulation for a given
 input configuration, set of parameters
@@ -304,10 +306,9 @@ function mcsample!(input)
             energies[Int(step/MCParms.outfreq)] = E
         end
 
-        # MC trajectory output
-        if step % MCParms.trajout == 0
-            frame, distanceMatrix, G2Matrix = mcarrays
-            writetraj(positions(frame), systemParms, trajFile, 'a')
+         # MC trajectory output
+         if step % MCParms.trajout == 0
+            writetraj(positions(mcarrays[1]), systemParms, trajFile, 'a')
         end
 
         # Accumulate the distance histogram
@@ -331,8 +332,6 @@ function mcsample!(input)
     end
     # Compute and report the final acceptance ratio
     acceptanceRatio = acceptedTotal / MCParms.steps
-    #println("Max displacement = ", round(systemParms.Δ, digits=4))
-    #println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     # Unpack mcarrays and optionally normalize cross and G2Matrix accumulators
     frame, distanceMatrix, G2Matrix = mcarrays
@@ -358,7 +357,7 @@ function mcsample!(input)
 end
 
 """
-stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
+function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
 
 MC step length adjustment
 """

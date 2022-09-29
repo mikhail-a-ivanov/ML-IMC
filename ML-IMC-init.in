@@ -1,7 +1,7 @@
 # Global parameters
 systemFiles     = Ar_95K.in             # List of input filenames for each system
 mode            = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
-#modelname      = model-iter-25.bson    # Name of a trained model file (simulation mode)
+inputmodel      = model-iter-05.bson                # Specify a model name or "random" for random initialization
 
 # Monte Carlo parameters
 steps          = 100000             # Total number of MC steps

@@ -9,13 +9,13 @@ systemFiles:
     list of input filenames for each system
 mode: 
     ML-IMC mode - training with reference data or simulation using a trained model
-modelname: 
-    name of the trained model file
+inputmodel: 
+    "random" keyword for random initialization or a filename of a trained model
 """
 struct globalParameters
     systemFiles::Vector{String}
     mode::String
-    modelname::String
+    inputmodel::String
 end
 
 """
@@ -78,7 +78,7 @@ V: volume, Å^3
 rdfname: reference RDF file
 Nbins: number of histogram bins
 binWidth: histogram bin width, Å
-repulsionLimit: minimum allowed pair distance (at which RDF > 0), Å
+repulsionLimit: minimum allowed pair distance, Å
 T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
 Δ: max displacement, Å
@@ -103,7 +103,7 @@ mutable struct systemParameters
 end
 
 """
-parametersInit()
+function parametersInit()
 
 Reads an input file for ML-IMC
 and saves the data into
@@ -148,13 +148,6 @@ function parametersInit()
                         end
                     end
                     append!(globalVars, [systemFiles])
-                elseif field == "mode"
-                    mode = [line[3]]
-                    append!(globalVars, mode) 
-                    if mode[1] == "training"
-                        modelname = " "
-                        append!(globalVars, [modelname])
-                    end
                 else
                     if fieldtype != String
                         append!(globalVars, parse(fieldtype, line[3]))
@@ -238,13 +231,12 @@ function parametersInit()
                         append!(systemVars, V)
                     elseif field == "rdfname"
                         rdfname = [line[3]]
-                        bins, rdf, hist, repulsionLimit = readRDF("$(rdfname[1])")
+                        bins, rdf = readRDF("$(rdfname[1])")
                         Nbins = length(bins)
                         binWidth = bins[1]
                         append!(systemVars, [rdfname[1]])
                         append!(systemVars, Nbins)
                         append!(systemVars, binWidth)
-                        append!(systemVars, repulsionLimit)
                     else
                         if fieldtype != String
                             append!(systemVars, parse(fieldtype, line[3]))
@@ -269,7 +261,7 @@ function parametersInit()
 end
 
 """
-readXTC(systemParms)
+function readXTC(systemParms)
 
 Reads input configurations from XTC file
 """
@@ -279,28 +271,28 @@ function readXTC(systemParms)
 end
 
 """
-inputInit(globalParms, NNParms, systemParmsList)
+function inputInit(globalParms, NNParms, systemParmsList)
 
 Initializes input data
 """
 function inputInit(globalParms, NNParms, systemParmsList)
     # Read reference data
     refRDFs = []
-    trajectories = []
     for systemParms in systemParmsList
-        bins, refRDF, refhist, repulsionLimit = readRDF(systemParms.rdfname)
+        bins, refRDF = readRDF(systemParms.rdfname)
         append!(refRDFs, [refRDF])
     end
 
     # Set up a model and an optimizer for training
     # or load a model from a file for MC sampling
-    if globalParms.mode == "training"
-        # Initialize the optimizer
-        opt = optInit(NNParms)
+    
+    # Initialize the optimizer
+    opt = optInit(NNParms)
+    if globalParms.inputmodel == "random"
         # Initialize the model
         model = modelInit(NNParms)
     else
-        @load globalParms.modelname model
+        @load globalParms.inputmodel model
     end
 
     if globalParms.mode == "training"
@@ -311,7 +303,8 @@ function inputInit(globalParms, NNParms, systemParmsList)
 end
 
 """
-writeRDF(outname, rdf, systemParms)
+function writeRDF(outname, rdf, systemParms)
+
 Writes RDF into a file
 """
 function writeRDF(outname, rdf, systemParms)
@@ -328,7 +321,7 @@ function writeRDF(outname, rdf, systemParms)
 end
 
 """
-writeenergies(outname, energies)
+function writeenergies(outname, energies, MCParms, slicing=1)
 
 Writes the total energy to an output file
 """
@@ -346,6 +339,7 @@ end
 
 """
 function writetraj(conf, parameters, outname, mode='w')
+
 Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
 function writetraj(conf, systemParms, outname, mode='w')
@@ -367,37 +361,23 @@ function writetraj(conf, systemParms, outname, mode='w')
 end
 
 """
-readRDF(rdfname)
-
-Reads RDF and distance histogram produced
-by mcLJ.jl
+function readRDF(rdfname)
+Reads RDF produced by mcLJ.jl
 """
 function readRDF(rdfname)
     file = open(rdfname, "r")
-    #println("Reading reference data from $(rdfname)...")
     lines = readlines(file)
     ncomments = 2
     nlines = length(lines) - ncomments
     bins = zeros(nlines)
     rdf = zeros(nlines)
-    hist = zeros(nlines)
     for i in (1 + ncomments):length(lines)
         rdfline = split(lines[i])
-        if length(rdfline) == 3
-            bins[i - ncomments] = parse(Float64, rdfline[1])
-            rdf[i - ncomments] = parse(Float64, rdfline[2])
-            hist[i - ncomments] = parse(Float64, rdfline[3])
+        if rdfline[1] != "#"
+            bins[i - ncomments] = parse(Float32, rdfline[1])
+            rdf[i - ncomments] = parse(Float32, rdfline[2])
         end
     end
-    # Find the repulsion limit
-    repulsionLimit = 0. # Default value
-    for i in 1:length(rdf)
-        if rdf[i] > 0.
-            repulsionLimit = bins[i - 1]
-            break
-        end
-    end
-
-    return(bins, rdf, hist, repulsionLimit)
+    return(bins, rdf)
     close(file)
 end

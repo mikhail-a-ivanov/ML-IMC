@@ -5,6 +5,7 @@ using BSON: @save, @load
 
 """
 struct MCSampleInput
+    
 Used for packaging mcsample! inputs
 """
 struct MCSampleInput
@@ -17,6 +18,7 @@ end
 
 """
 struct MCAverages
+
 Used for packaging mcsample! outputs
 """
 struct MCAverages
@@ -74,6 +76,7 @@ end
 
 """
 function crossAccumulatorsInit(NNParms, systemParms)
+
 Initialize cross correlation accumulator arrays
 """
 function crossAccumulatorsInit(NNParms, systemParms)
@@ -134,6 +137,11 @@ function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, sys
     return(descriptorGradients)
 end
 
+"""
+function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, descriptorref, model, systemParms)
+
+Computes the final loss gradients
+"""
 function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, descriptorref, model, systemParms)
     lossGradients = []
     ensembleCorrelations = computeEnsembleCorrelation(symmFuncMatrix, descriptorNN, model)
@@ -248,8 +256,6 @@ function optInit(NNParms)
 Initializes the optimizer
 """
 function optInit(NNParms)
-
-
     if NNParms.optimizer == "Momentum"
         opt = Momentum(NNParms.rate, NNParms.momentum)
 
@@ -299,7 +305,7 @@ function optInit(NNParms)
             Default optimizer is 'Descent' \n
             For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n")
     end
-    return (opt)
+    return(opt)
 end
 
 """
@@ -384,7 +390,6 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, M
     return(systemOutputs)
 end
 
-
 """
 function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
 Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) training iterations
@@ -435,26 +440,24 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
 end
 
 """
-simulate!(model, globalParms, MCParms, NNParms, systemParms)
+function simulate!(model, globalParms, MCParms, NNParms, systemParms)
 
 Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) sampling
 """
 function simulate!(model, globalParms, MCParms, NNParms, systemParms)
     # Pack inputs
-    inputs = (model, globalParms, MCParms, NNParms, systemParms)
+    input = MCSampleInput(globalParms, MCParms, NNParms, systemParms, model)
+    inputs = [input for worker in workers()]
     
     # Run the simulation in parallel
     outputs = pmap(mcsample!, inputs)
 
-    # Average the data from workers
-    NNRDF = mean([output[1] for output in outputs])
-    meanSystemEnergy = mean([output[2] for output in outputs])
-    meanAcceptanceRatio = mean([output[3] for output in outputs])
-    println("Mean acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+    # Collect averages corresponding to each reference system
+    systemOutputs = collectSystemAverages(outputs, nothing, [systemParms], globalParms, MCParms, nothing)
 
-    # Write averaged descriptor and energies
+    # Write descriptors and energies
     name = systemParms.systemName
-    writeRDF("RDFNN-$(name).dat", NNRDF, systemParms)
-    writeenergies("energies-$(name).dat", meanSystemEnergy, MCParms, 1)
+    writeRDF("RDFNN-$(name).dat", systemOutput.descriptor, systemParms)
+    writeenergies("energies-$(name).dat", systemOutput.energies, MCParms, 1)
     return
 end
