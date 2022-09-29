@@ -159,8 +159,8 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
     distanceVector1 = distanceMatrix[:, pointIndex]
 
     # Compute the energy
-    E1 = totalEnergy(G2Matrix1, model)
-
+    E1 = copy(E)
+    
     # Displace the particle
     dr = [systemParms.Δ*(rand(rng, Float64) - 0.5), 
           systemParms.Δ*(rand(rng, Float64) - 0.5), 
