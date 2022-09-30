@@ -457,7 +457,7 @@ function simulate!(model, globalParms, MCParms, NNParms, systemParms)
 
     # Write descriptors and energies
     name = systemParms.systemName
-    writeRDF("RDFNN-$(name).dat", systemOutput.descriptor, systemParms)
-    writeenergies("energies-$(name).dat", systemOutput.energies, MCParms, 1)
+    writeRDF("RDFNN-$(name).dat", systemOutputs[1].descriptor, systemParms)
+    writeenergies("energies-$(name).dat", systemOutputs[1].energies, MCParms, 1)
     return
 end

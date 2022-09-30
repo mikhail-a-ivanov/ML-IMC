@@ -40,6 +40,11 @@ function main()
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)
         println("Training a model using $(nsystems) reference system(s)")
+        if globalParms.inputmodel == "random"
+            println("Initializing a new neural network")
+        else
+            println("Starting training from $(globalParms.inputmodel)")
+        end
         println("Using $(NNParms.activation) activation")
         println("Number of iterations: $(NNParms.iters)")
         println("Optimizer type: $(NNParms.optimizer)")
@@ -52,7 +57,7 @@ function main()
         train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     else
         @assert length(systemParmsList) == 1
-        println("Running simulation with a trained model")
+        println("Running simulation with $(globalParms.inputmodel)")
         # Run the simulation
         simulate!(model, globalParms, MCParms, NNParms, systemParmsList[1])
     end

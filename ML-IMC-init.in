@@ -1,13 +1,13 @@
 # Global parameters
 systemFiles     = Ar_95K.in             # List of input filenames for each system
-mode            = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
+mode            = simulate              # Run MC sampling (simulation) or ML-IMC optimization (training)
 inputmodel      = model-iter-05.bson                # Specify a model name or "random" for random initialization
 
 # Monte Carlo parameters
-steps          = 100000             # Total number of MC steps
-Eqsteps        = 50000              # Equilibration MC steps
-stepAdjustFreq = 5000               # Frequency of MC step adjustment   
-trajout        = 5000               # XTC trajectory frequency
+steps          = 1000000             # Total number of MC steps
+Eqsteps        = 500000              # Equilibration MC steps
+stepAdjustFreq = 50000               # Frequency of MC step adjustment   
+trajout        = 50000               # XTC trajectory frequency
 outfreq        = 5000               # Output frequency
 
 # Network parameters
