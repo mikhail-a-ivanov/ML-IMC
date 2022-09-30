@@ -1,13 +1,14 @@
 # Global parameters
 systemFiles     = Ar_95K.in             # List of input filenames for each system
-mode            = simulate              # Run MC sampling (simulation) or ML-IMC optimization (training)
-inputmodel      = model-iter-05.bson                # Specify a model name or "random" for random initialization
+mode            = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
+inputmodel      = zero                # Specify a model name, "random" for random initialization or "zero" for zeros 
+                                        # in the first layer of the network
 
 # Monte Carlo parameters
-steps          = 1000000             # Total number of MC steps
-Eqsteps        = 500000              # Equilibration MC steps
-stepAdjustFreq = 50000               # Frequency of MC step adjustment   
-trajout        = 50000               # XTC trajectory frequency
+steps          = 100000             # Total number of MC steps
+Eqsteps        = 50000              # Equilibration MC steps
+stepAdjustFreq = 5000               # Frequency of MC step adjustment   
+trajout        = 5000               # XTC trajectory frequency
 outfreq        = 5000               # Output frequency
 
 # Network parameters
@@ -21,7 +22,8 @@ neurons         = 10                    # Number of neurons in the network (excl
 iters           = 5                     # Number of learning iterations
 activation      = tanh                  # Activation function
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
-optimizer       = NAdam              # Optimizer type 
+REGP            = 0.05                  # Regularization parameter
+optimizer       = NAdam                  # Optimizer type 
 rate            = 0.5                   # Learning rate
 momentum        = 0.9                   # Momentum / Nesterov Momentum coefficient
 decay1          = 0.9                   # Decay of momentum (decay_1, decay_2)

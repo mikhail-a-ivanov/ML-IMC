@@ -41,11 +41,14 @@ function main()
         nsystems = length(systemParmsList)
         println("Training a model using $(nsystems) reference system(s)")
         if globalParms.inputmodel == "random"
-            println("Initializing a new neural network")
+            println("Initializing a new neural network with random weigths")
+        elseif globalParms.inputmodel == "zero"
+            println("Initializing a new neural network with zero weigths in the first layer")
         else
             println("Starting training from $(globalParms.inputmodel)")
         end
         println("Using $(NNParms.activation) activation")
+        println("Neural network regularization parameter: $(NNParms.REGP)")
         println("Number of iterations: $(NNParms.iters)")
         println("Optimizer type: $(NNParms.optimizer)")
         println("Learning rate: $(NNParms.rate)")

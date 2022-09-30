@@ -10,7 +10,8 @@ systemFiles:
 mode: 
     ML-IMC mode - training with reference data or simulation using a trained model
 inputmodel: 
-    "random" keyword for random initialization or a filename of a trained model
+    "random" keyword for random initialization,
+    "zero" for zeros in the first layer or a filename of a trained model
 """
 struct globalParameters
     systemFiles::Vector{String}
@@ -43,6 +44,7 @@ Fields:
 neurons: number of neurons in the network (excluding the energy output neuron)
 iters: number of learning iterations
 activation: activation function
+REGP: regularization parameter
 optimizer: type of optimizer
 rate: learning rate
 μ: momentum coefficient
@@ -57,6 +59,7 @@ mutable struct NNparameters
     neurons::Vector{Int}
     iters::Int
     activation::String
+    REGP::Float32
     optimizer::String
     rate::Float64
     momentum::Float64
@@ -288,9 +291,9 @@ function inputInit(globalParms, NNParms, systemParmsList)
     
     # Initialize the optimizer
     opt = optInit(NNParms)
-    if globalParms.inputmodel == "random"
+    if globalParms.inputmodel == "random" || globalParms.inputmodel == "zero"
         # Initialize the model
-        model = modelInit(NNParms)
+        model = modelInit(NNParms, globalParms)
     else
         @load globalParms.inputmodel model
     end
