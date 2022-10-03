@@ -22,7 +22,7 @@ neurons         = 10                    # Number of neurons in the network (excl
 iters           = 5                     # Number of learning iterations
 activation      = tanh                  # Activation function
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
-REGP            = 0.05                  # Regularization parameter
+REGP            = 0.05                  # Regularization parameter (Set to zero to turn off regularization)
 optimizer       = NAdam                  # Optimizer type 
 rate            = 0.5                   # Learning rate
 momentum        = 0.9                   # Momentum / Nesterov Momentum coefficient
