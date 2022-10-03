@@ -40,7 +40,7 @@ function computeEnergyGradients(symmFuncMatrix, model)
     N = length(symmFuncMatrix[:, 1])
     energyGradients = []
     # Compute energy gradients
-    gs = gradient(totalEnergy, symmFuncMatrix, model)
+    gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]

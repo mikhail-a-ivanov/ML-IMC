@@ -1,14 +1,14 @@
 # Global parameters
 systemFiles     = Ar_95K.in             # List of input filenames for each system
-mode            = simulate              # Run MC sampling (simulation) or ML-IMC optimization (training)
-inputmodel      = model-iter-05.bson                # Specify a model name or "random" for random initialization
+mode            = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
+inputmodel      = random                # Specify a model name or "random" for random initialization
 
 # Monte Carlo parameters
-steps          = 1000000             # Total number of MC steps
-Eqsteps        = 500000              # Equilibration MC steps
-stepAdjustFreq = 50000               # Frequency of MC step adjustment   
-trajout        = 50000               # XTC trajectory frequency
-outfreq        = 5000               # Output frequency
+steps          = 10000             # Total number of MC steps
+Eqsteps        = 5000              # Equilibration MC steps
+stepAdjustFreq = 500               # Frequency of MC step adjustment   
+trajout        = 500               # XTC trajectory frequency
+outfreq        = 500               # Output frequency
 
 # Network parameters
 minR            = 2.0                   # Min distance for G2 symmetry function, Å
@@ -17,8 +17,8 @@ sigma           = 1                     # Sigma from Gaussian distribution in Å
                                         # recommended values in Å: 0.8 -- 2 Å
                                         #                       η: 0.8 -- 0.125
 
-neurons         = 10                    # Number of neurons in the network (excluding the energy output neuron)
-iters           = 5                     # Number of learning iterations
+neurons         = 5                    # Number of neurons in the network (excluding the energy output neuron)
+iters           = 1                     # Number of learning iterations
 activation      = tanh                  # Activation function
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
 optimizer       = NAdam              # Optimizer type 

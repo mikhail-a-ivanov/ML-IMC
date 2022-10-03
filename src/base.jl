@@ -133,11 +133,39 @@ function totalEnergy(symmFuncMatrix, model)
 
 Computes the total potential energy of the system
 """
-function totalEnergy(symmFuncMatrix, model)
+function totalEnergyScalar(symmFuncMatrix, model)
     N = length(symmFuncMatrix[:, 1])
     E = 0.
     for i in 1:N
         E += atomicEnergy(symmFuncMatrix[i, :], model)
+    end
+    return(E)
+end
+
+function getIndexesForUpdating(distanceVector2, systemParms, NNParms)
+    indexes = []
+    for i in 1:systemParms.N
+        if distanceVector2[i] > NNParms.maxR
+            append!(indexes, i)
+        end
+    end
+    return(indexes)
+end
+
+function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
+    N = length(symmFuncMatrix[:, 1])
+    E = previousE
+    for i in indexesForUpdate
+        E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
+    end
+    return(E)
+end
+
+function totalEnergyVectorInit(symmFuncMatrix, model)
+    N = length(symmFuncMatrix[:, 1])
+    E = Array{Float64}(undef, N)
+    for i in 1:N
+        E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
     end
     return(E)
 end
@@ -149,7 +177,7 @@ Performs a Metropolis Monte Carlo
 displacement move using a neural network
 to predict energies from the symmetry function matrix
 """
-function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
+function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rng)
     # Unpack mcarrays
     frame, distanceMatrix, G2Matrix1 = mcarrays
 
@@ -161,6 +189,7 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
 
     # Take a copy of the previous energy value
     E1 = copy(E)
+    
     
     # Displace the particle
     dr = [systemParms.Δ*(rand(rng, Float64) - 0.5), 
@@ -175,7 +204,8 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
 
     # Acceptance counter
     accepted = 0
-    
+
+
     # Reject the move prematurely if a single pair distance
     # is below the repulsion limit
     for distance in distanceVector2
@@ -185,16 +215,20 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
             # Pack mcarrays
             mcarrays = (frame, distanceMatrix, G2Matrix1)
             # Finish function execution
-            return(mcarrays, E, accepted)
+            return(mcarrays, E, E_previous_vector, accepted)
         end
     end
+
+    indexesForUpdate = getIndexesForUpdating(distanceVector2, systemParms, NNParms)
     
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
     updateG2Matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
 
     # Compute the energy again
-    E2 = totalEnergy(G2Matrix2, model)
+    # E2 = totalEnergyScalar(G2Matrix2, model) 
+    newEnergyVector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, E_previous_vector)
+    E2 = sum(newEnergyVector)
     
     # Get energy difference
     ΔE = E2 - E1
@@ -208,12 +242,14 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
         distanceMatrix[:, pointIndex] = distanceVector2
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix2)
+        return(mcarrays, E, newEnergyVector, accepted)
     else
         positions(frame)[:, pointIndex] -= dr
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix1)
+        return(mcarrays, E, E_previous_vector, accepted)
     end
-    return(mcarrays, E, accepted)
+
 end
 
 """
@@ -282,7 +318,8 @@ function mcsample!(input)
     end
 
     # Initialize the starting energy and the energy array
-    E = totalEnergy(G2Matrix, model)
+    E_previous_vector = totalEnergyVectorInit(G2Matrix, model)
+    E = sum(E_previous_vector)
     energies = zeros(totalDataPoints)
 
     # Acceptance counters
@@ -291,7 +328,7 @@ function mcsample!(input)
 
     # Run MC simulation
     @inbounds @fastmath for step in 1:MCParms.steps
-        mcarrays, E, accepted = mcmove!(mcarrays, E, model, NNParms, systemParms, rng_xor)
+        mcarrays, E, E_previous_vector, accepted = mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rng_xor)
         acceptedTotal += accepted
         acceptedIntermediate += accepted
 
