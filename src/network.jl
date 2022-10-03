@@ -37,7 +37,6 @@ Computes all gradients of energy with respect
 to all parameters in the given network
 """
 function computeEnergyGradients(symmFuncMatrix, model)
-    N = length(symmFuncMatrix[:, 1])
     energyGradients = []
     # Compute energy gradients
     gs = gradient(totalEnergy, symmFuncMatrix, model)
@@ -48,12 +47,12 @@ function computeEnergyGradients(symmFuncMatrix, model)
     # to get the average gradient per atomic subnet
     for (layerId, layerGradients) in enumerate(gs[2][1]) 
         if layerId != nlayers
-            weightGradients = layerGradients[1] ./ N
+            weightGradients = layerGradients[1] 
             append!(energyGradients, [weightGradients])
-            biasGradients = layerGradients[2] ./ N
+            biasGradients = layerGradients[2] 
             append!(energyGradients, [biasGradients])
         else
-            weightGradients = layerGradients[1] ./ N
+            weightGradients = layerGradients[1] 
             append!(energyGradients, [weightGradients])
         end
     end
