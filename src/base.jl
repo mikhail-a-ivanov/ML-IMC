@@ -27,7 +27,7 @@ Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function G2total(distances, Rc, Rs, sigma)
     sum = 0
-    η = 1/(2*sigma^2)
+    η = 1/(2*sigma*sigma)
     @fastmath @inbounds @simd for R in distances
         sum += G2(R, Rc, Rs, η)
     end
@@ -43,11 +43,10 @@ function buildG2Matrix(distanceMatrix, NNParms)
     N = length(distanceMatrix[1, :])
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
-    ηs = fill(NNParms.sigma, npoints)
     G2Matrix = zeros(Float64, N, npoints)
     for i in 1:N
         for j in 1:npoints
-            G2Matrix[i, j] = G2total(distanceMatrix[i, :], NNParms.maxR, Rss[j], ηs[j])
+            G2Matrix[i, j] = G2total(distanceMatrix[i, :], NNParms.maxR, Rss[j], NNParms.sigma)
         end
     end
     return(G2Matrix)
@@ -61,19 +60,18 @@ Updates the G2 matrix with the displacement of a single atom
 function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
-    ηs = fill(NNParms.sigma, npoints)    
     for i in 1:systemParms.N
         # Rebuild the whole G2 matrix column for the displaced particle
         if i == pointIndex
             for j in 1:npoints
-                G2Matrix[pointIndex, j] = G2total(distanceVector2, NNParms.maxR, Rss[j], ηs[j])
+                G2Matrix[pointIndex, j] = G2total(distanceVector2, NNParms.maxR, Rss[j], NNParms.sigma)
             end
         # Compute the change in G2 caused by the displacement of an atom
         else
             if distanceVector2[i] < NNParms.maxR
                 for j in 1:npoints
-                    G2_1 = G2(distanceVector1[i], NNParms.maxR, Rss[j], ηs[j])
-                    G2_2 = G2(distanceVector2[i], NNParms.maxR, Rss[j], ηs[j])
+                    G2_1 = G2(distanceVector1[i], NNParms.maxR, Rss[j], NNParms.sigma)
+                    G2_2 = G2(distanceVector2[i], NNParms.maxR, Rss[j], NNParms.sigma)
                     ΔG2 = G2_2 - G2_1
                     G2Matrix[i, j] += ΔG2
                 end
@@ -111,7 +109,7 @@ function normalizehist!(hist, systemParms)
     shellVolumes = [4*π*systemParms.binWidth*bins[i]^2 for i in 1:length(bins)]
     rdfNorm = ones(Float64, systemParms.Nbins)
     for i in 1:length(rdfNorm)
-        rdfNorm[i] = systemParms.V/Npairs * 1/shellVolumes[i]
+        rdfNorm[i] = systemParms.V/Npairs /shellVolumes[i]
     end
     hist .*= rdfNorm
     return(hist)
@@ -145,7 +143,7 @@ end
 function getIndexesForUpdating(distanceVector2, systemParms, NNParms)
     indexes = []
     for i in 1:systemParms.N
-        if distanceVector2[i] > NNParms.maxR
+        if distanceVector2[i] < NNParms.maxR
             append!(indexes, i)
         end
     end
