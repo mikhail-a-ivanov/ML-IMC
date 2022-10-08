@@ -1,5 +1,5 @@
+using Printf
 using Chemfiles
-using BSON: @save, @load
 
 """
 struct globalParameters
@@ -114,8 +114,8 @@ parameter structs
 """
 function parametersInit()
     # Read the input name from the command line argument
-    inputname = ARGS[1]
-    #inputname = "ML-IMC-init.in"
+    #inputname = ARGS[1]
+    inputname = "ML-IMC-init.in"
 
     # Constants
     NA::Float64 = 6.02214076 # [mol-1] * 10^-23
@@ -317,7 +317,8 @@ function writeRDF(outname, rdf, systemParms)
     print(io, "# System: $(systemParms.systemName)\n")
     print(io, "# RDF data ($(systemParms.atomname) - $(systemParms.atomname)) \n")
     print(io, "# r, Å; g(r); \n")
-    for i in 1:length(rdf)
+    rdfpoints = length(rdf)
+    for i in 1:rdfpoints
         print(io, @sprintf("%6.3f %12.3f", bins[i], rdf[i]), "\n")
     end
     close(io)

@@ -1,9 +1,6 @@
-using Dates
-using Statistics
-using LinearAlgebra
 using Distributed
-using Chemfiles
-using BSON: @save, @load
+using LinearAlgebra
+using Dates
 
 BLAS.set_num_threads(1)
 

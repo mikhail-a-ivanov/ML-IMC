@@ -1,5 +1,3 @@
-using Chemfiles
-
 """
 function builddistanceMatrix(frame)
 

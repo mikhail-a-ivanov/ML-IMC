@@ -1,6 +1,5 @@
-using StaticArrays
-using LinearAlgebra
 using Flux
+using Statistics
 using BSON: @save, @load
 
 """
@@ -155,8 +154,10 @@ function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, d
         lossGradient = dLdS' * gradient
         lossGradient = reshape(lossGradient, size(parameters))
         # Add the regularization contribution (2 * REGP * parameters)
-        regLossGradient = @. parameters * 2 * NNParms.REGP
-        lossGradient += regLossGradient
+        if NNParms.REGP > 0
+            regLossGradient = @. parameters * 2 * NNParms.REGP
+            lossGradient += regLossGradient
+        end
         append!(lossGradients, [lossGradient])
     end
     return(lossGradients)
