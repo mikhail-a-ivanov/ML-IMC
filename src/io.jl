@@ -41,9 +41,9 @@ end
 struct NNparameters
 
 Fields:
-neurons: number of neurons in the network (excluding the energy output neuron)
+neurons: number of neurons in the network
 iters: number of learning iterations
-activation: activation function
+activation: list of activation functions
 REGP: regularization parameter
 optimizer: type of optimizer
 rate: learning rate
@@ -52,13 +52,13 @@ minR: min distance for G2 symmetry function, Å
 maxR: max distance for G2 symmetry function (cutoff), Å 
 η: η parameter in G2 symmetry function (gaussian width), Å
 """
-mutable struct NNparameters
+struct NNparameters
     minR::Float64
     maxR::Float64
     sigma::Float64
     neurons::Vector{Int}
     iters::Int
-    activation::String
+    activations::Vector{String}
     REGP::Float32
     optimizer::String
     rate::Float64
@@ -190,7 +190,17 @@ function parametersInit()
                             break
                         end
                     end
-                    append!(NNVars, [neurons])   
+                    append!(NNVars, [neurons])
+                elseif field == "activations"
+                    activations = []
+                    for (elementId, element) in enumerate(line)
+                        if elementId > 2 && element != "#"
+                            append!(activations, [strip(element, ',')])
+                        elseif element == "#"
+                            break
+                        end
+                    end
+                    append!(NNVars, [activations])   
                 else
                     if fieldtype != String
                         append!(NNVars, parse(fieldtype, line[3]))

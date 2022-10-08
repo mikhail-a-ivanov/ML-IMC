@@ -44,7 +44,7 @@ function main()
         else
             println("Starting training from $(globalParms.inputmodel)")
         end
-        println("Using $(NNParms.activation) activation")
+        println("Using the following activation functions: $(NNParms.activations)")
         println("Neural network regularization parameter: $(NNParms.REGP)")
         println("Number of iterations: $(NNParms.iters)")
         println("Optimizer type: $(NNParms.optimizer)")
@@ -73,6 +73,6 @@ end
 Run the main() function
 """
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    main()
-end
+#if abspath(PROGRAM_FILE) == @__FILE__
+main()
+#end
