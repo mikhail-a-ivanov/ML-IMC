@@ -99,7 +99,7 @@ function normalizehist!(hist, systemParms)
     Npairs::Int = systemParms.N*(systemParms.N-1)/2
     bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
     shellVolumes = [4*π*systemParms.binWidth*bins[i]^2 for i in 1:length(bins)]
-    rdfNorm = ones(Float64, systemParms.Nbins)
+    rdfNorm = ones(Float32, systemParms.Nbins)
     for i in 1:length(rdfNorm)
         rdfNorm[i] = systemParms.V/Npairs * 1/shellVolumes[i]
     end
@@ -157,7 +157,7 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
           systemParms.Δ*(rand(rng, Float64) - 0.5), 
           systemParms.Δ*(rand(rng, Float64) - 0.5)]
 
-    positions(frame)[:, pointIndex] += dr
+    positions(frame)[:, pointIndex] .+= dr
 
     # Compute the updated distance vector
     distanceVector2 = zeros(systemParms.N)
@@ -260,13 +260,13 @@ function mcsample!(input)
     mcarrays = (frame, distanceMatrix, G2Matrix)
 
     # Initialize the distance histogram accumulator
-    histAccumulator = zeros(Float64, systemParms.Nbins)
+    histAccumulator = zeros(Float32, systemParms.Nbins)
 
     # Build the cross correlation arrays for training,
     # an additional distance histogram array
     # and the G2 matrix accumulator
     if globalParms.mode == "training"
-        hist = zeros(Float64, systemParms.Nbins)
+        hist = zeros(Float32, systemParms.Nbins)
         G2MatrixAccumulator = zeros(size(G2Matrix))
         crossAccumulators = crossAccumulatorsInit(NNParms, systemParms)
     end
@@ -313,7 +313,7 @@ function mcsample!(input)
                 normalizehist!(hist, systemParms)
                 updateCrossAccumulators!(crossAccumulators, G2Matrix, hist, model)
                 # Nullify the hist array for the next training iteration
-                hist = zeros(Float64, systemParms.Nbins)
+                hist = zeros(Float32, systemParms.Nbins)
             else
                 histAccumulator = hist!(distanceMatrix, histAccumulator, systemParms)
             end

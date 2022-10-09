@@ -42,8 +42,6 @@ function computeEnergyGradients(symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
-    # Need to divide the gradients by the number of atoms
-    # to get the average gradient per atomic subnet
     for (layerId, layerGradients) in enumerate(gs[2][1]) 
         weightGradients = layerGradients[1] 
         append!(energyGradients, [weightGradients])
