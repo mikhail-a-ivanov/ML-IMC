@@ -48,9 +48,67 @@ function main()
         println("Using $(NNParms.activation) activation")
         println("Number of iterations: $(NNParms.iters)")
         println("Optimizer type: $(NNParms.optimizer)")
-        println("Learning rate: $(NNParms.rate)")
-        if NNParms.optimizer == "Momentum" #TODO: not only momentum, but many other optimizers
+        println("Parametrs of optimizer:")
+        if NNParms.optimizer == "Momentum"
+            println("Learning rate: $(NNParms.rate)")
             println("Momentum coefficient: $(NNParms.momentum)")
+
+        elseif NNParms.optimizer == "Descent"
+            println("Learning rate: $(NNParms.rate)")    
+
+        elseif NNParms.optimizer == "Nesterov"
+            println("Learning rate: $(NNParms.rate)")
+            println("Momentum coefficient: $(NNParms.momentum)")
+    
+        elseif NNParms.optimizer == "RMSProp"
+            println("Learning rate: $(NNParms.rate)")
+            println("Momentum coefficient: $(NNParms.momentum)")
+    
+        elseif NNParms.optimizer == "Adam" 
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
+    
+        elseif NNParms.optimizer == "RAdam" 
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
+    
+        elseif NNParms.optimizer == "AdaMax"
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
+    
+        elseif NNParms.optimizer == "AdaGrad"
+            println("Learning rate: $(NNParms.rate)")
+    
+        elseif  NNParms.optimizer == "AdaDelta"
+            println("Learning rate: $(NNParms.rate)")
+        
+        elseif NNParms.optimizer == "AMSGrad"
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
+    
+        elseif NNParms.optimizer == "NAdam"
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
+    
+        elseif NNParms.optimizer == "AdamW"
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
+    
+        elseif NNParms.optimizer == "OAdam"
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
+    
+        elseif NNParms.optimizer == "AdaBelief"
+            println("Learning rate: $(NNParms.rate)")
+            println("Decay 1: $(NNParms.decay1)")
+            println("Decay 2: $(NNParms.decay2)")
         end
         
         # Run the training
