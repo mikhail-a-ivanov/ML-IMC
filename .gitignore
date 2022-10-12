@@ -14,3 +14,5 @@
 
 # Do not commit jupyter notebooks
 *.ipynb
+
+.vscode/
