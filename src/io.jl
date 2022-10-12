@@ -255,7 +255,7 @@ Writes the total energy to an output file
 function writeenergies(outname, energies, parameters, slicing=10)
     steps = 0:parameters.outfreq*slicing:parameters.steps
     io = open(outname, "w")
-    print(io, @sprintf("%8s %22s", " Step", "Total energy, kJ/mol"))
+    print(io, @sprintf("%8s %22s", "# Step", "Total energy, kJ/mol"))
     print(io, "\n")
     for i in 1:length(energies[1:slicing:end])
         print(io, @sprintf("%9d %10.3f", steps[i], energies[1:slicing:end][i]), "\n")

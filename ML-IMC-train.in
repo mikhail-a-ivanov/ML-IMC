@@ -16,7 +16,7 @@ trajout        = 250000               # Trajectory output frequency
 # Network parameters
 neurons        = 300, 50               # Number of neurons in the network (without the output neuron)
 iters          = 5                     # Number of learning iterations
-activation     = tanh                  # Activation function
+activation     = identity                  # Activation function
 optimizer      = Momentum              # Optimizer (other options - Descent)
 rate           = 0.005                 # Learning rate
 momentum       = 0.75                  # Momentum coefficient
