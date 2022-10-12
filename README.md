@@ -7,7 +7,11 @@ Clone the repository and run:
 `julia -p n ML-IMC.jl ML-IMC-init.in | tee mc.out` where `n` is the number of available cores
 
 ## Required Julia packages
-**Julia version: 1.7**
+**Julia version: 1.8**
+
+'''
+pkg> add Dates, Statistics, LinearAlgebra, Distributed, Chemfiles, BSON, BenchmarkTools, Plots, StaticArrays, Flux, RandomNumbers
+'''
 
 Core packages:
 - `Flux`
@@ -23,8 +27,6 @@ Other packages:
 - `BSON`
 - `Statistics`
 
-## To do:
-- Continue training using existing model
 
 ## Authors
 - Prof. Alexander Lyubartsev (alexander.lyubartsev@mmk.su.se) - Principal investigator and method developer

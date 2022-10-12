@@ -39,7 +39,7 @@ to all parameters in the given network
 function computeEnergyGradients(symmFuncMatrix, model)
     energyGradients = []
     # Compute energy gradients
-    gs = gradient(totalEnergy, symmFuncMatrix, model)
+    gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
