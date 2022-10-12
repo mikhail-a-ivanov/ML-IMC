@@ -152,7 +152,7 @@ end
 
 function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
     N = length(symmFuncMatrix[:, 1])
-    E = previousE
+    E = copy(previousE)
     for i in indexesForUpdate
         E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
     end
