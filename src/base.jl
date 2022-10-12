@@ -141,21 +141,24 @@ function totalEnergyScalar(symmFuncMatrix, model)
     return(E)
 end
 
-function getIndexesForUpdating(distanceVector2, systemParms, NNParms)
-    indexes = []
-    for i in 1:systemParms.N
-        if distanceVector2[i] < NNParms.maxR
-            append!(indexes, i)
-        end
+
+function getBoolMaskForUpdating(distanceVectorInput, systemParms, NNParms)
+    N = systemParms.N
+    indexes = Array{Bool}(undef, N)
+    for i in 1:N
+        indexes[i] = (distanceVectorInput[i] < NNParms.maxR)
     end
     return(indexes)
 end
 
+
 function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
     N = size(symmFuncMatrix)[1]
     E = copy(previousE)
-    for i in indexesForUpdate
-        E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
+    for i in 1:N
+        if indexesForUpdate[i]
+            E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
+        end
     end
     return(E)
 end
@@ -217,7 +220,7 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
         end
     end
 
-    indexesForUpdate = getIndexesForUpdating(distanceVector2, systemParms, NNParms)
+    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, systemParms, NNParms)
     
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
