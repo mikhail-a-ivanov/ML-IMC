@@ -324,18 +324,18 @@ function writeRDF(outname, rdf, systemParms)
 end
 
 """
-function writeenergies(outname, energies, MCParms, slicing=1)
+function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
 
 Writes the total energy to an output file
 """
-function writeenergies(outname, energies, MCParms, slicing=1)
+function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
     steps = 0:MCParms.outfreq*slicing:MCParms.steps
     io = open(outname, "w")
-    print(io, "# Total energy, kJ/mol \n")
+    print(io, "# System: $(systemParms.systemName)\n#")
+    print(io, @sprintf("%8s %22s", " Step", "Total energy, kJ/mol"))
+    print(io, "\n")
     for i in 1:length(energies[1:slicing:end])
-        print(io, "# Step = ", @sprintf("%d", steps[i]), "\n")
-        print(io, @sprintf("%10.3f", energies[1:slicing:end][i]), "\n")
-        print(io, "\n")
+        print(io, @sprintf("%9d %10.3f", steps[i], energies[1:slicing:end][i]), "\n")
     end
     close(io)
 end

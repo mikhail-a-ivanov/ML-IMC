@@ -428,7 +428,8 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
             # Write descriptors and energies
             name = systemParms.systemName
             writeRDF("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
-            writeenergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, MCParms, 1)
+            writeenergies("energies-$(name)-iter-$(iterString).dat", 
+                            systemOutput.energies, MCParms, systemParms, 1)
         end
         # Average the gradients
         meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
@@ -465,6 +466,6 @@ function simulate!(model, globalParms, MCParms, NNParms, systemParms)
     # Write descriptors and energies
     name = systemParms.systemName
     writeRDF("RDFNN-$(name).dat", systemOutputs[1].descriptor, systemParms)
-    writeenergies("energies-$(name).dat", systemOutputs[1].energies, MCParms, 1)
+    writeenergies("energies-$(name).dat", systemOutputs[1].energies, MCParms, systemParms, 1)
     return
 end

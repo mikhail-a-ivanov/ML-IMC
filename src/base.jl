@@ -283,7 +283,8 @@ function mcsample!(input)
 
     # Initialize the starting energy and the energy array
     E = totalEnergy(G2Matrix, model)
-    energies = zeros(totalDataPoints)
+    energies = zeros(totalDataPoints + 1)
+    energies[1] = E
 
     # Acceptance counters
     acceptedTotal = 0
@@ -303,7 +304,7 @@ function mcsample!(input)
 
         # Collect the output energies
         if step % MCParms.outfreq == 0
-            energies[Int(step/MCParms.outfreq)] = E
+            energies[Int(step/MCParms.outfreq) + 1] = E
         end
 
          # MC trajectory output
