@@ -40,7 +40,7 @@ function buildG2Matrix(distanceMatrix, NNParms)
 Builds a matrix of G2 values with varying Rs and η parameters for each atom in the configuration
 """
 function buildG2Matrix(distanceMatrix, NNParms)
-    N = length(distanceMatrix[1, :])
+    N = size(distanceMatrix)[1]
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
     G2Matrix = zeros(Float64, N, npoints)
@@ -132,7 +132,7 @@ function totalEnergy(symmFuncMatrix, model)
 Computes the total potential energy of the system
 """
 function totalEnergyScalar(symmFuncMatrix, model)
-    N = length(symmFuncMatrix[:, 1])
+    N = size(symmFuncMatrix)[1]
     E = 0.
     for i in 1:N
         E += atomicEnergy(symmFuncMatrix[i, :], model)
@@ -151,7 +151,7 @@ function getIndexesForUpdating(distanceVector2, systemParms, NNParms)
 end
 
 function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
-    N = length(symmFuncMatrix[:, 1])
+    N = size(symmFuncMatrix)[1]
     E = copy(previousE)
     for i in indexesForUpdate
         E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
@@ -160,7 +160,7 @@ function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
 end
 
 function totalEnergyVectorInit(symmFuncMatrix, model)
-    N = length(symmFuncMatrix[:, 1])
+    N = size(symmFuncMatrix)[1]
     E = Array{Float64}(undef, N)
     for i in 1:N
         E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
@@ -187,7 +187,6 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
 
     # Take a copy of the previous energy value
     E1 = copy(E)
-    
     
     # Displace the particle
     dr = [systemParms.Δ*(rand(rng, Float64) - 0.5), 
