@@ -4,7 +4,7 @@
 ## How to run
 Clone the repository and run:
 
-`julia -p n ML-IMC.jl ML-IMC-init.in | tee mc.out` where `n` is the number of available cores
+`julia -p n ML-IMC.jl ML-IMC-train.in | tee mc.out` where `n` is the number of available cores
 
 ## Required Julia packages
 **Julia version: 1.8**
@@ -26,11 +26,14 @@ Other packages:
 - `Printf`
 - `BSON`
 - `Statistics`
+- `Plots`
+- `BenchmarkTools`
 
 
 ## Authors
 - Prof. Alexander Lyubartsev (alexander.lyubartsev@mmk.su.se) - Principal investigator and method developer
-- Mikhail Ivanov (mikhail.ivanov@mmk.su.se) - Main software developer
+- Mikhail Ivanov (mikhail.ivanov@mmk.su.se) - Software developer
+- Maksim Posysoev (maksim.posysoev@mmk.su.se) - Software developer
 
 ## Acknowledgement
 We would like to thank the Åke Åkesons foundation as well as Swedish Research Council (Vetenskapsrådet) for the financial support, 

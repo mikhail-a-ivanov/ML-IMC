@@ -1,15 +1,4 @@
-using Printf
 using RandomNumbers
-using Statistics
-using StaticArrays
-using LinearAlgebra
-using Chemfiles
-using Flux
-
-include("distances.jl")
-include("network.jl")
-include("io.jl")
-
 """
 function G2(R, Rc, Rs, η)
 

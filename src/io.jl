@@ -1,5 +1,5 @@
+using Printf
 using Chemfiles
-using BSON: @save, @load
 
 """
 struct globalParameters
@@ -33,7 +33,7 @@ struct MCparameters
     steps::Int
     Eqsteps::Int
     stepAdjustFreq::Int
-    trajout::Int 
+    trajout::Int
     outfreq::Int
 end
 
@@ -41,9 +41,9 @@ end
 struct NNparameters
 
 Fields:
-neurons: number of neurons in the network (excluding the energy output neuron)
+neurons: number of neurons in the network
 iters: number of learning iterations
-activation: activation function
+activation: list of activation functions
 REGP: regularization parameter
 optimizer: type of optimizer
 rate: learning rate
@@ -52,13 +52,13 @@ minR: min distance for G2 symmetry function, Å
 maxR: max distance for G2 symmetry function (cutoff), Å 
 η: η parameter in G2 symmetry function (gaussian width), Å
 """
-mutable struct NNparameters
+struct NNparameters
     minR::Float64
     maxR::Float64
     sigma::Float64
     neurons::Vector{Int}
     iters::Int
-    activation::String
+    activations::Vector{String}
     REGP::Float32
     optimizer::String
     rate::Float64
@@ -114,8 +114,8 @@ parameter structs
 """
 function parametersInit()
     # Read the input name from the command line argument
-    #inputname = ARGS[1]
-    inputname = "ML-IMC-init.in"
+    inputname = ARGS[1]
+    #inputname = "ML-IMC-init.in"
 
     # Constants
     NA::Float64 = 6.02214076 # [mol-1] * 10^-23
@@ -190,7 +190,17 @@ function parametersInit()
                             break
                         end
                     end
-                    append!(NNVars, [neurons])   
+                    append!(NNVars, [neurons])
+                elseif field == "activations"
+                    activations = []
+                    for (elementId, element) in enumerate(line)
+                        if elementId > 2 && element != "#"
+                            append!(activations, [strip(element, ',')])
+                        elseif element == "#"
+                            break
+                        end
+                    end
+                    append!(NNVars, [activations])                   
                 else
                     if fieldtype != String
                         append!(NNVars, parse(fieldtype, line[3]))
@@ -216,8 +226,8 @@ function parametersInit()
                 if length(line) != 0 && field == line[1]
                     if field == "T"
                         T = parse(fieldtype, line[3])
-                        β = 1/(kB * T)
-                        append!(systemVars, T)  
+                        β = 1 / (kB * T)
+                        append!(systemVars, T)
                         append!(systemVars, β)
                     elseif field == "topname"
                         topname = [line[3]]
@@ -257,10 +267,10 @@ function parametersInit()
     if globalParms.mode == "training"
         println("Running ML-IMC in the training mode.")
     else
-        println("Running ML-IMC in the simulation mode.") 
+        println("Running ML-IMC in the simulation mode.")
     end
 
-    return(globalParms, MCParms, NNParms, systemParmsList)
+    return (globalParms, MCParms, NNParms, systemParmsList)
 end
 
 """
@@ -270,7 +280,7 @@ Reads input configurations from XTC file
 """
 function readXTC(systemParms)
     traj = Trajectory(systemParms.trajfile)
-    return(traj)
+    return (traj)
 end
 
 """
@@ -288,7 +298,7 @@ function inputInit(globalParms, NNParms, systemParmsList)
 
     # Set up a model and an optimizer for training
     # or load a model from a file for MC sampling
-    
+
     # Initialize the optimizer
     opt = optInit(NNParms)
     if globalParms.inputmodel == "random" || globalParms.inputmodel == "zero"
@@ -299,9 +309,9 @@ function inputInit(globalParms, NNParms, systemParmsList)
     end
 
     if globalParms.mode == "training"
-        return(model, opt, refRDFs)
+        return (model, opt, refRDFs)
     else
-        return(model)
+        return (model)
     end
 end
 
@@ -311,7 +321,7 @@ function writeRDF(outname, rdf, systemParms)
 Writes RDF into a file
 """
 function writeRDF(outname, rdf, systemParms)
-    bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
+    bins = [bin * systemParms.binWidth for bin in 1:systemParms.Nbins]
     # Write the data
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n")
@@ -347,7 +357,7 @@ Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
 function writetraj(conf, systemParms, outname, mode='w')
     # Create an empty Frame object
-    frame = Frame() 
+    frame = Frame()
     # Set PBC vectors
     boxCenter = systemParms.box ./ 2
     set_cell!(frame, UnitCell(systemParms.box))
@@ -374,13 +384,13 @@ function readRDF(rdfname)
     nlines = length(lines) - ncomments
     bins = zeros(nlines)
     rdf = zeros(nlines)
-    for i in (1 + ncomments):length(lines)
+    for i in (1+ncomments):length(lines)
         rdfline = split(lines[i])
         if rdfline[1] != "#"
-            bins[i - ncomments] = parse(Float32, rdfline[1])
-            rdf[i - ncomments] = parse(Float32, rdfline[2])
+            bins[i-ncomments] = parse(Float32, rdfline[1])
+            rdf[i-ncomments] = parse(Float32, rdfline[2])
         end
     end
-    return(bins, rdf)
+    return (bins, rdf)
     close(file)
 end
