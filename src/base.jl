@@ -45,8 +45,9 @@ function buildG2Matrix(distanceMatrix, NNParms)
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
     G2Matrix = zeros(Float64, N, npoints)
     for i in 1:N
+        distanceVector = distanceMatrix[i, :]
         for j in 1:npoints
-            G2Matrix[i, j] = G2total(distanceMatrix[i, :], NNParms.maxR, Rss[j], NNParms.sigma)
+            G2Matrix[i, j] = G2total(distanceVector, NNParms.maxR, Rss[j], NNParms.sigma)
         end
     end
     return(G2Matrix)
@@ -193,10 +194,10 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
           systemParms.Δ*(rand(rng, Float64) - 0.5), 
           systemParms.Δ*(rand(rng, Float64) - 0.5)]
 
-    positions(frame)[:, pointIndex] += dr
+    positions(frame)[:, pointIndex] .+= dr
 
     # Compute the updated distance vector
-    distanceVector2 = zeros(systemParms.N)
+    distanceVector2 = Array{Float64}(undef, systemParms.N)
     distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
 
     # Acceptance counter
@@ -208,7 +209,7 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
     for distance in distanceVector2
         if distance < systemParms.repulsionLimit && distance > 0.
             # Revert to the previous configuration
-            positions(frame)[:, pointIndex] -= dr
+            positions(frame)[:, pointIndex] .-= dr
             # Pack mcarrays
             mcarrays = (frame, distanceMatrix, G2Matrix1)
             # Finish function execution
@@ -241,7 +242,7 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
         mcarrays = (frame, distanceMatrix, G2Matrix2)
         return(mcarrays, E, newEnergyVector, accepted)
     else
-        positions(frame)[:, pointIndex] -= dr
+        positions(frame)[:, pointIndex] .-= dr
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix1)
         return(mcarrays, E, E_previous_vector, accepted)
