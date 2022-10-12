@@ -43,15 +43,8 @@ function computeEnergyGradients(descriptor, model)
     nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
     for (layerId, layerGradients) in enumerate(gs[2][1]) 
-        if layerId != nlayers
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-            biasGradients = layerGradients[2]
-            append!(energyGradients, [biasGradients])
-        else
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-        end
+        weightGradients = layerGradients[1]
+        append!(energyGradients, [weightGradients])
     end
     return(energyGradients)
 end
@@ -79,15 +72,8 @@ function crossAccumulatorsInit(parameters, systemParms)
     crossAccumulators = []
     nlayers = length(parameters.neurons)
     for layerId in 2:nlayers
-        if layerId < nlayers
-            append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
-                    parameters.neurons[layerId - 1] * parameters.neurons[layerId]))])
-            append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
-                    parameters.neurons[layerId]))])
-        else
-            append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
-                    parameters.neurons[layerId - 1] * parameters.neurons[layerId]))])
-        end
+        append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
+                parameters.neurons[layerId - 1] * parameters.neurons[layerId]))])
     end
     return(crossAccumulators)
 end
@@ -212,11 +198,7 @@ function buildchain(args...)
     nlayers = length(args)
     layers = []
     for (layerId, arg) in enumerate(args)
-        if layerId < nlayers
-            layer = Dense(arg...)
-        else
-            layer = Dense(arg..., bias=false)
-        end
+        layer = Dense(arg..., bias=false)
         append!(layers, [layer])
     end
     model = Chain(layers...)

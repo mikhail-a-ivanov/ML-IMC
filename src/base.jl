@@ -93,8 +93,7 @@ function mcmove!(mcarrays, E, model, parameters, systemParms, step, rng)
     systemParms.delta*(rand(rng, Float64) - 0.5), 
     systemParms.delta*(rand(rng, Float64) - 0.5)]
 
-    
-    positions(frame)[:, pointIndex] += dr
+    positions(frame)[:, pointIndex] .+= dr
 
     # Update distance
     updatedistance!(frame, distanceVector, pointIndex)
@@ -105,7 +104,7 @@ function mcmove!(mcarrays, E, model, parameters, systemParms, step, rng)
         for distance in distanceVector
             if distance < systemParms.repulsionLimit && distance > 0.
                 # Revert to the previous configuration
-                positions(frame)[:, pointIndex] -= dr
+                positions(frame)[:, pointIndex] .-= dr
                 # Update the descriptor data
                 if step % parameters.outfreq == 0 && step > parameters.Eqsteps
                     for i in 1:systemParms.Nbins
@@ -156,7 +155,7 @@ function mcmove!(mcarrays, E, model, parameters, systemParms, step, rng)
             end
         end
     else
-        positions(frame)[:, pointIndex] -= dr
+        positions(frame)[:, pointIndex] .-= dr
         # Update the descriptor data
         if step % parameters.outfreq == 0 && step > parameters.Eqsteps
             for i in 1:systemParms.Nbins

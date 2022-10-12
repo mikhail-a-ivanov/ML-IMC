@@ -3,7 +3,7 @@
 # List of input filenames for each system
 systemFiles    = 100CH3OH-CG.in
 mode           = simulation                  # Run MC sampling (simulation) or ML-IMC optimization (training)         
-modelname      = methanol-NN-300-50-1.bson   # Name of a trained model file (simulation mode)
+modelname      = model-iter-05.bson   # Name of a trained model file (simulation mode)
 
 # Monte Carlo parameters
 steps          = 10000000              # Total number of MC steps
