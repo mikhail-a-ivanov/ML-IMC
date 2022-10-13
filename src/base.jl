@@ -43,7 +43,7 @@ function buildG2Matrix(distanceMatrix, NNParms)
     N = size(distanceMatrix)[1]
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
-    G2Matrix = zeros(Float64, N, npoints)
+    G2Matrix = zeros(Float32, N, npoints)
     for i in 1:N
         distanceVector = distanceMatrix[i, :]
         for j in 1:npoints
@@ -108,7 +108,7 @@ function normalizehist!(hist, systemParms)
     Npairs::Int = systemParms.N*(systemParms.N-1)/2
     bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
     shellVolumes = [4*π*systemParms.binWidth*bins[i]^2 for i in 1:length(bins)]
-    rdfNorm = ones(Float64, systemParms.Nbins)
+    rdfNorm = ones(Float32, systemParms.Nbins)
     for i in 1:length(rdfNorm)
         rdfNorm[i] = systemParms.V/Npairs /shellVolumes[i]
     end
@@ -123,7 +123,7 @@ Computes the potential energy of one particle
 from the input layer of the neural network
 """
 function atomicEnergy(inputlayer, model)
-    E::Float64 = model(inputlayer)[1]
+    E::Float32 = model(inputlayer)[1]
     return(E)
 end
 
@@ -162,7 +162,7 @@ end
 
 function totalEnergyVectorInit(symmFuncMatrix, model)
     N = size(symmFuncMatrix)[1]
-    E = Array{Float64}(undef, N)
+    E = Array{Float32}(undef, N)
     for i in 1:N
         E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
     end
@@ -190,14 +190,14 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
     E1 = copy(E)
     
     # Displace the particle
-    dr = [systemParms.Δ*(rand(rng, Float64) - 0.5), 
-          systemParms.Δ*(rand(rng, Float64) - 0.5), 
-          systemParms.Δ*(rand(rng, Float64) - 0.5)]
+    dr = [systemParms.Δ*(rand(rng, Float32) - 0.5), 
+          systemParms.Δ*(rand(rng, Float32) - 0.5), 
+          systemParms.Δ*(rand(rng, Float32) - 0.5)]
 
     positions(frame)[:, pointIndex] .+= dr
 
     # Compute the updated distance vector
-    distanceVector2 = Array{Float64}(undef, systemParms.N)
+    distanceVector2 = Array{Float32}(undef, systemParms.N)
     distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
 
     # Acceptance counter
@@ -232,7 +232,7 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
     ΔE = E2 - E1
     
     # Accept or reject the move
-    if rand(rng, Float64) < exp(-ΔE*systemParms.β)
+    if rand(rng, Float32) < exp(-ΔE*systemParms.β)
         accepted += 1
         E += ΔE
         # Update distance matrix
@@ -304,13 +304,13 @@ function mcsample!(input)
     mcarrays = (frame, distanceMatrix, G2Matrix)
 
     # Initialize the distance histogram accumulator
-    histAccumulator = zeros(Float64, systemParms.Nbins)
+    histAccumulator = zeros(Float32, systemParms.Nbins)
 
     # Build the cross correlation arrays for training,
     # an additional distance histogram array
     # and the G2 matrix accumulator
     if globalParms.mode == "training"
-        hist = zeros(Float64, systemParms.Nbins)
+        hist = zeros(Float32, systemParms.Nbins)
         G2MatrixAccumulator = zeros(size(G2Matrix))
         crossAccumulators = crossAccumulatorsInit(NNParms, systemParms)
     end
@@ -359,7 +359,7 @@ function mcsample!(input)
                 normalizehist!(hist, systemParms)
                 updateCrossAccumulators!(crossAccumulators, G2Matrix, hist, model)
                 # Nullify the hist array for the next training iteration
-                hist = zeros(Float64, systemParms.Nbins)
+                hist = zeros(Float32, systemParms.Nbins)
             else
                 histAccumulator = hist!(distanceMatrix, histAccumulator, systemParms)
             end

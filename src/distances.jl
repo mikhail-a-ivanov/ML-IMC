@@ -11,7 +11,7 @@ function starts indexing atoms from 0!
 """
 function builddistanceMatrix(frame)
     N = length(frame)
-    distanceMatrix = Array{Float64}(undef, (N, N))
+    distanceMatrix = Array{Float32}(undef, (N, N))
     @inbounds for i in 0:N-1
         @inbounds for j in 0:N-1
             distanceMatrix[i+1, j+1] = distance(frame, i, j)

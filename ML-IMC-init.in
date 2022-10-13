@@ -5,11 +5,11 @@ inputmodel      = models/LJ-10-1.bson  # Specify a model name, "random" for rand
                                        # in the first layer of the network
 
 # Monte Carlo parameters
-steps          = 500000             # Total number of MC steps
-Eqsteps        = 250000             # Equilibration MC steps
-stepAdjustFreq = 10000              # Frequency of MC step adjustment   
-trajout        = 5000               # XTC trajectory frequency
-outfreq        = 2500               # Output frequency
+steps          = 5000000             # Total number of MC steps
+Eqsteps        = 2500000             # Equilibration MC steps
+stepAdjustFreq = 100000              # Frequency of MC step adjustment   
+trajout        = 50000               # XTC trajectory frequency
+outfreq        = 25000               # Output frequency
 
 # Network parameters
 minR            = 2.0                   # Min distance for G2 symmetry function, Å
@@ -19,7 +19,7 @@ sigma           = 0.5                   # Sigma from Gaussian distribution in Å
                                         #                       η: 0.8 -- 0.125
 
 neurons         = 10                    # Number of neurons in the network (excluding the energy output neuron)
-iters           = 10                    # Number of learning iterations
+iters           = 1                    # Number of learning iterations
 activation      = identity              # Activation function
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
 REGP            = 0                     # Regularization parameter (set to zero to turn off regularization)
