@@ -1,6 +1,5 @@
-using StaticArrays
-using LinearAlgebra
 using Flux
+using Statistics
 using BSON: @save, @load
 
 """
@@ -43,18 +42,9 @@ function computeEnergyGradients(symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
-    # Need to divide the gradients by the number of atoms
-    # to get the average gradient per atomic subnet
     for (layerId, layerGradients) in enumerate(gs[2][1])
-        if layerId != nlayers
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-            biasGradients = layerGradients[2]
-            append!(energyGradients, [biasGradients])
-        else
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-        end
+        weightGradients = layerGradients[1]
+        append!(energyGradients, [weightGradients])
     end
     return (energyGradients)
 end
@@ -75,47 +65,28 @@ end
 
 """
 function crossAccumulatorsInit(NNParms, systemParms)
-
 Initialize cross correlation accumulator arrays
 """
 function crossAccumulatorsInit(NNParms, systemParms)
     crossAccumulators = []
     nlayers = length(NNParms.neurons)
     for layerId = 2:nlayers
-        if layerId < nlayers
-            append!(
-                crossAccumulators,
-                [
-                    zeros(
-                        Float64,
-                        (
-                            systemParms.Nbins,
-                            NNParms.neurons[layerId-1] * NNParms.neurons[layerId],
-                        ),
+        append!(
+            crossAccumulators,
+            [
+                zeros(
+                    Float64,
+                    (
+                        systemParms.Nbins,
+                        NNParms.neurons[layerId-1] * NNParms.neurons[layerId],
                     ),
-                ],
-            )
-            append!(
-                crossAccumulators,
-                [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId]))],
-            )
-        else
-            append!(
-                crossAccumulators,
-                [
-                    zeros(
-                        Float64,
-                        (
-                            systemParms.Nbins,
-                            NNParms.neurons[layerId-1] * NNParms.neurons[layerId],
-                        ),
-                    ),
-                ],
-            )
-        end
+                ),
+            ],
+        )
     end
     return (crossAccumulators)
 end
+
 
 """
 function updateCrossAccumulators(crossAccumulators, descriptor, model)
@@ -212,38 +183,36 @@ Compute the error function
 """
 function loss(descriptorNN, descriptorref, model, NNParms)
     strLoss = sum((descriptorNN - descriptorref) .^ 2)
-    regLoss = 0.0
-    for parameters in Flux.params(model)
-        regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
+    if NNParms.REGP > 0
+        regLoss = 0.0
+        for parameters in Flux.params(model)
+            regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
+        end
+        println("Regularization Loss = ", round(regLoss, digits = 8))
+        totalLoss = strLoss + regLoss
+    else
+        totalLoss = strLoss
     end
     println("Descriptor Loss = ", round(strLoss, digits = 8))
-    println("Regularization Loss = ", round(regLoss, digits = 8))
-    totalLoss = strLoss + regLoss
     return (totalLoss)
 end
 
 """
 function buildNetwork!(NNParms)
 Combines input arguments for neural network building
-Note: updates NNParms.neurons
 """
 function buildNetwork!(NNParms)
-    push!(NNParms.neurons, 1)
     nlayers = length(NNParms.neurons)
     network = []
     for layerId = 2:nlayers
-        if layerId < nlayers
-            append!(
-                network,
-                [(
-                    NNParms.neurons[layerId-1],
-                    NNParms.neurons[layerId],
-                    getfield(Main, Symbol(NNParms.activation)),
-                )],
-            )
-        else
-            append!(network, [(NNParms.neurons[layerId-1], NNParms.neurons[layerId])])
-        end
+        append!(
+            network,
+            [(
+                NNParms.neurons[layerId-1],
+                NNParms.neurons[layerId],
+                getfield(Main, Symbol(NNParms.activations[layerId-1])),
+            )],
+        )
     end
     return (network)
 end
@@ -256,11 +225,7 @@ function buildchain(args...)
     nlayers = length(args)
     layers = []
     for (layerId, arg) in enumerate(args)
-        if layerId < nlayers
-            layer = Dense(arg...)
-        else
-            layer = Dense(arg..., bias = false)
-        end
+        layer = Dense(arg..., bias = false)
         append!(layers, [layer])
     end
     model = Chain(layers...)
