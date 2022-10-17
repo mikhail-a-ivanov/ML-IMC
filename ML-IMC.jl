@@ -43,7 +43,9 @@ function main()
         if globalParms.inputmodel == "random"
             println("Initializing a new neural network with random weigths")
         elseif globalParms.inputmodel == "zero"
-            println("Initializing a new neural network with zero weigths in the first layer")
+            println(
+                "Initializing a new neural network with zero weigths in the first layer",
+            )
         else
             println("Starting training from $(globalParms.inputmodel)")
         end
@@ -57,63 +59,63 @@ function main()
             println("Momentum coefficient: $(NNParms.momentum)")
 
         elseif NNParms.optimizer == "Descent"
-            println("Learning rate: $(NNParms.rate)")    
+            println("Learning rate: $(NNParms.rate)")
 
         elseif NNParms.optimizer == "Nesterov"
             println("Learning rate: $(NNParms.rate)")
             println("Momentum coefficient: $(NNParms.momentum)")
-    
+
         elseif NNParms.optimizer == "RMSProp"
             println("Learning rate: $(NNParms.rate)")
             println("Momentum coefficient: $(NNParms.momentum)")
-    
-        elseif NNParms.optimizer == "Adam" 
+
+        elseif NNParms.optimizer == "Adam"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
-    
-        elseif NNParms.optimizer == "RAdam" 
+
+        elseif NNParms.optimizer == "RAdam"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
-    
+
         elseif NNParms.optimizer == "AdaMax"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
-    
+
         elseif NNParms.optimizer == "AdaGrad"
             println("Learning rate: $(NNParms.rate)")
-    
-        elseif  NNParms.optimizer == "AdaDelta"
+
+        elseif NNParms.optimizer == "AdaDelta"
             println("Learning rate: $(NNParms.rate)")
-        
+
         elseif NNParms.optimizer == "AMSGrad"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
-    
+
         elseif NNParms.optimizer == "NAdam"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
-    
+
         elseif NNParms.optimizer == "AdamW"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
-    
+
         elseif NNParms.optimizer == "OAdam"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
-    
+
         elseif NNParms.optimizer == "AdaBelief"
             println("Learning rate: $(NNParms.rate)")
             println("Decay 1: $(NNParms.decay1)")
             println("Decay 2: $(NNParms.decay2)")
         end
-        
+
         # Run the training
         train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     else
