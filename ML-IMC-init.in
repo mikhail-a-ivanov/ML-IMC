@@ -1,7 +1,7 @@
 # Global parameters
 systemFiles     = Ar_95K.in            # List of input filenames for each system
-mode            = simulation           # Run MC sampling (simulation) or ML-IMC optimization (training)
-inputmodel      = models/LJ-10-1.bson  # Specify a model name, "random" for random initialization or "zero" for zeros 
+mode            = training           # Run MC sampling (simulation) or ML-IMC optimization (training)
+inputmodel      = zero  # Specify a model name, "random" for random initialization or "zero" for zeros 
                                        # in the first layer of the network
 
 # Monte Carlo parameters

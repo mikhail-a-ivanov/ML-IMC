@@ -1,0 +1,5 @@
+julia ML-IMC.jl | tee mc.out
+mv *dat *bson *out *xtc *pdb ./singlecore
+
+julia -p 6 ML-IMC.jl | tee mc.out
+mv *dat *bson *out *xtc *pdb ./multicore

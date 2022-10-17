@@ -525,6 +525,9 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
 
         # Update the model if the loss decreased
         updatemodel!(model, opt, meanLossGradients)
+
+        # Save gradients that are mutated by opt
+        @save "gradients-mutated-iter-$(iterString).bson" meanLossGradients
         # Move on to the next iteration
         iteration += 1
     end
