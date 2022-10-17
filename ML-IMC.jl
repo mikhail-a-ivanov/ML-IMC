@@ -31,8 +31,10 @@ function main()
     end
 
     println("Using $(NNParms.neurons[1]) G2 values as the neural input for each atom")
-    η = 1/(2*NNParms.sigma^2)
-    println("G2 sigma parameter: $(NNParms.sigma) Å; the corresponding eta parameter: $(round(η, digits=2)) Å^-2")
+    η = 1 / (2 * NNParms.sigma^2)
+    println(
+        "G2 sigma parameter: $(NNParms.sigma) Å; the corresponding eta parameter: $(round(η, digits=2)) Å^-2",
+    )
     Rss = Array{Float64}(LinRange(NNParms.minR, NNParms.maxR, NNParms.neurons[1]))
     println("G2 Rs values: $(round.(Rss, digits=2)) Å")
     println("G2 cutoff radius: $(NNParms.maxR) Å")
@@ -47,7 +49,9 @@ function main()
         if globalParms.inputmodel == "random"
             println("Initializing a new neural network with random weigths")
         elseif globalParms.inputmodel == "zero"
-            println("Initializing a new neural network with zero weigths in the first layer")
+            println(
+                "Initializing a new neural network with zero weigths in the first layer",
+            )
         else
             println("Starting training from $(globalParms.inputmodel)")
         end

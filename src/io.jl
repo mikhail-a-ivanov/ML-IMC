@@ -200,7 +200,7 @@ function parametersInit()
                             break
                         end
                     end
-                    append!(NNVars, [activations])                   
+                    append!(NNVars, [activations])
                 else
                     if fieldtype != String
                         append!(NNVars, parse(fieldtype, line[3]))
@@ -321,13 +321,13 @@ function writeRDF(outname, rdf, systemParms)
 Writes RDF into a file
 """
 function writeRDF(outname, rdf, systemParms)
-    bins = [bin * systemParms.binWidth for bin in 1:systemParms.Nbins]
+    bins = [bin * systemParms.binWidth for bin = 1:systemParms.Nbins]
     # Write the data
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n")
     print(io, "# RDF data ($(systemParms.atomname) - $(systemParms.atomname)) \n")
     print(io, "# r, Å; g(r); \n")
-    for i in 1:length(rdf)
+    for i = 1:length(rdf)
         print(io, @sprintf("%6.3f %12.3f", bins[i], rdf[i]), "\n")
     end
     close(io)
@@ -338,13 +338,13 @@ function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
 
 Writes the total energy to an output file
 """
-function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
+function writeenergies(outname, energies, MCParms, systemParms, slicing = 1)
     steps = 0:MCParms.outfreq*slicing:MCParms.steps
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n#")
     print(io, @sprintf("%8s %22s", " Step", "Total energy, kJ/mol"))
     print(io, "\n")
-    for i in 1:length(energies[1:slicing:end])
+    for i = 1:length(energies[1:slicing:end])
         print(io, @sprintf("%9d %10.3f", steps[i], energies[1:slicing:end][i]), "\n")
     end
     close(io)
@@ -355,14 +355,14 @@ function writetraj(conf, parameters, outname, mode='w')
 
 Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
-function writetraj(conf, systemParms, outname, mode='w')
+function writetraj(conf, systemParms, outname, mode = 'w')
     # Create an empty Frame object
     frame = Frame()
     # Set PBC vectors
     boxCenter = systemParms.box ./ 2
     set_cell!(frame, UnitCell(systemParms.box))
     # Add wrapped atomic coordinates to the frame
-    for i in 1:systemParms.N
+    for i = 1:systemParms.N
         wrappedAtomCoords = wrap!(UnitCell(frame), conf[:, i]) .+ boxCenter
         add_atom!(frame, Atom(systemParms.atomname), wrappedAtomCoords)
     end
@@ -384,7 +384,7 @@ function readRDF(rdfname)
     nlines = length(lines) - ncomments
     bins = zeros(nlines)
     rdf = zeros(nlines)
-    for i in (1+ncomments):length(lines)
+    for i = (1+ncomments):length(lines)
         rdfline = split(lines[i])
         if rdfline[1] != "#"
             bins[i-ncomments] = parse(Float32, rdfline[1])

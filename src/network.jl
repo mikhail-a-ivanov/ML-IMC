@@ -8,11 +8,11 @@ struct MCSampleInput
 Used for packaging mcsample! inputs
 """
 struct MCSampleInput
-    globalParms
-    MCParms
-    NNParms
-    systemParms
-    model
+    globalParms::Any
+    MCParms::Any
+    NNParms::Any
+    systemParms::Any
+    model::Any
 end
 
 """
@@ -21,12 +21,12 @@ struct MCAverages
 Used for packaging mcsample! outputs
 """
 struct MCAverages
-    descriptor
-    energies
-    crossAccumulators
-    G2MatrixAccumulator
-    acceptanceRatio
-    systemParms
+    descriptor::Any
+    energies::Any
+    crossAccumulators::Any
+    G2MatrixAccumulator::Any
+    acceptanceRatio::Any
+    systemParms::Any
 end
 
 """
@@ -42,11 +42,11 @@ function computeEnergyGradients(symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
-    for (layerId, layerGradients) in enumerate(gs[2][1]) 
-        weightGradients = layerGradients[1] 
+    for (layerId, layerGradients) in enumerate(gs[2][1])
+        weightGradients = layerGradients[1]
         append!(energyGradients, [weightGradients])
     end
-    return(energyGradients)
+    return (energyGradients)
 end
 
 """
@@ -60,7 +60,7 @@ function computeCrossCorrelation(descriptor, energyGradients)
         cross = descriptor * gradient[:]' # Matrix Nbins x Nparameters
         append!(crossCorrelations, [cross])
     end
-    return(crossCorrelations)
+    return (crossCorrelations)
 end
 
 """
@@ -70,11 +70,21 @@ Initialize cross correlation accumulator arrays
 function crossAccumulatorsInit(NNParms, systemParms)
     crossAccumulators = []
     nlayers = length(NNParms.neurons)
-    for layerId in 2:nlayers
-        append!(crossAccumulators, [zeros(Float32, (systemParms.Nbins, 
-                NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
+    for layerId = 2:nlayers
+        append!(
+            crossAccumulators,
+            [
+                zeros(
+                    Float32,
+                    (
+                        systemParms.Nbins,
+                        NNParms.neurons[layerId-1] * NNParms.neurons[layerId],
+                    ),
+                ),
+            ],
+        )
     end
-    return(crossAccumulators)
+    return (crossAccumulators)
 end
 
 
@@ -90,7 +100,7 @@ function updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, descriptor,
     for (cross, newCross) in zip(crossAccumulators, newCrossCorrelations)
         cross .+= newCross
     end
-    return(crossAccumulators)
+    return (crossAccumulators)
 end
 
 """
@@ -102,7 +112,7 @@ and the energy gradients
 function computeEnsembleCorrelation(symmFuncMatrix, descriptor, model)
     energyGradients = computeEnergyGradients(symmFuncMatrix, model)
     ensembleCorrelations = computeCrossCorrelation(descriptor, energyGradients)
-    return(ensembleCorrelations)
+    return (ensembleCorrelations)
 end
 
 """
@@ -116,7 +126,7 @@ function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, sys
         gradients = -Float32(systemParms.β) .* (accumulator - ensemble)
         append!(descriptorGradients, [gradients])
     end
-    return(descriptorGradients)
+    return (descriptorGradients)
 end
 
 """
@@ -124,15 +134,24 @@ function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, d
 
 Computes the final loss gradients
 """
-function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, descriptorref, model, systemParms, NNParms)
+function computeLossGradients(
+    crossAccumulators,
+    symmFuncMatrix,
+    descriptorNN,
+    descriptorref,
+    model,
+    systemParms,
+    NNParms,
+)
     lossGradients = []
     ensembleCorrelations = computeEnsembleCorrelation(symmFuncMatrix, descriptorNN, model)
-    descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
+    descriptorGradients =
+        computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     # Compute derivative of loss with respect to the descriptor
     descriptorPoints = length(descriptorNN)
     dLdS = zeros(Float32, descriptorPoints)
-    for i in 1:descriptorPoints
-        dLdS[i] = 2*(descriptorNN[i] - descriptorref[i])
+    for i = 1:descriptorPoints
+        dLdS[i] = 2 * (descriptorNN[i] - descriptorref[i])
     end
     for (gradient, parameters) in zip(descriptorGradients, Flux.params(model))
         lossGradient = dLdS' * gradient
@@ -142,7 +161,7 @@ function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, d
         lossGradient += regLossGradient
         append!(lossGradients, [lossGradient])
     end
-    return(lossGradients)
+    return (lossGradients)
 end
 
 """
@@ -163,19 +182,19 @@ function loss(descriptorNN, descriptorref, model, NNParms)
 Compute the error function
 """
 function loss(descriptorNN, descriptorref, model, NNParms)
-    strLoss = sum((descriptorNN - descriptorref).^2)
+    strLoss = sum((descriptorNN - descriptorref) .^ 2)
     if NNParms.REGP > 0
-        regLoss = 0.
+        regLoss = 0.0
         for parameters in Flux.params(model)
             regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
         end
-        println("Regularization Loss = ", round(regLoss, digits=8))
+        println("Regularization Loss = ", round(regLoss, digits = 8))
         totalLoss = strLoss + regLoss
     else
         totalLoss = strLoss
     end
-    println("Descriptor Loss = ", round(strLoss, digits=8))
-    return(totalLoss)
+    println("Descriptor Loss = ", round(strLoss, digits = 8))
+    return (totalLoss)
 end
 
 """
@@ -185,11 +204,17 @@ Combines input arguments for neural network building
 function buildNetwork!(NNParms)
     nlayers = length(NNParms.neurons)
     network = []
-    for layerId in 2:nlayers
-        append!(network, [(NNParms.neurons[layerId - 1], NNParms.neurons[layerId],
-                getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
+    for layerId = 2:nlayers
+        append!(
+            network,
+            [(
+                NNParms.neurons[layerId-1],
+                NNParms.neurons[layerId],
+                getfield(Main, Symbol(NNParms.activations[layerId-1])),
+            )],
+        )
     end
-    return(network)
+    return (network)
 end
 
 """
@@ -200,11 +225,11 @@ function buildchain(args...)
     nlayers = length(args)
     layers = []
     for (layerId, arg) in enumerate(args)
-        layer = Dense(arg..., bias=false)
+        layer = Dense(arg..., bias = false)
         append!(layers, [layer])
     end
     model = Chain(layers...)
-    return(model)
+    return (model)
 end
 
 """
@@ -231,7 +256,7 @@ function modelInit(NNParms, globalParms)
             end
         end
     end
-    return(model)
+    return (model)
 end
 
 """
@@ -252,10 +277,10 @@ function optInit(NNParms)
     elseif NNParms.optimizer == "RMSProp"
         opt = RMSProp(NNParms.rate, NNParms.momentum)
 
-    elseif NNParms.optimizer == "Adam" 
+    elseif NNParms.optimizer == "Adam"
         opt = Adam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
-    elseif NNParms.optimizer == "RAdam" 
+    elseif NNParms.optimizer == "RAdam"
         opt = RAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
     elseif NNParms.optimizer == "AdaMax"
@@ -264,9 +289,9 @@ function optInit(NNParms)
     elseif NNParms.optimizer == "AdaGrad"
         opt = AdaGrad(NNParms.rate)
 
-    elseif  NNParms.optimizer == "AdaDelta"
+    elseif NNParms.optimizer == "AdaDelta"
         opt = AdaDelta(NNParms.rate)
-    
+
     elseif NNParms.optimizer == "AMSGrad"
         opt = AMSGrad(NNParms.rate, (NNParms.decay1, NNParms.decay2))
 
@@ -287,9 +312,10 @@ function optInit(NNParms)
         println(
             "Unsupported type of optimizer! \n
             Default optimizer is 'Descent' \n
-            For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n")
+            For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n",
+        )
     end
-    return(opt)
+    return (opt)
 end
 
 """
@@ -299,27 +325,35 @@ Prepares multi-reference inputs for mcsample! function
 function prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
     nsystems = length(systemParmsList)
     multiReferenceInput = []
-    for systemId in 1:nsystems
-        input = MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
+    for systemId = 1:nsystems
+        input =
+            MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
         append!(multiReferenceInput, [input])
-    end 
-    nsets = Int(nworkers()/nsystems)
+    end
+    nsets = Int(nworkers() / nsystems)
     inputs = []
-    for setId in 1:nsets
+    for setId = 1:nsets
         append!(inputs, multiReferenceInput)
     end
-    return(inputs)
+    return (inputs)
 end
 
 """
 function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, NNParms, model)
 Collects averages from different workers corresponding to one reference system
 """
-function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, NNParms, model)
-    meanLoss = 0.
+function collectSystemAverages(
+    outputs,
+    refRDFs,
+    systemParmsList,
+    globalParms,
+    NNParms,
+    model,
+)
+    meanLoss = 0.0
     systemOutputs = []
     for (systemId, systemParms) in enumerate(systemParmsList)
-        println("   System $(systemParms.systemName):") 
+        println("   System $(systemParms.systemName):")
         meanDescriptor = []
         meanEnergies = []
         if globalParms.mode == "training"
@@ -336,7 +370,10 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, N
                 append!(meanEnergies, [outputs[outputID].energies])
                 if globalParms.mode == "training"
                     append!(meanCrossAccumulators, [outputs[outputID].crossAccumulators])
-                    append!(meanG2MatrixAccumulator, [outputs[outputID].G2MatrixAccumulator])
+                    append!(
+                        meanG2MatrixAccumulator,
+                        [outputs[outputID].G2MatrixAccumulator],
+                    )
                 end
                 append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
                 append!(meanMaxDisplacement, [outputs[outputID].systemParms.Δ])
@@ -352,26 +389,38 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, N
         meanAcceptanceRatio = mean(meanAcceptanceRatio)
         meanMaxDisplacement = mean(meanMaxDisplacement)
         if globalParms.mode == "training"
-            systemOutput = MCAverages(meanDescriptor, meanEnergies, meanCrossAccumulators, 
-            meanG2MatrixAccumulator, meanAcceptanceRatio, systemParms)
+            systemOutput = MCAverages(
+                meanDescriptor,
+                meanEnergies,
+                meanCrossAccumulators,
+                meanG2MatrixAccumulator,
+                meanAcceptanceRatio,
+                systemParms,
+            )
         else
-            systemOutput = MCAverages(meanDescriptor, meanEnergies, nothing, 
-            nothing, meanAcceptanceRatio, systemParms)
+            systemOutput = MCAverages(
+                meanDescriptor,
+                meanEnergies,
+                nothing,
+                nothing,
+                meanAcceptanceRatio,
+                systemParms,
+            )
         end
         # Compute loss and print some output info
-        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
-        println("       Max displacement = ", round(meanMaxDisplacement, digits=4))
-        if globalParms.mode == "training" 
+        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits = 4))
+        println("       Max displacement = ", round(meanMaxDisplacement, digits = 4))
+        if globalParms.mode == "training"
             meanLoss += loss(systemOutput.descriptor, refRDFs[systemId], model, NNParms)
         end
 
         append!(systemOutputs, [systemOutput])
     end
-    if globalParms.mode == "training" 
+    if globalParms.mode == "training"
         meanLoss /= length(systemParmsList)
-        println("   \nTotal Average Loss = ", round(meanLoss, digits=8))
+        println("   \nTotal Average Loss = ", round(meanLoss, digits = 8))
     end
-    return(systemOutputs)
+    return (systemOutputs)
 end
 
 """
@@ -384,29 +433,51 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
     while iteration <= NNParms.iters
         iterString = lpad(iteration, 2, '0')
         println("\nIteration $(iteration)...")
-        
+
         # Prepare multi-reference inputs
         inputs = prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
-     
+
         # Run the simulation in parallel
         outputs = pmap(mcsample!, inputs)
 
         # Collect averages corresponding to each reference system
-        systemOutputs = collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, NNParms, model)
+        systemOutputs = collectSystemAverages(
+            outputs,
+            refRDFs,
+            systemParmsList,
+            globalParms,
+            NNParms,
+            model,
+        )
 
         # Compute loss and the gradients
         lossGradients = []
         for (systemId, systemOutput) in enumerate(systemOutputs)
-            systemParms = systemParmsList[systemId]    
-            lossGradient = computeLossGradients(systemOutput.crossAccumulators, 
-                        systemOutput.G2MatrixAccumulator, systemOutput.descriptor, refRDFs[systemId], 
-                        model, systemParms, NNParms)
+            systemParms = systemParmsList[systemId]
+            lossGradient = computeLossGradients(
+                systemOutput.crossAccumulators,
+                systemOutput.G2MatrixAccumulator,
+                systemOutput.descriptor,
+                refRDFs[systemId],
+                model,
+                systemParms,
+                NNParms,
+            )
             append!(lossGradients, [lossGradient])
             # Write descriptors and energies
             name = systemParms.systemName
-            writeRDF("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
-            writeenergies("energies-$(name)-iter-$(iterString).dat", 
-                            systemOutput.energies, MCParms, systemParms, 1)
+            writeRDF(
+                "RDFNN-$(name)-iter-$(iterString).dat",
+                systemOutput.descriptor,
+                systemParms,
+            )
+            writeenergies(
+                "energies-$(name)-iter-$(iterString).dat",
+                systemOutput.energies,
+                MCParms,
+                systemParms,
+                1,
+            )
         end
         # Average the gradients
         meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
@@ -433,16 +504,29 @@ function simulate!(model, globalParms, MCParms, NNParms, systemParms)
     # Pack inputs
     input = MCSampleInput(globalParms, MCParms, NNParms, systemParms, model)
     inputs = [input for worker in workers()]
-    
+
     # Run the simulation in parallel
     outputs = pmap(mcsample!, inputs)
 
     # Collect averages corresponding to each reference system
-    systemOutputs = collectSystemAverages(outputs, nothing, [systemParms], globalParms, nothing, nothing)
+    systemOutputs = collectSystemAverages(
+        outputs,
+        nothing,
+        [systemParms],
+        globalParms,
+        nothing,
+        nothing,
+    )
 
     # Write descriptors and energies
     name = systemParms.systemName
     writeRDF("RDFNN-$(name).dat", systemOutputs[1].descriptor, systemParms)
-    writeenergies("energies-$(name).dat", systemOutputs[1].energies, MCParms, systemParms, 1)
+    writeenergies(
+        "energies-$(name).dat",
+        systemOutputs[1].energies,
+        MCParms,
+        systemParms,
+        1,
+    )
     return
 end
