@@ -87,7 +87,7 @@ function crossAccumulatorsInit(NNParms, systemParms)
                 crossAccumulators,
                 [
                     zeros(
-                        Float32,
+                        Float64,
                         (
                             systemParms.Nbins,
                             NNParms.neurons[layerId-1] * NNParms.neurons[layerId],
@@ -97,14 +97,14 @@ function crossAccumulatorsInit(NNParms, systemParms)
             )
             append!(
                 crossAccumulators,
-                [zeros(Float32, (systemParms.Nbins, NNParms.neurons[layerId]))],
+                [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId]))],
             )
         else
             append!(
                 crossAccumulators,
                 [
                     zeros(
-                        Float32,
+                        Float64,
                         (
                             systemParms.Nbins,
                             NNParms.neurons[layerId-1] * NNParms.neurons[layerId],
@@ -152,7 +152,7 @@ Computes the gradients of the descriptor with respect to the network parameters
 function computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     descriptorGradients = []
     for (accumulator, ensemble) in zip(crossAccumulators, ensembleCorrelations)
-        gradients = -Float32(systemParms.β) .* (accumulator - ensemble)
+        gradients = -systemParms.β .* (accumulator - ensemble)
         append!(descriptorGradients, [gradients])
     end
     return (descriptorGradients)
@@ -178,7 +178,7 @@ function computeLossGradients(
         computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     # Compute derivative of loss with respect to the descriptor
     descriptorPoints = length(descriptorNN)
-    dLdS = zeros(Float32, descriptorPoints)
+    dLdS = zeros(Float64, descriptorPoints)
     for i = 1:descriptorPoints
         dLdS[i] = 2 * (descriptorNN[i] - descriptorref[i])
     end
@@ -277,7 +277,9 @@ function modelInit(NNParms, globalParms)
     network = buildNetwork!(NNParms)
     println("Building a model...")
     model = buildchain(network...)
+    model = fmap(f64, model)
     println(model)
+    println(typeof(model))
     println("   Number of layers: $(length(NNParms.neurons)) ")
     println("   Number of neurons in each layer: $(NNParms.neurons)")
     nlayers = length(model.layers)

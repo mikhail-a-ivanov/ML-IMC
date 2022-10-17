@@ -59,7 +59,7 @@ mutable struct NNparameters
     neurons::Vector{Int}
     iters::Int
     activation::String
-    REGP::Float32
+    REGP::Float64
     optimizer::String
     rate::Float64
     momentum::Float64
@@ -377,8 +377,8 @@ function readRDF(rdfname)
     for i = (1+ncomments):length(lines)
         rdfline = split(lines[i])
         if rdfline[1] != "#"
-            bins[i-ncomments] = parse(Float32, rdfline[1])
-            rdf[i-ncomments] = parse(Float32, rdfline[2])
+            bins[i-ncomments] = parse(Float64, rdfline[1])
+            rdf[i-ncomments] = parse(Float64, rdfline[2])
         end
     end
     return (bins, rdf)
