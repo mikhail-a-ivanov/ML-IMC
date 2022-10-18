@@ -158,7 +158,7 @@ function computeLossGradients(
         lossGradient = reshape(lossGradient, size(parameters))
         # Add the regularization contribution (2 * REGP * parameters)
         regLossGradient = @. parameters * 2 * NNParms.REGP
-        lossGradient += regLossGradient
+        lossGradient .+= regLossGradient
         append!(lossGradients, [lossGradient])
     end
     return (lossGradients)
