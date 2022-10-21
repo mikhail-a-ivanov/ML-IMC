@@ -1,5 +1,5 @@
 #!/bin/bash
-for i in {1..10}
+for i in {1..100}
 do 
  echo "Random model $i..."
  mkdir random-model-$i
