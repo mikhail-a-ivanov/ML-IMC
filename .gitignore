@@ -16,3 +16,9 @@
 *.ipynb
 
 .vscode/
+
+iteration-*
+run.ps1
+result.txt
+grep-loss.ps1
+out_summary.txt
