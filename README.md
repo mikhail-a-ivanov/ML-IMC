@@ -7,7 +7,7 @@ Clone the repository and run:
 `julia -p n ML-IMC.jl ML-IMC-init.in | tee mc.out` where `n` is the number of available cores
 
 ## Required Julia packages
-**Julia version: 1.7**
+**Julia version: 1.8**
 
 Core packages:
 - `Flux`
