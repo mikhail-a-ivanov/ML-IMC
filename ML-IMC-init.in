@@ -8,7 +8,7 @@ inputmodel      = random             # Specify a model name, "random" for random
 steps          = 500000             # Total number of MC steps
 Eqsteps        = 250000             # Equilibration MC steps
 stepAdjustFreq = 5000              # Frequency of MC step adjustment   
-trajout        = 50000               # XTC trajectory frequency
+trajout        = 5000               # XTC trajectory frequency
 outfreq        = 1000               # Output frequency
 
 # Network parameters
@@ -19,7 +19,7 @@ sigma           = 1.0                   # Sigma from Gaussian distribution in Å
                                         #                       η: 0.8 -- 0.125
 
 neurons         = 10, 10, 1                # Number of neurons in the network
-iters           = 5                    # Number of learning iterations
+iters           = 10                    # Number of learning iterations
 activations     = tanh, identity              # Activation function
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
 REGP            = 0.00001               # Regularization parameter (set to zero to turn off regularization)

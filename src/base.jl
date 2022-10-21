@@ -212,6 +212,26 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
 
     positions(frame)[:, pointIndex] .+= dr
 
+    # Check if all coordinates inside simulation box with PBC
+    if (positions(frame)[1, pointIndex] < 0.0)
+        positions(frame)[1, pointIndex] += systemParms.box[1]
+    end
+    if (positions(frame)[1, pointIndex] > systemParms.box[1]) 
+        positions(frame)[1, pointIndex] -= systemParms.box[1]
+    end
+    if (positions(frame)[2, pointIndex] < 0.0)
+        positions(frame)[2, pointIndex] += systemParms.box[2]
+    end
+    if (positions(frame)[2, pointIndex] > systemParms.box[2]) 
+        positions(frame)[2, pointIndex] -= systemParms.box[2]
+    end
+    if (positions(frame)[3, pointIndex] < 0.0)
+        positions(frame)[3, pointIndex] += systemParms.box[3]
+    end
+    if (positions(frame)[3, pointIndex] > systemParms.box[3]) 
+        positions(frame)[3, pointIndex] -= systemParms.box[3]
+    end
+    
     # Compute the updated distance vector
     distanceVector2 = Array{Float64}(undef, systemParms.N)
     distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
@@ -267,6 +287,27 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
         return (mcarrays, E, newEnergyVector, accepted)
     else
         positions(frame)[:, pointIndex] .-= dr
+
+        # Check if all coordinates inside simulation box with PBC
+        if (positions(frame)[1, pointIndex] < 0.0)
+            positions(frame)[1, pointIndex] += systemParms.box[1]
+        end
+        if (positions(frame)[1, pointIndex] > systemParms.box[1]) 
+            positions(frame)[1, pointIndex] -= systemParms.box[1]
+        end
+        if (positions(frame)[2, pointIndex] < 0.0)
+            positions(frame)[2, pointIndex] += systemParms.box[2]
+        end
+        if (positions(frame)[2, pointIndex] > systemParms.box[2]) 
+            positions(frame)[2, pointIndex] -= systemParms.box[2]
+        end
+        if (positions(frame)[3, pointIndex] < 0.0)
+            positions(frame)[3, pointIndex] += systemParms.box[3]
+        end
+        if (positions(frame)[3, pointIndex] > systemParms.box[3]) 
+            positions(frame)[3, pointIndex] -= systemParms.box[3]
+        end
+
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix1)
         return (mcarrays, E, E_previous_vector, accepted)
