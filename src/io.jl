@@ -68,7 +68,7 @@ struct NNparameters
 end
 
 """
-mutable struct systemParameters
+struct systemParameters
 
 Fields:
 systemName: name of the system
@@ -87,7 +87,7 @@ T: temperature, K
 Δ: max displacement, Å
 targetAR: target acceptance ratio
 """
-mutable struct systemParameters
+struct systemParameters
     systemName::String
     trajfile::String
     topname::String

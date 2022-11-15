@@ -1,4 +1,6 @@
 using RandomNumbers
+using ProgressBars
+
 """
 function G2(R, Rc, Rs, η)
 
@@ -135,7 +137,7 @@ function totalEnergyScalar(symmFuncMatrix, model)
     for i = 1:N
         E += atomicEnergy(symmFuncMatrix[i, :], model)
     end
-    return  (E)
+    return (E)
 end
 
 """
@@ -190,7 +192,16 @@ Performs a Metropolis Monte Carlo
 displacement move using a neural network
 to predict energies from the symmetry function matrix
 """
-function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rng)
+function mcmove!(
+    mcarrays,
+    E,
+    E_previous_vector,
+    model,
+    NNParms,
+    systemParms,
+    rng,
+    mutated_step_adjust,
+)
     # Unpack mcarrays
     frame, distanceMatrix, G2Matrix1 = mcarrays
 
@@ -205,9 +216,9 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
 
     # Displace the particle
     dr = [
-        systemParms.Δ * (rand(rng, Float64) - 0.5),
-        systemParms.Δ * (rand(rng, Float64) - 0.5),
-        systemParms.Δ * (rand(rng, Float64) - 0.5),
+        mutated_step_adjust * (rand(rng, Float64) - 0.5),
+        mutated_step_adjust * (rand(rng, Float64) - 0.5),
+        mutated_step_adjust * (rand(rng, Float64) - 0.5),
     ]
 
     positions(frame)[:, pointIndex] .+= dr
@@ -216,22 +227,22 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
     if (positions(frame)[1, pointIndex] < 0.0)
         positions(frame)[1, pointIndex] += systemParms.box[1]
     end
-    if (positions(frame)[1, pointIndex] > systemParms.box[1]) 
+    if (positions(frame)[1, pointIndex] > systemParms.box[1])
         positions(frame)[1, pointIndex] -= systemParms.box[1]
     end
     if (positions(frame)[2, pointIndex] < 0.0)
         positions(frame)[2, pointIndex] += systemParms.box[2]
     end
-    if (positions(frame)[2, pointIndex] > systemParms.box[2]) 
+    if (positions(frame)[2, pointIndex] > systemParms.box[2])
         positions(frame)[2, pointIndex] -= systemParms.box[2]
     end
     if (positions(frame)[3, pointIndex] < 0.0)
         positions(frame)[3, pointIndex] += systemParms.box[3]
     end
-    if (positions(frame)[3, pointIndex] > systemParms.box[3]) 
+    if (positions(frame)[3, pointIndex] > systemParms.box[3])
         positions(frame)[3, pointIndex] -= systemParms.box[3]
     end
-    
+
     # Compute the updated distance vector
     distanceVector2 = Array{Float64}(undef, systemParms.N)
     distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
@@ -292,19 +303,19 @@ function mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rn
         if (positions(frame)[1, pointIndex] < 0.0)
             positions(frame)[1, pointIndex] += systemParms.box[1]
         end
-        if (positions(frame)[1, pointIndex] > systemParms.box[1]) 
+        if (positions(frame)[1, pointIndex] > systemParms.box[1])
             positions(frame)[1, pointIndex] -= systemParms.box[1]
         end
         if (positions(frame)[2, pointIndex] < 0.0)
             positions(frame)[2, pointIndex] += systemParms.box[2]
         end
-        if (positions(frame)[2, pointIndex] > systemParms.box[2]) 
+        if (positions(frame)[2, pointIndex] > systemParms.box[2])
             positions(frame)[2, pointIndex] -= systemParms.box[2]
         end
         if (positions(frame)[3, pointIndex] < 0.0)
             positions(frame)[3, pointIndex] += systemParms.box[3]
         end
-        if (positions(frame)[3, pointIndex] > systemParms.box[3]) 
+        if (positions(frame)[3, pointIndex] > systemParms.box[3])
             positions(frame)[3, pointIndex] -= systemParms.box[3]
         end
 
@@ -330,6 +341,8 @@ function mcsample!(input)
     MCParms = input.MCParms
     NNParms = input.NNParms
     systemParms = input.systemParms
+
+    mutated_step_adjust = copy(systemParms.Δ)
 
     # Get the worker id and the output filenames
     if nprocs() == 1
@@ -390,10 +403,21 @@ function mcsample!(input)
     acceptedTotal = 0
     acceptedIntermediate = 0
 
+
     # Run MC simulation
-    @inbounds @fastmath for step = 1:MCParms.steps
-        mcarrays, E, E_previous_vector, accepted =
-            mcmove!(mcarrays, E, E_previous_vector, model, NNParms, systemParms, rng_xor)
+    @inbounds @fastmath for step = ProgressBar(1:MCParms.steps)
+    #@inbounds @fastmath for step = 1:MCParms.steps
+
+        mcarrays, E, E_previous_vector, accepted = mcmove!(
+            mcarrays,
+            E,
+            E_previous_vector,
+            model,
+            NNParms,
+            systemParms,
+            rng_xor,
+            mutated_step_adjust,
+        )
         acceptedTotal += accepted
         acceptedIntermediate += accepted
 
@@ -401,7 +425,12 @@ function mcsample!(input)
         if MCParms.stepAdjustFreq > 0 &&
            step % MCParms.stepAdjustFreq == 0 &&
            step < MCParms.Eqsteps
-            stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
+            mutated_step_adjust = stepAdjustment!(
+                mutated_step_adjust,
+                systemParms,
+                MCParms,
+                acceptedIntermediate,
+            )
             acceptedIntermediate = 0
         end
 
@@ -459,6 +488,7 @@ function mcsample!(input)
             G2MatrixAccumulator,
             acceptanceRatio,
             systemParms,
+            mutated_step_adjust,
         )
         return (MCoutput)
     else
@@ -469,6 +499,7 @@ function mcsample!(input)
             nothing,
             acceptanceRatio,
             systemParms,
+            mutated_step_adjust,
         )
         return (MCoutput)
     end
@@ -479,8 +510,13 @@ function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
 
 MC step length adjustment
 """
-function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
+function stepAdjustment!(mutated_step_adjust, systemParms, MCParms, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
-    systemParms.Δ = acceptanceRatio * systemParms.Δ / systemParms.targetAR
-    return (systemParms)
+    mutated_step_adjust = acceptanceRatio * mutated_step_adjust / systemParms.targetAR
+
+    if mutated_step_adjust > systemParms.box[1]
+        mutated_step_adjust /= 2
+    end
+    
+    return mutated_step_adjust
 end

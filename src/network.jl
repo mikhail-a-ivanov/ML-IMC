@@ -27,6 +27,7 @@ struct MCAverages
     G2MatrixAccumulator::Any
     acceptanceRatio::Any
     systemParms::Any
+    mutated_step_adjust::Any
 end
 
 """
@@ -182,6 +183,7 @@ function loss(descriptorNN, descriptorref, model, NNParms)
 Compute the error function
 """
 function loss(descriptorNN, descriptorref, model, NNParms)
+    io = open("loss.out", "a")
     strLoss = sum((descriptorNN - descriptorref) .^ 2)
     if NNParms.REGP > 0
         regLoss = 0.0
@@ -189,11 +191,15 @@ function loss(descriptorNN, descriptorref, model, NNParms)
             regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
         end
         println("Regularization Loss = ", round(regLoss, digits = 8))
+        println(io, "Regularization Loss = ", round(regLoss, digits = 8))
         totalLoss = strLoss + regLoss
     else
         totalLoss = strLoss
     end
     println("Descriptor Loss = ", round(strLoss, digits = 8))
+    println(io, "Descriptor Loss = ", round(strLoss, digits = 8))
+    println(io, "Total Loss = ", round(totalLoss, digits = 8))
+    close(io)
     return (totalLoss)
 end
 
@@ -378,7 +384,7 @@ function collectSystemAverages(
                     )
                 end
                 append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
-                append!(meanMaxDisplacement, [outputs[outputID].systemParms.Δ])
+                append!(meanMaxDisplacement, [outputs[outputID].mutated_step_adjust])
             end
         end
         # Take averages from each worker
@@ -398,6 +404,7 @@ function collectSystemAverages(
                 meanG2MatrixAccumulator,
                 meanAcceptanceRatio,
                 systemParms,
+                meanMaxDisplacement,
             )
         else
             systemOutput = MCAverages(
@@ -407,6 +414,7 @@ function collectSystemAverages(
                 nothing,
                 meanAcceptanceRatio,
                 systemParms,
+                meanMaxDisplacement,
             )
         end
         # Compute loss and print some output info
@@ -432,7 +440,11 @@ Runs the Machine Learning enhanced Inverse Monte Carlo (ML-IMC) training iterati
 function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     # Run training iterations
     iteration = 1
+
+
+
     while iteration <= NNParms.iters
+
         iterString = lpad(iteration, 2, '0')
         println("\nIteration $(iteration)...")
 

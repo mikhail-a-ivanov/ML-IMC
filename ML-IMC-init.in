@@ -19,11 +19,11 @@ sigma           = 1.0                   # Sigma from Gaussian distribution in Å
                                         #                       η: 0.8 -- 0.125
 
 neurons         = 10, 10, 1                # Number of neurons in the network
-iters           = 10                    # Number of learning iterations
+iters           = 20                    # Number of learning iterations
 activations     = tanh, identity              # Activation function
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
 REGP            = 0.00001               # Regularization parameter (set to zero to turn off regularization)
-optimizer       = Adam                  # Optimizer type 
+optimizer       = AdaBelief                  # Optimizer type 
 rate            = 0.01                  # Learning rate
 momentum        = 0.9                   # Momentum / Nesterov Momentum coefficient
 decay1          = 0.9                   # Decay of momentum (decay_1, decay_2)
