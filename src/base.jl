@@ -1,5 +1,4 @@
 using RandomNumbers
-using ProgressBars
 
 """
 function G2(R, Rc, Rs, η)
@@ -405,7 +404,7 @@ function mcsample!(input)
 
 
     # Run MC simulation
-    @inbounds @fastmath for step = ProgressBar(1:MCParms.steps)
+    @inbounds @fastmath for step = 1:MCParms.steps
     #@inbounds @fastmath for step = 1:MCParms.steps
 
         mcarrays, E, E_previous_vector, accepted = mcmove!(
