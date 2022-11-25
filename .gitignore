@@ -20,3 +20,6 @@
 *.sh
 *.ps1
 *.run
+
+# Do not commit DS store for Mac OS
+.DS_Store
