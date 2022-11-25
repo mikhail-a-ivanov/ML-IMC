@@ -3,9 +3,20 @@
 *.xyz
 *.out
 *.bson
-
-# Do not commit sh scripts
-*.sh
+*.xtc
+*.pdb
+*.txt
 
 # Do not commit svg
 *.svg
+
+# Do not commit jupyter notebooks
+*.ipynb
+
+# Do not commit VS Code Folder
+.vscode/
+
+# Do not commit run scripts
+*.sh
+*.ps1
+*.run

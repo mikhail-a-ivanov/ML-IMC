@@ -1,154 +1,206 @@
-using Printf
 using RandomNumbers
-using Statistics
-using StaticArrays
-using LinearAlgebra
-using Chemfiles
-using Flux
-
-include("distances.jl")
-include("network.jl")
-include("io.jl")
 
 """
-G2(distances, Rc, Rs, η)
+function G2(R, Rc, Rs, η)
 
 Computes a single exponent
 of the G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function G2(R, Rc, Rs, η)
-    return(exp(-η*(R - Rs)^2) * distanceCutoff(R, Rc))
+    return (exp(-η * (R - Rs)^2) * distanceCutoff(R, Rc))
 end
 
 """
-G2total(distances, Rc, Rs, η)
+function G2total(distances, Rc, Rs, sigma)
 
 Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function G2total(distances, Rc, Rs, η)
+function G2total(distances, Rc, Rs, sigma)
     sum = 0
+    η = 1 / (2 * sigma * sigma)
     @fastmath @inbounds @simd for R in distances
         sum += G2(R, Rc, Rs, η)
     end
-    return(sum)
+    return (sum)
 end
 
 """
-buildG2Matrix(distanceMatrix, NNParms)
+function buildG2Matrix(distanceMatrix, NNParms)
 
 Builds a matrix of G2 values with varying Rs and η parameters for each atom in the configuration
 """
 function buildG2Matrix(distanceMatrix, NNParms)
-    N = length(distanceMatrix[1, :])
+    N = size(distanceMatrix)[1]
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
-    ηs = fill(NNParms.η, npoints)
     G2Matrix = zeros(Float64, N, npoints)
-    for i in 1:N
-        for j in 1:npoints
-            G2Matrix[i, j] = G2total(distanceMatrix[i, :], NNParms.maxR, Rss[j], ηs[j])
+    for i = 1:N
+        distanceVector = distanceMatrix[i, :]
+        for j = 1:npoints
+            G2Matrix[i, j] = G2total(distanceVector, NNParms.maxR, Rss[j], NNParms.sigma)
         end
     end
-    return(G2Matrix)
+    return (G2Matrix)
 end
 
 """
-updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
 
 Updates the G2 matrix with the displacement of a single atom
 """
-function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+function updateG2Matrix!(
+    G2Matrix,
+    distanceVector1,
+    distanceVector2,
+    systemParms,
+    NNParms,
+    pointIndex,
+)
     npoints = NNParms.neurons[1]
     Rss = LinRange(NNParms.minR, NNParms.maxR, npoints)
-    ηs = fill(NNParms.η, npoints)    
-    for i in 1:systemParms.N
+    for i = 1:systemParms.N
         # Rebuild the whole G2 matrix column for the displaced particle
         if i == pointIndex
-            for j in 1:npoints
-                G2Matrix[pointIndex, j] = G2total(distanceVector2, NNParms.maxR, Rss[j], ηs[j])
+            for j = 1:npoints
+                G2Matrix[pointIndex, j] =
+                    G2total(distanceVector2, NNParms.maxR, Rss[j], NNParms.sigma)
             end
-        # Compute the change in G2 caused by the displacement of an atom
+            # Compute the change in G2 caused by the displacement of an atom
         else
             if distanceVector2[i] < NNParms.maxR
-                for j in 1:npoints
-                    G2_1 = G2(distanceVector1[i], NNParms.maxR, Rss[j], ηs[j])
-                    G2_2 = G2(distanceVector2[i], NNParms.maxR, Rss[j], ηs[j])
+                for j = 1:npoints
+                    G2_1 = G2(distanceVector1[i], NNParms.maxR, Rss[j], NNParms.sigma)
+                    G2_2 = G2(distanceVector2[i], NNParms.maxR, Rss[j], NNParms.sigma)
                     ΔG2 = G2_2 - G2_1
                     G2Matrix[i, j] += ΔG2
                 end
             end
         end
     end
-    return(G2Matrix)
+    return (G2Matrix)
 end
 
 """
-hist!(distanceMatrix, hist, systemParms)
+function hist!(distanceMatrix, hist, systemParms)
+
 Accumulates pair distances in a histogram
 """
 function hist!(distanceMatrix, hist, systemParms)
-    @inbounds for i in 1:systemParms.N
-        @inbounds @fastmath for j in 1:i-1
-            histIndex = floor(Int, 0.5 + distanceMatrix[i,j]/systemParms.binWidth)
+    @inbounds for i = 1:systemParms.N
+        @inbounds @fastmath for j = 1:i-1
+            histIndex = floor(Int, 0.5 + distanceMatrix[i, j] / systemParms.binWidth)
             if histIndex <= systemParms.Nbins
                 hist[histIndex] += 1
             end
         end
     end
-    return(hist)
+    return (hist)
 end
 
 """
-normalizehist!(hist, systemParms)
+function normalizehist!(hist, systemParms)
 
 Normalizes distance histogram to RDF
 """
 function normalizehist!(hist, systemParms)
-    Npairs::Int = systemParms.N*(systemParms.N-1)/2
-    bins = [bin*systemParms.binWidth for bin in 1:systemParms.Nbins]
-    shellVolumes = [4*π*systemParms.binWidth*bins[i]^2 for i in 1:length(bins)]
+    Npairs::Int = systemParms.N * (systemParms.N - 1) / 2
+    bins = [bin * systemParms.binWidth for bin = 1:systemParms.Nbins]
+    shellVolumes = [4 * π * systemParms.binWidth * bins[i]^2 for i = 1:length(bins)]
     rdfNorm = ones(Float64, systemParms.Nbins)
-    for i in 1:length(rdfNorm)
-        rdfNorm[i] = systemParms.V/Npairs * 1/shellVolumes[i]
+    for i = 1:length(rdfNorm)
+        rdfNorm[i] = systemParms.V / Npairs / shellVolumes[i]
     end
     hist .*= rdfNorm
-    return(hist)
+    return (hist)
 end
 
 """
-atomicEnergy(inputlayer, model)
+function atomicEnergy(inputlayer, model)
 
 Computes the potential energy of one particle
 from the input layer of the neural network
 """
 function atomicEnergy(inputlayer, model)
     E::Float64 = model(inputlayer)[1]
-    return(E)
+    return (E)
 end
 
 """
-totalEnergy(symmFuncMatrix, model)
+function totalEnergyScalar(symmFuncMatrix, model)
 
 Computes the total potential energy of the system
 """
-function totalEnergy(symmFuncMatrix, model)
-    N = length(symmFuncMatrix[:, 1])
-    E = 0.
-    for i in 1:N
+function totalEnergyScalar(symmFuncMatrix, model)
+    N = size(symmFuncMatrix)[1]
+    E = 0.0
+    for i = 1:N
         E += atomicEnergy(symmFuncMatrix[i, :], model)
     end
-    return(E)
+    return (E)
 end
 
+"""
+function getBoolMaskForUpdating(distanceVectorInput, systemParms, NNParms)
+
+Return boolean mask array of indexes for updating energies
+True if the distance between moved particle and i-th atom is less than NNParms.maxR
+"""
+function getBoolMaskForUpdating(distanceVectorInput, systemParms, NNParms)
+    N = systemParms.N
+    indexes = Array{Bool}(undef, N)
+    for i = 1:N
+        indexes[i] = (distanceVectorInput[i] < NNParms.maxR)
+    end
+    return (indexes)
+end
 
 """
-mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
+function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
+
+Computes the VECTOR of  total potential energy of the system
+"""
+function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
+    N = size(symmFuncMatrix)[1]
+    E = copy(previousE)
+    for i = 1:N
+        if indexesForUpdate[i]
+            E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
+        end
+    end
+    return (E)
+end
+
+"""
+function totalEnergyVectorInit(symmFuncMatrix, model)
+
+Computes initial vector of energies for the system
+"""
+function totalEnergyVectorInit(symmFuncMatrix, model)
+    N = size(symmFuncMatrix)[1]
+    E = Array{Float64}(undef, N)
+    for i = 1:N
+        E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
+    end
+    return (E)
+end
+
+"""
+function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
 
 Performs a Metropolis Monte Carlo
 displacement move using a neural network
 to predict energies from the symmetry function matrix
 """
-function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
+function mcmove!(
+    mcarrays,
+    E,
+    EpreviousVector,
+    model,
+    NNParms,
+    systemParms,
+    rng,
+    mutatedStepAdjust,
+)
     # Unpack mcarrays
     frame, distanceMatrix, G2Matrix1 = mcarrays
 
@@ -158,34 +210,82 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
     # Allocate the distance vector
     distanceVector1 = distanceMatrix[:, pointIndex]
 
-    # Compute the energy
-    E1 = totalEnergy(G2Matrix1, model)
+    # Take a copy of the previous energy value
+    E1 = copy(E)
 
     # Displace the particle
-    dr = [systemParms.Δ*(rand(rng, Float64) - 0.5), 
-          systemParms.Δ*(rand(rng, Float64) - 0.5), 
-          systemParms.Δ*(rand(rng, Float64) - 0.5)]
+    dr = [
+        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
+        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
+        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
+    ]
 
-    positions(frame)[:, pointIndex] += dr
+    positions(frame)[:, pointIndex] .+= dr
+
+    # Check if all coordinates inside simulation box with PBC
+    if (positions(frame)[1, pointIndex] < 0.0)
+        positions(frame)[1, pointIndex] += systemParms.box[1]
+    end
+    if (positions(frame)[1, pointIndex] > systemParms.box[1])
+        positions(frame)[1, pointIndex] -= systemParms.box[1]
+    end
+    if (positions(frame)[2, pointIndex] < 0.0)
+        positions(frame)[2, pointIndex] += systemParms.box[2]
+    end
+    if (positions(frame)[2, pointIndex] > systemParms.box[2])
+        positions(frame)[2, pointIndex] -= systemParms.box[2]
+    end
+    if (positions(frame)[3, pointIndex] < 0.0)
+        positions(frame)[3, pointIndex] += systemParms.box[3]
+    end
+    if (positions(frame)[3, pointIndex] > systemParms.box[3])
+        positions(frame)[3, pointIndex] -= systemParms.box[3]
+    end
 
     # Compute the updated distance vector
-    distanceVector2 = zeros(systemParms.N)
-    distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
+    distanceVector2 = Array{Float64}(undef, systemParms.N)
+    distanceVector2 = updateDistance!(frame, distanceVector2, pointIndex)
+
+    # Acceptance counter
+    accepted = 0
+
+
+    # Reject the move prematurely if a single pair distance
+    # is below the repulsion limit
+    for distance in distanceVector2
+        if distance < systemParms.repulsionLimit && distance > 0.0
+            # Revert to the previous configuration
+            positions(frame)[:, pointIndex] .-= dr
+            # Pack mcarrays
+            mcarrays = (frame, distanceMatrix, G2Matrix1)
+            # Finish function execution
+            return (mcarrays, E, EpreviousVector, accepted)
+        end
+    end
+
+    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, systemParms, NNParms)
 
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
-    updateG2Matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+    updateG2Matrix!(
+        G2Matrix2,
+        distanceVector1,
+        distanceVector2,
+        systemParms,
+        NNParms,
+        pointIndex,
+    )
 
     # Compute the energy again
-    E2 = totalEnergy(G2Matrix2, model)
-    
+    # E2 = totalEnergyScalar(G2Matrix2, model) 
+    newEnergyVector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, EpreviousVector)
+    E2 = sum(newEnergyVector)
+
     # Get energy difference
     ΔE = E2 - E1
-    # Acceptance counter
-    accepted = 0
-    
+
     # Accept or reject the move
-    if rand(rng, Float64) < exp(-ΔE*systemParms.β)
+    if rand(rng, Float64) < exp(-ΔE * systemParms.β)
         accepted += 1
         E += ΔE
         # Update distance matrix
@@ -193,44 +293,89 @@ function mcmove!(mcarrays, E, model, NNParms, systemParms, rng)
         distanceMatrix[:, pointIndex] = distanceVector2
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix2)
+        return (mcarrays, E, newEnergyVector, accepted)
     else
-        positions(frame)[:, pointIndex] -= dr
+        positions(frame)[:, pointIndex] .-= dr
+
+        # Check if all coordinates inside simulation box with PBC
+        if (positions(frame)[1, pointIndex] < 0.0)
+            positions(frame)[1, pointIndex] += systemParms.box[1]
+        end
+        if (positions(frame)[1, pointIndex] > systemParms.box[1])
+            positions(frame)[1, pointIndex] -= systemParms.box[1]
+        end
+        if (positions(frame)[2, pointIndex] < 0.0)
+            positions(frame)[2, pointIndex] += systemParms.box[2]
+        end
+        if (positions(frame)[2, pointIndex] > systemParms.box[2])
+            positions(frame)[2, pointIndex] -= systemParms.box[2]
+        end
+        if (positions(frame)[3, pointIndex] < 0.0)
+            positions(frame)[3, pointIndex] += systemParms.box[3]
+        end
+        if (positions(frame)[3, pointIndex] > systemParms.box[3])
+            positions(frame)[3, pointIndex] -= systemParms.box[3]
+        end
+
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix1)
+        return (mcarrays, E, EpreviousVector, accepted)
     end
-    return(mcarrays, E, accepted)
+
 end
 
 """
-mcsample!(input)
+function mcsample!(input)
+
 (input = model, globalParms, MCParms, NNParms, systemParms)
 Runs the Monte Carlo simulation for a given
 input configuration, set of parameters
 and the neural network model
 """
 function mcsample!(input)
-    # Initialize RNG
-    rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-
     # Unpack the inputs
-    model, globalParms, MCParms, NNParms, systemParms = input
+    model = input.model
+    globalParms = input.globalParms
+    MCParms = input.MCParms
+    NNParms = input.NNParms
+    systemParms = input.systemParms
+
+    mutatedStepAdjust = copy(systemParms.Δ)
+
+    # Get the worker id and the output filenames
+    if nprocs() == 1
+        id = myid()
+    else
+        id = myid() - 1
+    end
+    idString = lpad(id, 3, '0')
+
+    trajFile = "mctraj-p$(idString).xtc"
+    pdbFile = "confin-p$(idString).pdb"
+
+    # Initialize RNG
+    rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Take a random frame from the equilibrated trajectory
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1
-    frameId = rand(rng_xor, 1:nframes) # Don't take the first frame
+    frameId = rand(rngXor, 1:nframes) # Don't take the first frame
     frame = deepcopy(read_step(traj, frameId))
+
+    # Start writing MC trajectory
+    writeTraj(positions(frame), systemParms, trajFile, 'w')
+    writeTraj(positions(frame), systemParms, pdbFile, 'w')
 
     # Get the number of data points
     totalDataPoints = Int(MCParms.steps / MCParms.outfreq)
     prodDataPoints = Int((MCParms.steps - MCParms.Eqsteps) / MCParms.outfreq)
 
     # Build the distance matrix
-    distanceMatrix = builddistanceMatrix(frame)
+    distanceMatrix = buildDistanceMatrix(frame)
 
     # Build the G2 matrix
     G2Matrix = buildG2Matrix(distanceMatrix, NNParms)
-    
+
     # Prepare a tuple of arrays that change duing the mcmove!
     mcarrays = (frame, distanceMatrix, G2Matrix)
 
@@ -247,28 +392,54 @@ function mcsample!(input)
     end
 
     # Initialize the starting energy and the energy array
-    E = totalEnergy(G2Matrix, model)
-    energies = zeros(totalDataPoints)
+    EpreviousVector = totalEnergyVectorInit(G2Matrix, model)
+    E = sum(EpreviousVector)
+    energies = zeros(totalDataPoints + 1)
+    energies[1] = E
 
     # Acceptance counters
     acceptedTotal = 0
     acceptedIntermediate = 0
 
+
     # Run MC simulation
-    @inbounds @fastmath for step in 1:MCParms.steps
-        mcarrays, E, accepted = mcmove!(mcarrays, E, model, NNParms, systemParms, rng_xor)
+    @inbounds @fastmath for step = 1:MCParms.steps
+        #@inbounds @fastmath for step = 1:MCParms.steps
+
+        mcarrays, E, EpreviousVector, accepted = mcmove!(
+            mcarrays,
+            E,
+            EpreviousVector,
+            model,
+            NNParms,
+            systemParms,
+            rngXor,
+            mutatedStepAdjust,
+        )
         acceptedTotal += accepted
         acceptedIntermediate += accepted
 
         # Perform MC step adjustment during the equilibration
-        if MCParms.stepAdjustFreq > 0 && step % MCParms.stepAdjustFreq == 0 && step < MCParms.Eqsteps
-            stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
+        if MCParms.stepAdjustFreq > 0 &&
+           step % MCParms.stepAdjustFreq == 0 &&
+           step < MCParms.Eqsteps
+            mutatedStepAdjust = stepAdjustment!(
+                mutatedStepAdjust,
+                systemParms,
+                MCParms,
+                acceptedIntermediate,
+            )
             acceptedIntermediate = 0
         end
 
         # Collect the output energies
         if step % MCParms.outfreq == 0
-            energies[Int(step/MCParms.outfreq)] = E
+            energies[Int(step / MCParms.outfreq)+1] = E
+        end
+
+        # MC trajectory output
+        if step % MCParms.trajout == 0
+            writeTraj(positions(mcarrays[1]), systemParms, trajFile, 'a')
         end
 
         # Accumulate the distance histogram
@@ -292,7 +463,6 @@ function mcsample!(input)
     end
     # Compute and report the final acceptance ratio
     acceptanceRatio = acceptedTotal / MCParms.steps
-    println("Acceptance ratio = ", round(acceptanceRatio, digits=4))
 
     # Unpack mcarrays and optionally normalize cross and G2Matrix accumulators
     frame, distanceMatrix, G2Matrix = mcarrays
@@ -307,22 +477,44 @@ function mcsample!(input)
     # Normalize the sampled distance histogram
     histAccumulator ./= prodDataPoints
     normalizehist!(histAccumulator, systemParms)
-    
+
     if globalParms.mode == "training"
-        return(histAccumulator, energies, acceptanceRatio, crossAccumulators, G2MatrixAccumulator)
+        MCoutput = MCAverages(
+            histAccumulator,
+            energies,
+            crossAccumulators,
+            G2MatrixAccumulator,
+            acceptanceRatio,
+            systemParms,
+            mutatedStepAdjust,
+        )
+        return (MCoutput)
     else
-        return(histAccumulator, energies, acceptanceRatio)
+        MCoutput = MCAverages(
+            histAccumulator,
+            energies,
+            nothing,
+            nothing,
+            acceptanceRatio,
+            systemParms,
+            mutatedStepAdjust,
+        )
+        return (MCoutput)
     end
 end
 
 """
-stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
+function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
 
 MC step length adjustment
 """
-function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
+function stepAdjustment!(mutatedStepAdjust, systemParms, MCParms, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
-    systemParms.Δ = acceptanceRatio * systemParms.Δ / systemParms.targetAR
-    println("Updated max displacement = $(systemParms.Δ)")
-    return(systemParms)
+    mutatedStepAdjust = acceptanceRatio * mutatedStepAdjust / systemParms.targetAR
+
+    if mutatedStepAdjust > systemParms.box[1]
+        mutatedStepAdjust /= 2
+    end
+
+    return mutatedStepAdjust
 end

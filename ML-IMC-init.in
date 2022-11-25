@@ -1,24 +1,30 @@
 # Global parameters
-systemFiles    = Ar_95K.in, Ar_130K.in # List of input filenames for each system
-mode           = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
-descent        = unrestricted          # Mean loss can increase during the training
-#modelname      = model-iter-25.bson    # Name of a trained model file (simulation mode)
+systemFiles     = Ar_95K.in             # List of input filenames for each system
+mode            = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
+inputmodel      = random                # Specify a model name, "random" for random initialization or "zero" for zeros 
+                                        # in the first layer of the network
 
 # Monte Carlo parameters
-steps          = 5000             # Total number of MC steps
-Eqsteps        = 500              # Equilibration MC steps
-stepAdjustFreq = 50               # Frequency of MC step adjustment   
-trajout        = 0                   # XTC trajectory frequency
-outfreq        = 500              # Output frequency
+steps          = 500000                 # Total number of MC steps
+Eqsteps        = 250000                 # Equilibration MC steps
+stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
+trajout        = 5000                   # XTC trajectory frequency
+outfreq        = 1000                   # Output frequency
 
 # Network parameters
-neurons        = 15, 15                # Number of neurons in the network (excluding the energy output neuron)
-iters          = 10                    # Number of learning iterations
-activation     = tanh                  # Activation function
-optimizer      = Momentum              # Optimizer (other options - Descent)
-rate           = 0.001                 # Learning rate
-rateAdjust     = 0.75                  # Rate multiplier (should be < 1 to reduce the rate)
-μ              = 0.5                   # Momentum coefficient
-minR           = 2.0                   # Min distance for G2 symmetry function, Å
-maxR           = 10.0                  # Max distance for G2 symmetry function, Å
-η              = 3.0                   # η parameter in G2 symmetry function (gaussian width), Å
+minR            = 0.1                   # Min distance for G2 symmetry function, Å
+maxR            = 6.0                   # Max distance for G2 symmetry function, Å
+sigma           = 1.0                   # Sigma from Gaussian distribution in Å, corresponds η = 1/√(2σ) parameter in G2 symmetry function
+                                        # Recommended values in Å: 0.8 -- 2 Å
+                                        #                       η: 0.8 -- 0.125
+
+neurons         = 10, 10, 1             # Number of neurons in the network
+iters           = 20                    # Number of learning iterations
+activations     = tanh, identity        # Activation function
+REGP            = 0.00001               # Regularization parameter (set to zero to turn off regularization)
+optimizer       = AdaBelief             # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
+                                        # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
+rate            = 0.1                   # Learning rate
+momentum        = 0.9                   # Momentum / Nesterov Momentum coefficient
+decay1          = 0.9                   # Decay of momentum (decay_1, decay_2)
+decay2          = 0.999
