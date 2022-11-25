@@ -1,8 +1,0 @@
-#!/bin/bash
-for i in {1..100}
-do 
- echo "Random model $i..."
- mkdir random-model-$i
- julia -p 6 ML-IMC.jl | tee mc.out
- mv *dat *bson *out *xtc *pdb ./random-model-$i
-done

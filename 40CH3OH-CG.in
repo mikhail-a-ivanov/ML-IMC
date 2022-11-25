@@ -4,6 +4,6 @@ topname        = methanol-data/40CH3OH/40CH3OH-CG.pdb        # Topology name
 trajfile       = methanol-data/40CH3OH/40CH3OH-CG-200.xtc    # Input configuration file
 rdfname        = methanol-data/40CH3OH/40CH3OH-CG.rdf        # Reference RDF file
 T              = 298.15                                      # [K]
-repulsionLimit = 2.95                                        # Hard wall potential limit [Å]
+repulsionLimit = 0.0                                         # Hard wall potential limit [Å]
 Δ              = 0.75                                        # Max displacement [Å]
 targetAR       = 0.5                                         # Target acceptance ratio

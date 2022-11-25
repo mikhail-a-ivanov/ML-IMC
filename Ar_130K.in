@@ -4,6 +4,6 @@ topname        = LJ-data/130K/confout-p001.pdb  # Topology name
 trajfile       = LJ-data/130K/mctraj-p001.xtc   # Trajectory name
 rdfname        = LJ-data/130K/rdf-mean-p6.dat   # Reference RDF file
 T              = 130.0                          # [K]
-repulsionLimit = 3.1                            # Hard wall potential limit [Å]
+repulsionLimit = 0.0                            # Hard wall potential limit [Å]
 Δ              = 0.75                           # Monte Carlo step max displacement [Å]
 targetAR       = 0.5                            # Target acceptance ratio   

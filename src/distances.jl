@@ -7,7 +7,7 @@ Chemfiles frame
 Note that the Chemfiles distance
 function starts indexing atoms from 0!
 """
-function builddistanceMatrix(frame)
+function buildDistanceMatrix(frame)
     N = length(frame)
     distanceMatrix = Array{Float64}(undef, (N, N))
     @inbounds for i = 0:N-1
@@ -31,7 +31,7 @@ pointIndex can be any number from 1 to N,
 so I need to shift it by -1 so it takes
 the same values as the iterator i
 """
-function updatedistance!(frame, distanceVector, pointIndex)
+function updateDistance!(frame, distanceVector, pointIndex)
     @fastmath @inbounds for i = 0:length(distanceVector)-1
         distanceVector[i+1] = distance(frame, i, pointIndex - 1)
     end

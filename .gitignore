@@ -5,9 +5,7 @@
 *.bson
 *.xtc
 *.pdb
-
-# Do not commit sh scripts
-*.sh
+*.txt
 
 # Do not commit svg
 *.svg
@@ -15,10 +13,10 @@
 # Do not commit jupyter notebooks
 *.ipynb
 
+# Do not commit VS Code Folder
 .vscode/
 
-iteration-*
-run.ps1
-result.txt
-grep-loss.ps1
-out_summary.txt
+# Do not commit run scripts
+*.sh
+*.ps1
+*.run

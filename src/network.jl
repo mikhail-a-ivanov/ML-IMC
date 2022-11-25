@@ -27,7 +27,7 @@ struct MCAverages
     G2MatrixAccumulator::Any
     acceptanceRatio::Any
     systemParms::Any
-    mutated_step_adjust::Any
+    mutatedStepAdjust::Any
 end
 
 """
@@ -384,7 +384,7 @@ function collectSystemAverages(
                     )
                 end
                 append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
-                append!(meanMaxDisplacement, [outputs[outputID].mutated_step_adjust])
+                append!(meanMaxDisplacement, [outputs[outputID].mutatedStepAdjust])
             end
         end
         # Take averages from each worker
@@ -485,7 +485,7 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
                 systemOutput.descriptor,
                 systemParms,
             )
-            writeenergies(
+            writeEnergies(
                 "energies-$(name)-iter-$(iterString).dat",
                 systemOutput.energies,
                 MCParms,
@@ -538,7 +538,7 @@ function simulate!(model, globalParms, MCParms, NNParms, systemParms)
     # Write descriptors and energies
     name = systemParms.systemName
     writeRDF("RDFNN-$(name).dat", systemOutputs[1].descriptor, systemParms)
-    writeenergies(
+    writeEnergies(
         "energies-$(name).dat",
         systemOutputs[1].energies,
         MCParms,

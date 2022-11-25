@@ -194,12 +194,12 @@ to predict energies from the symmetry function matrix
 function mcmove!(
     mcarrays,
     E,
-    E_previous_vector,
+    EpreviousVector,
     model,
     NNParms,
     systemParms,
     rng,
-    mutated_step_adjust,
+    mutatedStepAdjust,
 )
     # Unpack mcarrays
     frame, distanceMatrix, G2Matrix1 = mcarrays
@@ -215,9 +215,9 @@ function mcmove!(
 
     # Displace the particle
     dr = [
-        mutated_step_adjust * (rand(rng, Float64) - 0.5),
-        mutated_step_adjust * (rand(rng, Float64) - 0.5),
-        mutated_step_adjust * (rand(rng, Float64) - 0.5),
+        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
+        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
+        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
     ]
 
     positions(frame)[:, pointIndex] .+= dr
@@ -244,7 +244,7 @@ function mcmove!(
 
     # Compute the updated distance vector
     distanceVector2 = Array{Float64}(undef, systemParms.N)
-    distanceVector2 = updatedistance!(frame, distanceVector2, pointIndex)
+    distanceVector2 = updateDistance!(frame, distanceVector2, pointIndex)
 
     # Acceptance counter
     accepted = 0
@@ -259,7 +259,7 @@ function mcmove!(
             # Pack mcarrays
             mcarrays = (frame, distanceMatrix, G2Matrix1)
             # Finish function execution
-            return (mcarrays, E, E_previous_vector, accepted)
+            return (mcarrays, E, EpreviousVector, accepted)
         end
     end
 
@@ -278,8 +278,7 @@ function mcmove!(
 
     # Compute the energy again
     # E2 = totalEnergyScalar(G2Matrix2, model) 
-    newEnergyVector =
-        totalEnergyVector(G2Matrix2, model, indexesForUpdate, E_previous_vector)
+    newEnergyVector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, EpreviousVector)
     E2 = sum(newEnergyVector)
 
     # Get energy difference
@@ -320,7 +319,7 @@ function mcmove!(
 
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix1)
-        return (mcarrays, E, E_previous_vector, accepted)
+        return (mcarrays, E, EpreviousVector, accepted)
     end
 
 end
@@ -341,7 +340,7 @@ function mcsample!(input)
     NNParms = input.NNParms
     systemParms = input.systemParms
 
-    mutated_step_adjust = copy(systemParms.Δ)
+    mutatedStepAdjust = copy(systemParms.Δ)
 
     # Get the worker id and the output filenames
     if nprocs() == 1
@@ -355,24 +354,24 @@ function mcsample!(input)
     pdbFile = "confin-p$(idString).pdb"
 
     # Initialize RNG
-    rng_xor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
+    rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
     # Take a random frame from the equilibrated trajectory
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1
-    frameId = rand(rng_xor, 1:nframes) # Don't take the first frame
+    frameId = rand(rngXor, 1:nframes) # Don't take the first frame
     frame = deepcopy(read_step(traj, frameId))
 
     # Start writing MC trajectory
-    writetraj(positions(frame), systemParms, trajFile, 'w')
-    writetraj(positions(frame), systemParms, pdbFile, 'w')
+    writeTraj(positions(frame), systemParms, trajFile, 'w')
+    writeTraj(positions(frame), systemParms, pdbFile, 'w')
 
     # Get the number of data points
     totalDataPoints = Int(MCParms.steps / MCParms.outfreq)
     prodDataPoints = Int((MCParms.steps - MCParms.Eqsteps) / MCParms.outfreq)
 
     # Build the distance matrix
-    distanceMatrix = builddistanceMatrix(frame)
+    distanceMatrix = buildDistanceMatrix(frame)
 
     # Build the G2 matrix
     G2Matrix = buildG2Matrix(distanceMatrix, NNParms)
@@ -393,8 +392,8 @@ function mcsample!(input)
     end
 
     # Initialize the starting energy and the energy array
-    E_previous_vector = totalEnergyVectorInit(G2Matrix, model)
-    E = sum(E_previous_vector)
+    EpreviousVector = totalEnergyVectorInit(G2Matrix, model)
+    E = sum(EpreviousVector)
     energies = zeros(totalDataPoints + 1)
     energies[1] = E
 
@@ -405,17 +404,17 @@ function mcsample!(input)
 
     # Run MC simulation
     @inbounds @fastmath for step = 1:MCParms.steps
-    #@inbounds @fastmath for step = 1:MCParms.steps
+        #@inbounds @fastmath for step = 1:MCParms.steps
 
-        mcarrays, E, E_previous_vector, accepted = mcmove!(
+        mcarrays, E, EpreviousVector, accepted = mcmove!(
             mcarrays,
             E,
-            E_previous_vector,
+            EpreviousVector,
             model,
             NNParms,
             systemParms,
-            rng_xor,
-            mutated_step_adjust,
+            rngXor,
+            mutatedStepAdjust,
         )
         acceptedTotal += accepted
         acceptedIntermediate += accepted
@@ -424,8 +423,8 @@ function mcsample!(input)
         if MCParms.stepAdjustFreq > 0 &&
            step % MCParms.stepAdjustFreq == 0 &&
            step < MCParms.Eqsteps
-            mutated_step_adjust = stepAdjustment!(
-                mutated_step_adjust,
+            mutatedStepAdjust = stepAdjustment!(
+                mutatedStepAdjust,
                 systemParms,
                 MCParms,
                 acceptedIntermediate,
@@ -440,7 +439,7 @@ function mcsample!(input)
 
         # MC trajectory output
         if step % MCParms.trajout == 0
-            writetraj(positions(mcarrays[1]), systemParms, trajFile, 'a')
+            writeTraj(positions(mcarrays[1]), systemParms, trajFile, 'a')
         end
 
         # Accumulate the distance histogram
@@ -487,7 +486,7 @@ function mcsample!(input)
             G2MatrixAccumulator,
             acceptanceRatio,
             systemParms,
-            mutated_step_adjust,
+            mutatedStepAdjust,
         )
         return (MCoutput)
     else
@@ -498,7 +497,7 @@ function mcsample!(input)
             nothing,
             acceptanceRatio,
             systemParms,
-            mutated_step_adjust,
+            mutatedStepAdjust,
         )
         return (MCoutput)
     end
@@ -509,13 +508,13 @@ function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
 
 MC step length adjustment
 """
-function stepAdjustment!(mutated_step_adjust, systemParms, MCParms, acceptedIntermediate)
+function stepAdjustment!(mutatedStepAdjust, systemParms, MCParms, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
-    mutated_step_adjust = acceptanceRatio * mutated_step_adjust / systemParms.targetAR
+    mutatedStepAdjust = acceptanceRatio * mutatedStepAdjust / systemParms.targetAR
 
-    if mutated_step_adjust > systemParms.box[1]
-        mutated_step_adjust /= 2
+    if mutatedStepAdjust > systemParms.box[1]
+        mutatedStepAdjust /= 2
     end
-    
-    return mutated_step_adjust
+
+    return mutatedStepAdjust
 end

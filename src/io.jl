@@ -232,10 +232,10 @@ function parametersInit()
                     elseif field == "topname"
                         topname = [line[3]]
                         pdb = Trajectory("$(topname[1])")
-                        pdb_frame = read(pdb)
-                        N = length(pdb_frame)
-                        atomname = name(Atom(pdb_frame, 1))
-                        box = lengths(UnitCell(pdb_frame))
+                        pdbFrame = read(pdb)
+                        N = length(pdbFrame)
+                        atomname = name(Atom(pdbFrame, 1))
+                        box = lengths(UnitCell(pdbFrame))
                         V = box[1] * box[2] * box[3]
                         append!(systemVars, topname)
                         append!(systemVars, N)
@@ -338,7 +338,7 @@ function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
 
 Writes the total energy to an output file
 """
-function writeenergies(outname, energies, MCParms, systemParms, slicing = 1)
+function writeEnergies(outname, energies, MCParms, systemParms, slicing = 1)
     steps = 0:MCParms.outfreq*slicing:MCParms.steps
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n#")
@@ -355,7 +355,7 @@ function writetraj(conf, parameters, outname, mode='w')
 
 Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
-function writetraj(conf, systemParms, outname, mode = 'w')
+function writeTraj(conf, systemParms, outname, mode = 'w')
     # Create an empty Frame object
     frame = Frame()
     # Set PBC vectors
