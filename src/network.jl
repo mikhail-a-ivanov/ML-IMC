@@ -441,8 +441,6 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
     # Run training iterations
     iteration = 1
 
-
-
     while iteration <= NNParms.iters
 
         iterString = lpad(iteration, 2, '0')
@@ -498,13 +496,17 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
 
         # Write the model (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
-        @save "gradients-iter-$(iterString).bson" meanLossGradients
+        if globalParms.outputMode == "verbose"
+            @save "gradients-iter-$(iterString).bson" meanLossGradients
+        end
 
         # Update the model if the loss decreased
         updatemodel!(model, opt, meanLossGradients)
 
         # Save gradients that are mutated by opt
-        @save "gradients-mutated-iter-$(iterString).bson" meanLossGradients
+        if globalParms.outputMode == "verbose"
+            @save "gradients-mutated-iter-$(iterString).bson" meanLossGradients
+        end
         # Move on to the next iteration
         iteration += 1
     end

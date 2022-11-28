@@ -1,13 +1,14 @@
 # Global parameters
-systemFiles     = Ar_95K.in             # List of input filenames for each system
+systemFiles     = 100CH3OH-CG.in        # List of input filenames for each system
 mode            = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
 inputmodel      = random                # Specify a model name, "random" for random initialization or "zero" for zeros 
                                         # in the first layer of the network
+outputMode      = default               # default (rdf, energy, model); verbose (+gradients, +trajectories)                                    
 
 # Monte Carlo parameters
-steps          = 500000                 # Total number of MC steps
-Eqsteps        = 250000                 # Equilibration MC steps
-stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
+steps          = 1000000                # Total number of MC steps
+Eqsteps        = 500000                 # Equilibration MC steps
+stepAdjustFreq = 50000                  # Frequency of MC step adjustment   
 trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency
 
@@ -18,11 +19,11 @@ sigma           = 1.0                   # Sigma from Gaussian distribution in Å
                                         # Recommended values in Å: 0.8 -- 2 Å
                                         #                       η: 0.8 -- 0.125
 
-neurons         = 10, 10, 1             # Number of neurons in the network
-iters           = 20                    # Number of learning iterations
-activations     = tanh, identity        # Activation function
-REGP            = 0.00001               # Regularization parameter (set to zero to turn off regularization)
-optimizer       = AdaBelief             # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
+neurons         = 10, 10, 10, 1         # Number of neurons in the network
+iters           = 5                     # Number of learning iterations
+activations     = tanh, tanh, identity  # Activation function
+REGP            = 0                     # Regularization parameter (set to zero to turn off regularization)
+optimizer       = AMSGrad               # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
 rate            = 0.1                   # Learning rate
 momentum        = 0.9                   # Momentum / Nesterov Momentum coefficient

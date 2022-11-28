@@ -249,17 +249,20 @@ function mcmove!(
     # Acceptance counter
     accepted = 0
 
-
-    # Reject the move prematurely if a single pair distance
-    # is below the repulsion limit
-    for distance in distanceVector2
-        if distance < systemParms.repulsionLimit && distance > 0.0
-            # Revert to the previous configuration
-            positions(frame)[:, pointIndex] .-= dr
-            # Pack mcarrays
-            mcarrays = (frame, distanceMatrix, G2Matrix1)
-            # Finish function execution
-            return (mcarrays, E, EpreviousVector, accepted)
+    # Look for short distances if the repulsionLimit parameter
+    # is larger than zero
+    if systemParms.repulsionLimit > 0.0
+        # Reject the move prematurely if a single pair distance
+        # is below the repulsion limit
+        for distance in distanceVector2
+            if distance < systemParms.repulsionLimit && distance > 0.0
+                # Revert to the previous configuration
+                positions(frame)[:, pointIndex] .-= dr
+                # Pack mcarrays
+                mcarrays = (frame, distanceMatrix, G2Matrix1)
+                # Finish function execution
+                return (mcarrays, E, EpreviousVector, accepted)
+            end
         end
     end
 
@@ -363,8 +366,10 @@ function mcsample!(input)
     frame = deepcopy(read_step(traj, frameId))
 
     # Start writing MC trajectory
-    writeTraj(positions(frame), systemParms, trajFile, 'w')
-    writeTraj(positions(frame), systemParms, pdbFile, 'w')
+    if globalParms.outputMode == "verbose"
+        writeTraj(positions(frame), systemParms, trajFile, 'w')
+        writeTraj(positions(frame), systemParms, pdbFile, 'w')
+    end
 
     # Get the number of data points
     totalDataPoints = Int(MCParms.steps / MCParms.outfreq)
@@ -401,10 +406,8 @@ function mcsample!(input)
     acceptedTotal = 0
     acceptedIntermediate = 0
 
-
     # Run MC simulation
     @inbounds @fastmath for step = 1:MCParms.steps
-        #@inbounds @fastmath for step = 1:MCParms.steps
 
         mcarrays, E, EpreviousVector, accepted = mcmove!(
             mcarrays,
@@ -438,8 +441,10 @@ function mcsample!(input)
         end
 
         # MC trajectory output
-        if step % MCParms.trajout == 0
-            writeTraj(positions(mcarrays[1]), systemParms, trajFile, 'a')
+        if globalParms.outputMode == "verbose"
+            if step % MCParms.trajout == 0
+                writeTraj(positions(mcarrays[1]), systemParms, trajFile, 'a')
+            end
         end
 
         # Accumulate the distance histogram

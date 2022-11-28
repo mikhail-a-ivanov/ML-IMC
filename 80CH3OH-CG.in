@@ -5,5 +5,5 @@ trajfile       = methanol-data/80CH3OH/80CH3OH-CG-200.xtc    # Input configurati
 rdfname        = methanol-data/80CH3OH/80CH3OH-CG.rdf        # Reference RDF file
 T              = 298.15                                      # [K]
 repulsionLimit = 0.0                                         # Hard wall potential limit [Å]
-Δ              = 0.75                                        # Max displacement [Å]
+Δ              = 1.75                                        # Max displacement [Å]
 targetAR       = 0.5                                         # Target acceptance ratio
