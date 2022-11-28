@@ -12,11 +12,14 @@ mode:
 inputmodel: 
     "random" keyword for random initialization,
     "zero" for zeros in the first layer or a filename of a trained model
+outputMode:
+    default (rdf, energy, model); verbose (+gradients, +trajectories)            
 """
 struct globalParameters
     systemFiles::Vector{String}
     mode::String
     inputmodel::String
+    outputMode::String
 end
 
 """
@@ -338,7 +341,7 @@ function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
 
 Writes the total energy to an output file
 """
-function writeEnergies(outname, energies, MCParms, systemParms, slicing = 1)
+function writeEnergies(outname, energies, MCParms, systemParms, slicing=1)
     steps = 0:MCParms.outfreq*slicing:MCParms.steps
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n#")
@@ -355,7 +358,7 @@ function writetraj(conf, parameters, outname, mode='w')
 
 Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
-function writeTraj(conf, systemParms, outname, mode = 'w')
+function writeTraj(conf, systemParms, outname, mode='w')
     # Create an empty Frame object
     frame = Frame()
     # Set PBC vectors
