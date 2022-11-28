@@ -249,17 +249,20 @@ function mcmove!(
     # Acceptance counter
     accepted = 0
 
-
-    # Reject the move prematurely if a single pair distance
-    # is below the repulsion limit
-    for distance in distanceVector2
-        if distance < systemParms.repulsionLimit && distance > 0.0
-            # Revert to the previous configuration
-            positions(frame)[:, pointIndex] .-= dr
-            # Pack mcarrays
-            mcarrays = (frame, distanceMatrix, G2Matrix1)
-            # Finish function execution
-            return (mcarrays, E, EpreviousVector, accepted)
+    # Look for short distances if the repulsionLimit parameter
+    # is larger than zero
+    if systemParms.repulsionLimit > 0.0
+        # Reject the move prematurely if a single pair distance
+        # is below the repulsion limit
+        for distance in distanceVector2
+            if distance < systemParms.repulsionLimit && distance > 0.0
+                # Revert to the previous configuration
+                positions(frame)[:, pointIndex] .-= dr
+                # Pack mcarrays
+                mcarrays = (frame, distanceMatrix, G2Matrix1)
+                # Finish function execution
+                return (mcarrays, E, EpreviousVector, accepted)
+            end
         end
     end
 

@@ -3,12 +3,12 @@ systemFiles     = 100CH3OH-CG.in        # List of input filenames for each syste
 mode            = training              # Run MC sampling (simulation) or ML-IMC optimization (training)
 inputmodel      = random                # Specify a model name, "random" for random initialization or "zero" for zeros 
                                         # in the first layer of the network
-outputMode      = verbose               # default (rdf, energy, model); verbose (+gradients, +trajectories)                                    
+outputMode      = default               # default (rdf, energy, model); verbose (+gradients, +trajectories)                                    
 
 # Monte Carlo parameters
-steps          = 100000                # Total number of MC steps
-Eqsteps        = 50000                 # Equilibration MC steps
-stepAdjustFreq = 5000                  # Frequency of MC step adjustment   
+steps          = 1000000                # Total number of MC steps
+Eqsteps        = 500000                 # Equilibration MC steps
+stepAdjustFreq = 50000                  # Frequency of MC step adjustment   
 trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency
 
