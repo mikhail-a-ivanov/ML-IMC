@@ -178,11 +178,11 @@ function updatemodel!(model, opt, lossGradients)
 end
 
 """
-function loss(descriptorNN, descriptorref, model, NNParms)
+function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
 
 Compute the error function
 """
-function loss(descriptorNN, descriptorref, model, NNParms)
+function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
     io = open("loss.out", "a")
     strLoss = sum((descriptorNN - descriptorref) .^ 2)
     if NNParms.REGP > 0
@@ -201,6 +201,12 @@ function loss(descriptorNN, descriptorref, model, NNParms)
     println("Descriptor Loss = ", round(strLoss, digits = 8))
     println(io, "Descriptor Loss = ", round(strLoss, digits = 8))
     println(io, "Total Loss = ", round(totalLoss, digits = 8))
+    # Abnormal max displacement is an indication
+    # of a poor model, even if the total loss is low!
+    # Low max displacement results in a severely
+    # undersampled configuration - it becomes "stuck"
+    # at the initial configuration
+    println(io, "Max displacement = ", round(meanMaxDisplacement, digits = 8))
     close(io)
     return (totalLoss)
 end
@@ -423,7 +429,7 @@ function collectSystemAverages(
         println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits = 4))
         println("       Max displacement = ", round(meanMaxDisplacement, digits = 4))
         if globalParms.mode == "training"
-            meanLoss += loss(systemOutput.descriptor, refRDFs[systemId], model, NNParms)
+            meanLoss += loss(systemOutput.descriptor, refRDFs[systemId], model, NNParms, meanMaxDisplacement)
         end
 
         append!(systemOutputs, [systemOutput])

@@ -59,7 +59,7 @@ function main()
         println("Neural network regularization parameter: $(NNParms.REGP)")
         println("Number of iterations: $(NNParms.iters)")
         println("Optimizer type: $(NNParms.optimizer)")
-        println("Parametrs of optimizer:")
+        println("Parameters of optimizer:")
         if NNParms.optimizer == "Momentum"
             println("Learning rate: $(NNParms.rate)")
             println("Momentum coefficient: $(NNParms.momentum)")
