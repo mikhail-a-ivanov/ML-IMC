@@ -195,6 +195,8 @@ function loss(descriptorNN, descriptorref, model, NNParms)
         totalLoss = strLoss + regLoss
     else
         totalLoss = strLoss
+        println("Regularization Loss = ", 0)
+        println(io, "Regularization Loss = ", 0)
     end
     println("Descriptor Loss = ", round(strLoss, digits = 8))
     println(io, "Descriptor Loss = ", round(strLoss, digits = 8))
