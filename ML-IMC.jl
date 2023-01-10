@@ -120,7 +120,7 @@ function main()
         end
 
         # Run pretraining
-        model = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
+        model, opt = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
         # Run the training
         println("Running MC simulation on $(nworkers()) rank(s)...\n")
         println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")

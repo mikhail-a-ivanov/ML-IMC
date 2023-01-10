@@ -14,7 +14,7 @@ function computePreTrainingLossGradients(energyPMF::Float64, symmFuncMatrix, mod
     println("PMF energy: $(round(energyPMF, digits=4))")
     println("NN energy: $(round(E, digits=4))")
     println("Regularization loss: $(round(regloss, digits=4))")
-    gradientScaling::Float64 = 2 / N * (E - energyPMF)^2
+    gradientScaling::Float64 = 2 / N * (E - energyPMF)
     
     lossGradient = gradientScaling .* energyGradients
     regLossGradient = @. parameters * 2 * NNParms.REGP
@@ -68,7 +68,7 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
     @assert length(unique(nframesMultiReference)) == 1 "Lengths of trajectories are different"
     nframes = nframesMultiReference[1]
 
-    distanceScaling = LinRange(1.0, 1.0, 100)
+    distanceScaling = LinRange(1.0, 0.1, 100)
     for scaling in distanceScaling
         energiesPMFMultiReference = []
         println("Scaling distances by $(round(scaling, digits=4))...\n")
@@ -94,5 +94,5 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
         end
     end
     @save "model-pre-trained.bson" model
-    return (model)
+    return (model, opt)
 end
