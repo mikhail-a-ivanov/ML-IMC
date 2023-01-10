@@ -429,7 +429,13 @@ function collectSystemAverages(
         println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits = 4))
         println("       Max displacement = ", round(meanMaxDisplacement, digits = 4))
         if globalParms.mode == "training"
-            meanLoss += loss(systemOutput.descriptor, refRDFs[systemId], model, NNParms, meanMaxDisplacement)
+            meanLoss += loss(
+                systemOutput.descriptor,
+                refRDFs[systemId],
+                model,
+                NNParms,
+                meanMaxDisplacement,
+            )
         end
 
         append!(systemOutputs, [systemOutput])

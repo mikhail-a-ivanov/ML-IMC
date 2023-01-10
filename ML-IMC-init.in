@@ -6,8 +6,8 @@ inputmodel      = random                # Specify a model name, "random" for ran
 outputMode      = default               # default (rdf, energy, model); verbose (+gradients, +trajectories)                                    
 
 # Monte Carlo parameters
-steps          = 100000                 # Total number of MC steps
-Eqsteps        = 50000                  # Equilibration MC steps
+steps          = 500000                 # Total number of MC steps
+Eqsteps        = 250000                  # Equilibration MC steps
 stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
 trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency
@@ -25,7 +25,7 @@ activations     = relu, relu, identity  # Activation function
 REGP            = 0                     # Regularization parameter (set to zero to turn off regularization)
 optimizer       = AMSGrad               # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
-rate            = 0.01                  # Learning rate
+rate            = 0.0001                  # Learning rate
 momentum        = 0.9                   # Momentum / Nesterov Momentum coefficient
 decay1          = 0.9                   # Decay of momentum (decay_1, decay_2)
 decay2          = 0.999

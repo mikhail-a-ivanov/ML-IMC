@@ -9,6 +9,7 @@ BLAS.set_num_threads(1)
     include("src/network.jl")
     include("src/base.jl")
     include("src/io.jl")
+    include("src/pretraining.jl")
 end
 
 function main()
@@ -38,10 +39,6 @@ function main()
     Rss = Array{Float64}(LinRange(NNParms.minR, NNParms.maxR, NNParms.neurons[1]))
     println("G2 Rs values: $(round.(Rss, digits=2)) Å")
     println("G2 cutoff radius: $(NNParms.maxR) Å")
-
-    println("Running MC simulation on $(nworkers()) rank(s)...\n")
-    println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
-    println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
 
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)
@@ -122,7 +119,12 @@ function main()
             println("Decay 2: $(NNParms.decay2)")
         end
 
+        # Run pretraining
+        model = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
         # Run the training
+        println("Running MC simulation on $(nworkers()) rank(s)...\n")
+        println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
+        println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
         train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     else
         @assert length(systemParmsList) == 1
