@@ -27,16 +27,18 @@ function computeMeanForcePotential(refRDF, systemParms)
 
 Compute PMF energies for all the frames in a trajectory
 """
-function computeMeanForcePotential(refRDF, systemParms, distanceScaling::Float64)
+function computeMeanForcePotential(refRDF, systemParms, scaling)
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1
     energiesPMF = zeros(Float64, nframes)
 
     for frameId = 1:nframes
         frame = read_step(traj, frameId)
-        distanceMatrix = buildDistanceMatrix(frame) 
+        distanceMatrix = buildDistanceMatrix(frame)
+        N = size(distanceMatrix)[1]
+        scalingMatrix = abs.(randn(N,N) .* scaling .+ 1) 
         hist = zeros(Float64, systemParms.Nbins)
-        hist = hist!(distanceMatrix .* distanceScaling, hist, systemParms)
+        hist = hist!(distanceMatrix .* scalingMatrix, hist, systemParms)
         refRDF[refRDF .== 0] .= 1E-10
         PMF = -log.(refRDF) / systemParms.β
         E = sum(hist .* PMF)
@@ -68,7 +70,7 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
     @assert length(unique(nframesMultiReference)) == 1 "Lengths of trajectories are different"
     nframes = nframesMultiReference[1]
 
-    distanceScaling = LinRange(1.0, 0.1, 100)
+    distanceScaling = LinRange(0.1, 0.0001, 5)
     for scaling in distanceScaling
         energiesPMFMultiReference = []
         println("Scaling distances by $(round(scaling, digits=4))...\n")
@@ -85,7 +87,9 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
                 traj = readXTC(systemParmsList[systemId])
                 frame = read_step(traj, frameId)
                 distanceMatrix = buildDistanceMatrix(frame)
-                G2Matrix = buildG2Matrix(distanceMatrix .* scaling, NNParms)
+                N = size(distanceMatrix)[1]
+                scalingMatrix = abs.(randn(N,N) .* scaling .+ 1)
+                G2Matrix = buildG2Matrix(distanceMatrix .* scalingMatrix, NNParms)
                 lossGradient = computePreTrainingLossGradients(energyPMF, G2Matrix, model, NNParms)
                 append!(lossGradients, [lossGradient])
             end
@@ -94,5 +98,5 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
         end
     end
     @save "model-pre-trained.bson" model
-    return (model, opt)
+    return (model)
 end
