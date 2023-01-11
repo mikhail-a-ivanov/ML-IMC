@@ -4,6 +4,7 @@ include("src/distances.jl")
 include("src/network.jl")
 include("src/base.jl")
 include("src/io.jl")
+include("src/pretraining-mc.jl")
 
 globalParms, MCParms, NNParms, systemParmsList = parametersInit()
 

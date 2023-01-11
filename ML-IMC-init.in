@@ -22,7 +22,7 @@ sigma           = 1.5                   # Sigma from Gaussian distribution in Å
 neurons         = 20, 20, 20, 1         # Number of neurons in the network
 iters           = 50                     # Number of learning iterations
 activations     = relu, relu, identity  # Activation function
-REGP            = 1                     # Regularization parameter (set to zero to turn off regularization)
+REGP            = 0                     # Regularization parameter (set to zero to turn off regularization)
 optimizer       = AMSGrad               # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
 rate            = 0.01                  # Learning rate
