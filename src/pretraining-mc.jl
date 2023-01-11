@@ -118,7 +118,7 @@ end
 
 function preTrainMC!(NNParms, systemParmsList, model, opt, refRDFs, steps=100)
     rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-    println("Running pre-training Monte-Carlo simulation...\n")
+    println("Running $(steps) steps of pre-training Monte-Carlo...\n")
     nsystems = length(systemParmsList)
 
     # Compute PMF for each system
