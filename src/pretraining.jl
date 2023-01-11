@@ -31,6 +31,24 @@ function computeMeanForcePotential(refRDF, systemParms, scaling)
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1
     energiesPMF = zeros(Float64, nframes)
+    PMF = zeros(Float64, systemParms.Nbins)
+    mask = refRDF .== 0
+    refRDF[mask] .= 1E-150
+    PMF = -log.(refRDF) / systemParms.β
+    """
+    for i in eachindex(PMF)
+        if refRDF[i] > 0
+            PMF[i] = -log(refRDF[i]) / systemParms.β
+        end
+    end
+    
+    maxPMF, maxPMFIndex  = findmax(PMF)
+    for i in eachindex(PMF)
+        if refRDF[i] == 0
+            PMF[i] += exp(log(maxPMF) + maxPMFIndex - i)
+        end
+    end
+    """
 
     for frameId = 1:nframes
         frame = read_step(traj, frameId)
@@ -39,8 +57,6 @@ function computeMeanForcePotential(refRDF, systemParms, scaling)
         scalingMatrix = abs.(randn(N,N) .* scaling .+ 1) 
         hist = zeros(Float64, systemParms.Nbins)
         hist = hist!(distanceMatrix .* scalingMatrix, hist, systemParms)
-        refRDF[refRDF .== 0] .= 1E-10
-        PMF = -log.(refRDF) / systemParms.β
         E = sum(hist .* PMF)
         energiesPMF[frameId] = E
     end
@@ -70,7 +86,10 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
     @assert length(unique(nframesMultiReference)) == 1 "Lengths of trajectories are different"
     nframes = nframesMultiReference[1]
 
-    distanceScaling = LinRange(0.1, 0.0001, 5)
+    # Scaling of the scaling matrix
+    distanceScaling = [0.1, 0.01, 0.]
+    #distanceScaling = LinRange(0.1, 0, 3)
+    #distanceScaling = abs.(randn(5)) .* 0.01
     for scaling in distanceScaling
         energiesPMFMultiReference = []
         println("Scaling distances by $(round(scaling, digits=4))...\n")
@@ -88,6 +107,8 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
                 frame = read_step(traj, frameId)
                 distanceMatrix = buildDistanceMatrix(frame)
                 N = size(distanceMatrix)[1]
+                # Scaling the scalingMatrix by zero
+                # leads to no scaling of the original distance matrix
                 scalingMatrix = abs.(randn(N,N) .* scaling .+ 1)
                 G2Matrix = buildG2Matrix(distanceMatrix .* scalingMatrix, NNParms)
                 lossGradient = computePreTrainingLossGradients(energyPMF, G2Matrix, model, NNParms)

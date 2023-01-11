@@ -15,12 +15,12 @@ outfreq        = 1000                   # Output frequency
 # Network parameters
 minR            = 0.1                   # Min distance for G2 symmetry function, Å
 maxR            = 6.0                   # Max distance for G2 symmetry function, Å
-sigma           = 1.0                   # Sigma from Gaussian distribution in Å, corresponds η = 1/√(2σ) parameter in G2 symmetry function
+sigma           = 1.5                   # Sigma from Gaussian distribution in Å, corresponds η = 1/√(2σ) parameter in G2 symmetry function
                                         # Recommended values in Å: 0.8 -- 2 Å
                                         #                       η: 0.8 -- 0.125
 
-neurons         = 30, 30, 30, 1         # Number of neurons in the network
-iters           = 100                     # Number of learning iterations
+neurons         = 20, 20, 20, 1         # Number of neurons in the network
+iters           = 50                     # Number of learning iterations
 activations     = relu, relu, identity  # Activation function
 REGP            = 1                     # Regularization parameter (set to zero to turn off regularization)
 optimizer       = AMSGrad               # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
