@@ -121,11 +121,14 @@ function preTrainMC!(NNParms, systemParmsList, model, opt, refRDFs, steps=100)
     println("Running $(steps) steps of pre-training Monte-Carlo...\n")
     nsystems = length(systemParmsList)
 
-    # Compute PMF for each system
+    # Compute PMF for each system and read trajectories
     PMFs = []
+    trajectories = []
     for systemId = 1:nsystems
         PMF = computePMF(refRDFs[systemId], systemParmsList[systemId], 1000)
         append!(PMFs, [PMF])
+        traj = readXTC(systemParmsList[systemId])
+        append!(trajectories, [traj])
     end
 
     for step = 1:steps
@@ -133,10 +136,9 @@ function preTrainMC!(NNParms, systemParmsList, model, opt, refRDFs, steps=100)
         lossGradients = []
         for systemId = 1:nsystems
             # Read a frame from the trajectory
-            traj = readXTC(systemParmsList[systemId])
-            nframes = Int(size(traj)) - 1
+            nframes = Int(size(trajectories[systemId])) - 1
             frameId = rand(rngXor, 1:nframes) # Don't take the first frame
-            frame = read_step(traj, frameId)
+            frame = read_step(trajectories[systemId], frameId)
 
             # Build distance and G2 matrices
             distanceMatrix = buildDistanceMatrix(frame)
