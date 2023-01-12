@@ -14,6 +14,7 @@ outfreq        = 1000                   # Output frequency
 
 # Network parameters
 preTrainSteps   = 1000                  # Number of pre-training steps
+preTrainOutFreq = 100                   # Frequency of pre-training reporting
 minR            = 0.1                   # Min distance for G2 symmetry function, Å
 maxR            = 6.0                   # Max distance for G2 symmetry function, Å
 sigma           = 1.5                   # Sigma from Gaussian distribution in Å, corresponds η = 1/√(2σ) parameter in G2 symmetry function

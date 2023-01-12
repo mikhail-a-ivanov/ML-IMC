@@ -45,6 +45,7 @@ struct NNparameters
 
 Fields:
 preTrainSteps: number of pre-training steps
+preTrainOutFreq: frequency of pre-training reporting
 minR: min distance for G2 symmetry function, Å
 maxR: max distance for G2 symmetry function (cutoff), Å 
 sigma: sigma parameter in G2 symmetry function (gaussian width), Å
@@ -60,6 +61,7 @@ decay2: decay of the optimizer (2)
 """
 struct NNparameters
     preTrainSteps::Int64
+    preTrainOutFreq::Int64
     minR::Float64
     maxR::Float64
     sigma::Float64

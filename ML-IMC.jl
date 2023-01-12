@@ -120,10 +120,8 @@ function main()
         end
 
         if globalParms.inputmodel == "random"
-            # Pre compute distances and G2 matrices
-            frameArrays = preComputeFrameArrays(NNParms, systemParmsList, refRDFs)
             # Run pretraining
-            model = preTrain!(NNParms, systemParmsList, model, opt, frameArrays)
+            model = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
             # Restore optimizer state to default
             opt = optInit(NNParms)
         end
