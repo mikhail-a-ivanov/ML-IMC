@@ -9,7 +9,7 @@ BLAS.set_num_threads(1)
     include("src/network.jl")
     include("src/base.jl")
     include("src/io.jl")
-    include("src/pretraining.jl")
+    include("src/pretraining-mc.jl")
 end
 
 function main()
@@ -120,7 +120,8 @@ function main()
         end
 
         # Run pretraining
-        model = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
+        #model = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
+        model = preTrainMC!(NNParms, systemParmsList, model, opt, refRDFs, 100)
         opt = optInit(NNParms)
         # Run the training
         println("Running MC simulation on $(nworkers()) rank(s)...\n")

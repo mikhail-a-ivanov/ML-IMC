@@ -3,12 +3,18 @@ function computePMF(refRDF, systemParms)
 
 Compute PMF for a given system (in kT units)
 """
-function computePMF(refRDF, systemParms, potentialWall=1000)
+function computePMF(refRDF, systemParms)
     PMF = zeros(Float64, systemParms.Nbins)
     repulsionRegion = refRDF .== 0
+    repulsionPoints = length(repulsionRegion[repulsionRegion .!= 0])
+    maxPMFIndex = repulsionPoints + 1
+    maxPMF = -log(refRDF[maxPMFIndex]) / systemParms.β
+    secondMaxPMF = -log(refRDF[maxPMFIndex + 1]) / systemParms.β
+    diffPMF = maxPMF - secondMaxPMF
+
     for i in eachindex(PMF)
         if repulsionRegion[i]
-            PMF[i] = potentialWall
+            PMF[i] = maxPMF + diffPMF * (maxPMFIndex - i)
         else
             PMF[i] = -log(refRDF[i]) / systemParms.β
         end
@@ -34,11 +40,10 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, mo
 Computes loss gradients for one frame
 """
 function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, NNParms)
-    N = size(G2Matrix1)[1]
     parameters = Flux.params(model)
-    loss = (ΔENN - ΔEPMF)^2 / N
+    loss = (ΔENN - ΔEPMF)^2
     regloss = sum(parameters[1] .^ 2) * NNParms.REGP
-    println("   Energy loss (per atom): $(round(loss, digits=4))")
+    println("   Energy loss: $(round(loss, digits=4))")
     println("   PMF energy difference: $(round(ΔEPMF, digits=4))")
     println("   NN energy difference: $(round(ΔENN, digits=4))")
     println("   Regularization loss: $(round(regloss, digits=4))")
@@ -46,7 +51,7 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, mo
     # Compute dL/dw
     ENN1Gradients = computeEnergyGradients(G2Matrix1, model)
     ENN2Gradients = computeEnergyGradients(G2Matrix2, model)
-    gradientScaling = 2 / N * (ΔENN - ΔEPMF)
+    gradientScaling = 2 * (ΔENN - ΔEPMF)
 
     lossGradient = gradientScaling .* (ENN2Gradients .- ENN1Gradients)
     regLossGradient = @. parameters * 2 * NNParms.REGP
@@ -60,7 +65,8 @@ function pretrainingMCMove!(frameInputArrays, PMF, model, NNParms, systemParms, 
     frame, distanceMatrix, G2Matrix1 = frameInputArrays
 
     # Compute energy of the initial configuration
-    ENN1 = totalEnergyScalar(G2Matrix1, model)
+    ENN1Vector = totalEnergyVectorInit(G2Matrix1, model)
+    ENN1 = sum(ENN1Vector)
     EPMF1 = computePMFEnergy(PMF, distanceMatrix, systemParms)
 
     # Pick a particle
@@ -82,6 +88,8 @@ function pretrainingMCMove!(frameInputArrays, PMF, model, NNParms, systemParms, 
     distanceVector2 = Array{Float64}(undef, systemParms.N)
     distanceVector2 = updateDistance!(frame, distanceVector2, pointIndex)
 
+    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, systemParms, NNParms)
+
     # Update the distance matrix
     distanceMatrix[pointIndex, :] = distanceVector2
     distanceMatrix[:, pointIndex] = distanceVector2
@@ -98,7 +106,8 @@ function pretrainingMCMove!(frameInputArrays, PMF, model, NNParms, systemParms, 
     )
 
     # Compute the energy again
-    ENN2 = totalEnergyScalar(G2Matrix2, model)
+    ENN2Vector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, ENN1Vector)
+    ENN2 = sum(ENN2Vector)
     EPMF2 = computePMFEnergy(PMF, distanceMatrix, systemParms)
 
     # Get energy differences
@@ -125,7 +134,7 @@ function preTrainMC!(NNParms, systemParmsList, model, opt, refRDFs, steps=100)
     PMFs = []
     trajectories = []
     for systemId = 1:nsystems
-        PMF = computePMF(refRDFs[systemId], systemParmsList[systemId], 1000)
+        PMF = computePMF(refRDFs[systemId], systemParmsList[systemId])
         append!(PMFs, [PMF])
         traj = readXTC(systemParmsList[systemId])
         append!(trajectories, [traj])
