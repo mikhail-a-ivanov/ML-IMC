@@ -44,18 +44,22 @@ end
 struct NNparameters
 
 Fields:
+preTrainSteps: number of pre-training steps
+minR: min distance for G2 symmetry function, Å
+maxR: max distance for G2 symmetry function (cutoff), Å 
+sigma: sigma parameter in G2 symmetry function (gaussian width), Å
 neurons: number of neurons in the network
 iters: number of learning iterations
-activation: list of activation functions
+activations: list of activation functions
 REGP: regularization parameter
 optimizer: type of optimizer
 rate: learning rate
-μ: momentum coefficient
-minR: min distance for G2 symmetry function, Å
-maxR: max distance for G2 symmetry function (cutoff), Å 
-η: η parameter in G2 symmetry function (gaussian width), Å
+momentum: momentum coefficient
+decay1: decay of the optimizer (1)
+decay2: decay of the optimizer (2)
 """
 struct NNparameters
+    preTrainSteps::Int64
     minR::Float64
     maxR::Float64
     sigma::Float64
@@ -330,7 +334,7 @@ function writeRDF(outname, rdf, systemParms)
     print(io, "# System: $(systemParms.systemName)\n")
     print(io, "# RDF data ($(systemParms.atomname) - $(systemParms.atomname)) \n")
     print(io, "# r, Å; g(r); \n")
-    for i = 1:length(rdf)
+    for i in eachindex(rdf)
         print(io, @sprintf("%6.3f %12.3f", bins[i], rdf[i]), "\n")
     end
     close(io)
@@ -341,7 +345,7 @@ function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
 
 Writes the total energy to an output file
 """
-function writeEnergies(outname, energies, MCParms, systemParms, slicing = 1)
+function writeEnergies(outname, energies, MCParms, systemParms, slicing=1)
     steps = 0:MCParms.outfreq*slicing:MCParms.steps
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n#")
@@ -358,7 +362,7 @@ function writetraj(conf, parameters, outname, mode='w')
 
 Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
-function writeTraj(conf, systemParms, outname, mode = 'w')
+function writeTraj(conf, systemParms, outname, mode='w')
     # Create an empty Frame object
     frame = Frame()
     # Set PBC vectors

@@ -86,9 +86,9 @@ function hist!(distanceMatrix, hist, systemParms)
 Accumulates pair distances in a histogram
 """
 function hist!(distanceMatrix, hist, systemParms)
-    @inbounds for i = 1:systemParms.N
-        @inbounds @fastmath for j = 1:i-1
-            histIndex = floor(Int, 0.5 + distanceMatrix[i, j] / systemParms.binWidth)
+    for i = 1:systemParms.N
+        @fastmath for j = 1:i-1
+            histIndex = floor(Int, 1 + distanceMatrix[i, j] / systemParms.binWidth)
             if histIndex <= systemParms.Nbins
                 hist[histIndex] += 1
             end
@@ -105,9 +105,9 @@ Normalizes distance histogram to RDF
 function normalizehist!(hist, systemParms)
     Npairs::Int = systemParms.N * (systemParms.N - 1) / 2
     bins = [bin * systemParms.binWidth for bin = 1:systemParms.Nbins]
-    shellVolumes = [4 * π * systemParms.binWidth * bins[i]^2 for i = 1:length(bins)]
+    shellVolumes = [4 * π * systemParms.binWidth * bins[i]^2 for i in eachindex(bins)]
     rdfNorm = ones(Float64, systemParms.Nbins)
-    for i = 1:length(rdfNorm)
+    for i in eachindex(rdfNorm)
         rdfNorm[i] = systemParms.V / Npairs / shellVolumes[i]
     end
     hist .*= rdfNorm
@@ -407,7 +407,7 @@ function mcsample!(input)
     acceptedIntermediate = 0
 
     # Run MC simulation
-    @inbounds @fastmath for step = 1:MCParms.steps
+    @fastmath for step = 1:MCParms.steps
 
         mcarrays, E, EpreviousVector, accepted = mcmove!(
             mcarrays,

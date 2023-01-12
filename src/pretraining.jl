@@ -1,122 +1,238 @@
 """
-function computePreTrainingLossGradients(energyPMF::Float64, symmFuncMatrix, model)
+function computePMF(refRDF, systemParms)
+
+Compute PMF for a given system (in kT units)
+"""
+function computePMF(refRDF, systemParms)
+    PMF = Array{Float64}(undef, systemParms.Nbins)
+    repulsionRegion = refRDF .== 0
+    repulsionPoints = length(repulsionRegion[repulsionRegion.!=0])
+    maxPMFIndex = repulsionPoints + 1
+    maxPMF = -log(refRDF[maxPMFIndex]) / systemParms.β
+    secondMaxPMF = -log(refRDF[maxPMFIndex+1]) / systemParms.β
+    diffPMF = maxPMF - secondMaxPMF
+
+    for i in eachindex(PMF)
+        if repulsionRegion[i]
+            PMF[i] = maxPMF + diffPMF * (maxPMFIndex - i)
+        else
+            PMF[i] = -log(refRDF[i]) / systemParms.β
+        end
+    end
+    return (PMF)
+end
+
+function updatehist!(hist, distanceVector1, distanceVector2, systemParms)
+    @fastmath for i = 1:systemParms.N
+        # Remove histogram entries corresponding to distanceVector1 
+        histIndex = floor(Int, 1 + distanceVector1[i] / systemParms.binWidth)
+        if histIndex <= systemParms.Nbins
+            hist[histIndex] -= 1
+        end
+        # Add histogram entries corresponding to distanceVector2
+        histIndex = floor(Int, 1 + distanceVector2[i] / systemParms.binWidth)
+        if histIndex <= systemParms.Nbins
+            hist[histIndex] += 1
+        end
+    end
+    return (hist)
+end
+
+"""
+function computePMFEnergy(PMF, distanceMatrix, systemParms)
+
+Compute a total energy of a configuration with PMF
+"""
+#function computePMFEnergy(PMF, distanceMatrix, systemParms)
+#    hist = zeros(Float64, systemParms.Nbins)
+#    hist = hist!(distanceMatrix, hist, systemParms)
+#    E = sum(hist .* PMF)
+#    return (E)
+#end
+
+"""
+function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, NNParms)
 
 Computes loss gradients for one frame
 """
-function computePreTrainingLossGradients(energyPMF::Float64, symmFuncMatrix, model, NNParms)
-    N = size(symmFuncMatrix)[1]
-    energyGradients = computeEnergyGradients(symmFuncMatrix, model)
-    E = totalEnergyScalar(symmFuncMatrix, model)
+function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, NNParms)
     parameters = Flux.params(model)
-    loss = (E - energyPMF)^2 / N
-    regloss = sum(parameters[1].^2) * NNParms.REGP
-    println("Energy loss (per atom): $(round(loss, digits=4))")
-    println("PMF energy: $(round(energyPMF, digits=4))")
-    println("NN energy: $(round(E, digits=4))")
-    println("Regularization loss: $(round(regloss, digits=4))")
-    gradientScaling::Float64 = 2 / N * (E - energyPMF)
-    
-    lossGradient = gradientScaling .* energyGradients
+    loss = (ΔENN - ΔEPMF)^2
+    regloss = sum(parameters[1] .^ 2) * NNParms.REGP
+    println("   Energy loss: $(round(loss, digits=4))")
+    println("   PMF energy difference: $(round(ΔEPMF, digits=4))")
+    println("   NN energy difference: $(round(ΔENN, digits=4))")
+    println("   Regularization loss: $(round(regloss, digits=4))")
+
+    # Compute dL/dw
+    ENN1Gradients = computeEnergyGradients(G2Matrix1, model)
+    ENN2Gradients = computeEnergyGradients(G2Matrix2, model)
+    gradientScaling = 2 * (ΔENN - ΔEPMF)
+
+    lossGradient = @. gradientScaling * (ENN2Gradients - ENN1Gradients)
     regLossGradient = @. parameters * 2 * NNParms.REGP
     lossGradient += regLossGradient
     return (lossGradient)
 end
 
 """
-function computeMeanForcePotential(refRDF, systemParms)
+function pretrainingMove!(frameInputArrays, PMF, model, NNParms, systemParms, rng)
 
-Compute PMF energies for all the frames in a trajectory
+Displaces one randomly selected particle,
+computes energy differences using PMF and the neural network
 """
-function computeMeanForcePotential(refRDF, systemParms, scaling)
-    traj = readXTC(systemParms)
-    nframes = Int(size(traj)) - 1
-    energiesPMF = zeros(Float64, nframes)
-    PMF = zeros(Float64, systemParms.Nbins)
-    mask = refRDF .== 0
-    refRDF[mask] .= 1E-150
-    PMF = -log.(refRDF) / systemParms.β
-    """
-    for i in eachindex(PMF)
-        if refRDF[i] > 0
-            PMF[i] = -log(refRDF[i]) / systemParms.β
-        end
-    end
-    
-    maxPMF, maxPMFIndex  = findmax(PMF)
-    for i in eachindex(PMF)
-        if refRDF[i] == 0
-            PMF[i] += exp(log(maxPMF) + maxPMFIndex - i)
-        end
-    end
-    """
+function pretrainingMove!(frameInputArrays, PMF, model, NNParms, systemParms, rng)
+    # Unpack frame input arrays
+    frame, distanceMatrix, hist, G2Matrix1 = frameInputArrays
 
-    for frameId = 1:nframes
-        frame = read_step(traj, frameId)
-        distanceMatrix = buildDistanceMatrix(frame)
-        N = size(distanceMatrix)[1]
-        scalingMatrix = abs.(randn(N,N) .* scaling .+ 1) 
-        hist = zeros(Float64, systemParms.Nbins)
-        hist = hist!(distanceMatrix .* scalingMatrix, hist, systemParms)
-        E = sum(hist .* PMF)
-        energiesPMF[frameId] = E
-    end
+    # Compute energy of the initial configuration
+    ENN1Vector = totalEnergyVectorInit(G2Matrix1, model)
+    ENN1 = sum(ENN1Vector)
+    EPMF1 = sum(hist .* PMF)
 
-    return (energiesPMF)
+    # Pick a particle
+    pointIndex = rand(rng, Int32(1):Int32(systemParms.N))
+
+    # Allocate the distance vector
+    distanceVector1 = distanceMatrix[:, pointIndex]
+
+    # Displace the particle
+    dr = [
+        systemParms.Δ * (rand(rng, Float64) - 0.5),
+        systemParms.Δ * (rand(rng, Float64) - 0.5),
+        systemParms.Δ * (rand(rng, Float64) - 0.5),
+    ]
+
+    positions(frame)[:, pointIndex] .+= dr
+
+    # Compute the updated distance vector
+    distanceVector2 = Array{Float64}(undef, systemParms.N)
+    distanceVector2 = updateDistance!(frame, distanceVector2, pointIndex)
+
+    # Update the histogram
+    hist = updatehist!(hist, distanceVector1, distanceVector2, systemParms)
+
+    # Get indexes for updating ENN
+    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, systemParms, NNParms)
+
+    # Make a copy of the original G2 matrix and update it
+    G2Matrix2 = copy(G2Matrix1)
+    updateG2Matrix!(
+        G2Matrix2,
+        distanceVector1,
+        distanceVector2,
+        systemParms,
+        NNParms,
+        pointIndex,
+    )
+
+    # Compute the NN energy again
+    ENN2Vector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, ENN1Vector)
+    ENN2 = sum(ENN2Vector)
+    EPMF2 = sum(hist .* PMF)
+
+    # Get the energy differences
+    ΔENN = ENN2 - ENN1
+    ΔEPMF = EPMF2 - EPMF1
+
+    # Revert the changes in the frame arrays
+    positions(frame)[:, pointIndex] .-= dr
+    hist = updatehist!(hist, distanceVector2, distanceVector1, systemParms)
+
+    # Pack frame output arrays
+    frameOutputArrays = (G2Matrix1, G2Matrix2)
+
+    return (frameOutputArrays, ΔENN, ΔEPMF)
 end
 
 """
-function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
+function preComputeFrameArrays(NNParms, systemParmsList, refRDFs)
 
-Runs pre-training using PMF as energy reference data.
-    
-The loss gradients are computed from one reference frame
-and averaged over different systems.
+Pre-compute PMFs, distance and G2 matrices as well as the reference trajectory frames
+for later use in pre-training steps
 """
-function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
-    println("Running pre-training...\n")
+function preComputeFrameArrays(NNParms, systemParmsList, refRDFs)
     nsystems = length(systemParmsList)
-    
-    nframesMultiReference = []
+    PMFs = [] # [nsystems]
+    nframesPerSystem = [] # [nsystems]
+    frames = [[] for i=1:nsystems] # [nsystems x nframes]
+    distanceMatrices = [[] for i=1:nsystems] # [nsystems x nframes]
+    histograms = [[] for i=1:nsystems] # [nsystems x nframes]
+    G2Matrices = [[] for i=1:nsystems] # [nsystems x nframes]
+
     for systemId = 1:nsystems
+        println("Pre-computing distances and G2 matrices for $(systemParmsList[systemId].systemName)...\n")
+        PMF = computePMF(refRDFs[systemId], systemParmsList[systemId])
+        append!(PMFs, [PMF])
+
         traj = readXTC(systemParmsList[systemId])
-        nframes = Int(size(traj)) - 1
-        append!(nframesMultiReference, nframes)
-    end
-
-    @assert length(unique(nframesMultiReference)) == 1 "Lengths of trajectories are different"
-    nframes = nframesMultiReference[1]
-
-    # Scaling of the scaling matrix
-    distanceScaling = [0.1, 0.01, 0.]
-    #distanceScaling = LinRange(0.1, 0, 3)
-    #distanceScaling = abs.(randn(5)) .* 0.01
-    for scaling in distanceScaling
-        energiesPMFMultiReference = []
-        println("Scaling distances by $(round(scaling, digits=4))...\n")
-        for systemId = 1:nsystems
-            energiesPMF = computeMeanForcePotential(refRDFs[systemId], systemParmsList[systemId], scaling)
-            append!(energiesPMFMultiReference, [energiesPMF])
+        nframes = Int(size(traj)) - 1 # Don't take the first frame
+        append!(nframesPerSystem, nframes)
+        if length(nframesPerSystem) > 1
+            @assert nframesPerSystem[systemId] == nframesPerSystem[systemId-1]
         end
 
         for frameId = 1:nframes
-            println("\nPre-training iteration $(frameId)...")
-            lossGradients = []
-            for systemId = 1:nsystems
-                energyPMF = energiesPMFMultiReference[systemId][frameId]
-                traj = readXTC(systemParmsList[systemId])
-                frame = read_step(traj, frameId)
-                distanceMatrix = buildDistanceMatrix(frame)
-                N = size(distanceMatrix)[1]
-                # Scaling the scalingMatrix by zero
-                # leads to no scaling of the original distance matrix
-                scalingMatrix = abs.(randn(N,N) .* scaling .+ 1)
-                G2Matrix = buildG2Matrix(distanceMatrix .* scalingMatrix, NNParms)
-                lossGradient = computePreTrainingLossGradients(energyPMF, G2Matrix, model, NNParms)
-                append!(lossGradients, [lossGradient])
-            end
-            meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
-            updatemodel!(model, opt, meanLossGradients)
+            println("Frame $(frameId)...")
+            frame = read_step(traj, frameId)
+            append!(frames[systemId], [frame])
+
+            distanceMatrix = buildDistanceMatrix(frame)
+            append!(distanceMatrices[systemId], [distanceMatrix])
+
+            hist = zeros(Float64, systemParmsList[systemId].Nbins)
+            hist = hist!(distanceMatrix, hist, systemParmsList[systemId])
+            append!(histograms[systemId], [hist])
+
+            G2Matrix = buildG2Matrix(distanceMatrix, NNParms)
+            append!(G2Matrices[systemId], [G2Matrix])
         end
+    end
+    frameArrays = (PMFs, frames, distanceMatrices, histograms, G2Matrices)
+    return (frameArrays)
+end
+
+"""
+function preTrain!(NNParms, systemParmsList, model, opt, frameArrays)
+
+Run pre-training for a given number of steps
+"""
+function preTrain!(NNParms, systemParmsList, model, opt, frameArrays)
+    rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
+    println("Running $(NNParms.preTrainSteps) steps of pre-training Monte-Carlo...\n")
+    nsystems = length(systemParmsList)
+
+    # Unpack frameArrays from the preComputeFrameArrays function
+    PMFs, frames, distanceMatrices, histograms, G2Matrices = frameArrays
+    # Get the number of frames per system
+    nframesPerSystem = Int(length(frames) / nsystems)
+
+    for step = 1:NNParms.preTrainSteps
+        println("\nStep $(step)...\n")
+        lossGradients = []
+        for systemId = 1:nsystems
+            # ID of a frame within a system
+            frameId = rand(rngXor, 1:nframesPerSystem)
+            # Pack frame input arrays
+            frameInputArrays = (
+                frames[systemId][frameId],
+                distanceMatrices[systemId][frameId],
+                histograms[systemId][frameId],
+                G2Matrices[systemId][frameId])
+
+            # Run a pre-training step, compute energy differences with PMF and the neural network,
+            # restore all input arguments to their original state
+            frameOutputArrays, ΔENN, ΔEPMF = pretrainingMove!(
+                frameInputArrays, PMFs[systemId], model, NNParms, systemParmsList[systemId], rngXor)
+            G2Matrix1, G2Matrix2 = frameOutputArrays
+            # Compute the loss gradient
+            lossGradient = computePreTrainingLossGradients(
+                ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, NNParms)
+            append!(lossGradients, [lossGradient])
+        end
+        # Update the model
+        meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
+        updatemodel!(model, opt, meanLossGradients)
     end
     @save "model-pre-trained.bson" model
     return (model)

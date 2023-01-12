@@ -8,11 +8,12 @@ outputMode      = default               # default (rdf, energy, model); verbose 
 # Monte Carlo parameters
 steps          = 100000                 # Total number of MC steps
 Eqsteps        = 50000                  # Equilibration MC steps
-stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
+stepAdjustFreq = 500                   # Frequency of MC step adjustment   
 trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency
 
 # Network parameters
+preTrainSteps   = 1000                  # Number of pre-training steps
 minR            = 0.1                   # Min distance for G2 symmetry function, Å
 maxR            = 6.0                   # Max distance for G2 symmetry function, Å
 sigma           = 1.5                   # Sigma from Gaussian distribution in Å, corresponds η = 1/√(2σ) parameter in G2 symmetry function
@@ -22,7 +23,7 @@ sigma           = 1.5                   # Sigma from Gaussian distribution in Å
 neurons         = 20, 20, 20, 1         # Number of neurons in the network
 iters           = 3                     # Number of learning iterations
 activations     = relu, relu, identity  # Activation function
-REGP            = 1                    # Regularization parameter (set to zero to turn off regularization)
+REGP            = 1                     # Regularization parameter (set to zero to turn off regularization)
 optimizer       = AMSGrad               # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
                                         # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
 rate            = 0.01                  # Learning rate

@@ -9,7 +9,7 @@ BLAS.set_num_threads(1)
     include("src/network.jl")
     include("src/base.jl")
     include("src/io.jl")
-    include("src/pretraining-mc.jl")
+    include("src/pretraining.jl")
 end
 
 function main()
@@ -119,10 +119,14 @@ function main()
             println("Decay 2: $(NNParms.decay2)")
         end
 
-        # Run pretraining
-        #model = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
-        model = preTrainMC!(NNParms, systemParmsList, model, opt, refRDFs, 100)
-        opt = optInit(NNParms)
+        if globalParms.inputmodel == "random"
+            # Pre compute distances and G2 matrices
+            frameArrays = preComputeFrameArrays(NNParms, systemParmsList, refRDFs)
+            # Run pretraining
+            model = preTrain!(NNParms, systemParmsList, model, opt, frameArrays)
+            # Restore optimizer state to default
+            opt = optInit(NNParms)
+        end
         # Run the training
         println("Running MC simulation on $(nworkers()) rank(s)...\n")
         println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
