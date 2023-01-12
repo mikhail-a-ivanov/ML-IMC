@@ -218,7 +218,7 @@ function preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
 Run pre-training for a given number of steps
 """
 function preTrain!(preTrainParms::preTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
-    println("Running $(preTrainParms.PTsteps) steps of pre-training Monte-Carlo...\n")
+    println("\nRunning $(preTrainParms.PTsteps) steps of pre-training Monte-Carlo...\n")
     println("Neural network regularization parameter: $(preTrainParms.PTREGP)")
     println("Optimizer type: $(preTrainParms.PToptimizer)")
     println("Parameters of optimizer:")

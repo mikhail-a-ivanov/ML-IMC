@@ -1,5 +1,25 @@
 using Flux
 
+function reportOpt(opt)
+    println("Optimizer type: $(typeof(opt))")
+    println("   Parameters:")
+    for name in fieldnames(typeof(opt))
+        if String(name) != "state" && String(name) != "velocity"
+            if String(name) == "eta"
+                println("       Learning rate: $(getfield(opt, (name)))")
+            elseif String(name) == "beta"
+                println("       Decays: $(getfield(opt, (name)))")
+            elseif String(name) == "velocity"
+                println("       Velocity: $(getfield(opt, (name)))")
+            elseif String(name) == "beta"
+                println("       Beta: $(getfield(opt, (name)))")
+            elseif String(name) == "rho"
+                println("       Momentum coefficient: $(getfield(opt, (name)))")
+            end
+        end
+    end
+end
+
 """
 function optInit(NNParms::NNparameters)
 

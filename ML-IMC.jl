@@ -54,79 +54,19 @@ function main()
             println("Starting training from $(globalParms.inputmodel)")
         end
         println("Using the following activation functions: $(NNParms.activations)")
-        println("Neural network regularization parameter: $(NNParms.REGP)")
-        println("Number of iterations: $(NNParms.iters)")
-        println("Optimizer type: $(NNParms.optimizer)")
-        println("Parameters of optimizer:")
-        if NNParms.optimizer == "Momentum"
-            println("Learning rate: $(NNParms.rate)")
-            println("Momentum coefficient: $(NNParms.momentum)")
-
-        elseif NNParms.optimizer == "Descent"
-            println("Learning rate: $(NNParms.rate)")
-
-        elseif NNParms.optimizer == "Nesterov"
-            println("Learning rate: $(NNParms.rate)")
-            println("Momentum coefficient: $(NNParms.momentum)")
-
-        elseif NNParms.optimizer == "RMSProp"
-            println("Learning rate: $(NNParms.rate)")
-            println("Momentum coefficient: $(NNParms.momentum)")
-
-        elseif NNParms.optimizer == "Adam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "RAdam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdaMax"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdaGrad"
-            println("Learning rate: $(NNParms.rate)")
-
-        elseif NNParms.optimizer == "AdaDelta"
-            println("Learning rate: $(NNParms.rate)")
-
-        elseif NNParms.optimizer == "AMSGrad"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "NAdam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdamW"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "OAdam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdaBelief"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-        end
-
         if globalParms.inputmodel == "random"
+            reportOpt(opt)
             # Run pretraining
             model = preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
             # Restore optimizer state to default
+            println("\nRe-initializing the optimizer for the training...\n")
             opt = optInit(NNParms)
+            reportOpt(opt)
+            println("Neural network regularization parameter: $(NNParms.REGP)")
         end
         # Run the training
+        println("\nStarting the main part of the training...\n")
+        println("Number of iterations: $(NNParms.iters)")
         println("Running MC simulation on $(nworkers()) rank(s)...\n")
         println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
         println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
