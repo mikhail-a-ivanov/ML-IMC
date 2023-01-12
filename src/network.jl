@@ -276,65 +276,6 @@ function modelInit(NNParms, globalParms)
 end
 
 """
-function optInit(NNParms)
-
-Initializes the optimizer
-"""
-function optInit(NNParms)
-    if NNParms.optimizer == "Momentum"
-        opt = Momentum(NNParms.rate, NNParms.momentum)
-
-    elseif NNParms.optimizer == "Descent"
-        opt = Descent(NNParms.rate)
-
-    elseif NNParms.optimizer == "Nesterov"
-        opt = Nesterov(NNParms.rate, NNParms.momentum)
-
-    elseif NNParms.optimizer == "RMSProp"
-        opt = RMSProp(NNParms.rate, NNParms.momentum)
-
-    elseif NNParms.optimizer == "Adam"
-        opt = Adam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "RAdam"
-        opt = RAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdaMax"
-        opt = AdaMax(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdaGrad"
-        opt = AdaGrad(NNParms.rate)
-
-    elseif NNParms.optimizer == "AdaDelta"
-        opt = AdaDelta(NNParms.rate)
-
-    elseif NNParms.optimizer == "AMSGrad"
-        opt = AMSGrad(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "NAdam"
-        opt = NAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdamW"
-        opt = AdamW(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "OAdam"
-        opt = OAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdaBelief"
-        opt = AdaBelief(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    else
-        opt = Descent(NNParms.rate)
-        println(
-            "Unsupported type of optimizer! \n
-            Default optimizer is 'Descent' \n
-            For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n",
-        )
-    end
-    return (opt)
-end
-
-"""
 function prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
 Prepares multi-reference inputs for mcsample! function
 """

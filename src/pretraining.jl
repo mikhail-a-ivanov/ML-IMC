@@ -109,14 +109,15 @@ function preComputeRefData(refDataInput::preComputeInput)
 end
 
 """
-function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, NNParms, verbose=false)
+function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, preTrainParms, verbose=false)
 
 Computes loss gradients for one frame
 """
-function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, NNParms, verbose=false)
+function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2,
+    model, preTrainParms::preTrainParameters, verbose=false)
     parameters = Flux.params(model)
     loss = (ΔENN - ΔEPMF)^2
-    regloss = sum(parameters[1] .^ 2) * NNParms.REGP
+    regloss = sum(parameters[1] .^ 2) * preTrainParms.PTREGP
     if verbose
         println("   Energy loss: $(round(loss, digits=4))")
         println("   PMF energy difference: $(round(ΔEPMF, digits=4))")
@@ -130,7 +131,7 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, mo
     gradientScaling = 2 * (ΔENN - ΔEPMF)
 
     lossGradient = @. gradientScaling * (ENN2Gradients - ENN1Gradients)
-    regLossGradient = @. parameters * 2 * NNParms.REGP
+    regLossGradient = @. parameters * 2 * preTrainParms.PTREGP
     lossGradient += regLossGradient
     return (lossGradient)
 end
@@ -212,13 +213,18 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
 end
 
 """
-function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
+function preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
 
 Run pre-training for a given number of steps
 """
-function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
+function preTrain!(preTrainParms::preTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
+    println("Running $(preTrainParms.PTsteps) steps of pre-training Monte-Carlo...\n")
+    println("Neural network regularization parameter: $(preTrainParms.PTREGP)")
+    println("Optimizer type: $(preTrainParms.PToptimizer)")
+    println("Parameters of optimizer:")
+    println("Learning rate: $(preTrainParms.PTrate)")
+
     rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
-    println("Running $(NNParms.preTrainSteps) steps of pre-training Monte-Carlo...\n")
     nsystems = length(systemParmsList)
 
     # Pre-compute reference data in parallelrefRDFs
@@ -229,9 +235,9 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
     end
     refDataList::Vector{referenceData} = pmap(preComputeRefData, refDataInputs)
 
-    for step = 1:NNParms.preTrainSteps
+    for step = 1:preTrainParms.PTsteps
         verbose::Bool = false
-        if step % NNParms.preTrainOutFreq == 0
+        if step % preTrainParms.PToutfreq == 0 || step == 1
             verbose = true
             println("\nStep $(step)...\n")
         end
@@ -247,7 +253,7 @@ function preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
 
             # Compute the loss gradient
             lossGradient = computePreTrainingLossGradients(
-                ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, NNParms, verbose)
+                ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, preTrainParms, verbose)
             append!(lossGradients, [lossGradient])
         end
         # Update the model

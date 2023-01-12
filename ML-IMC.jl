@@ -5,10 +5,11 @@ using Dates
 BLAS.set_num_threads(1)
 
 @everywhere begin
+    include("src/io.jl")
     include("src/distances.jl")
+    include("src/optimizer.jl")
     include("src/network.jl")
     include("src/base.jl")
-    include("src/io.jl")
     include("src/pretraining.jl")
 end
 
@@ -18,13 +19,13 @@ function main()
     println("Starting at: ", startTime)
 
     # Initialize the parameters
-    globalParms, MCParms, NNParms, systemParmsList = parametersInit()
+    globalParms, MCParms, NNParms, preTrainParms, systemParmsList = parametersInit()
 
     # Check if the number of workers is divisble by the number of ref systems
     @assert nworkers() % length(systemParmsList) == 0
 
     # Initialize the input data
-    inputs = inputInit(globalParms, NNParms, systemParmsList)
+    inputs = inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
     if globalParms.mode == "training"
         model, opt, refRDFs = inputs
     else
@@ -121,7 +122,7 @@ function main()
 
         if globalParms.inputmodel == "random"
             # Run pretraining
-            model = preTrain!(NNParms, systemParmsList, model, opt, refRDFs)
+            model = preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
             # Restore optimizer state to default
             opt = optInit(NNParms)
         end

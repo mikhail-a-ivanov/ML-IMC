@@ -1,5 +1,6 @@
 using Printf
 using Chemfiles
+using BSON: @save, @load
 
 """
 struct globalParameters
@@ -44,8 +45,6 @@ end
 struct NNparameters
 
 Fields:
-preTrainSteps: number of pre-training steps
-preTrainOutFreq: frequency of pre-training reporting
 minR: min distance for G2 symmetry function, Å
 maxR: max distance for G2 symmetry function (cutoff), Å 
 sigma: sigma parameter in G2 symmetry function (gaussian width), Å
@@ -60,8 +59,6 @@ decay1: decay of the optimizer (1)
 decay2: decay of the optimizer (2)
 """
 struct NNparameters
-    preTrainSteps::Int64
-    preTrainOutFreq::Int64
     minR::Float64
     maxR::Float64
     sigma::Float64
@@ -74,6 +71,25 @@ struct NNparameters
     momentum::Float64
     decay1::Float64
     decay2::Float64
+end
+
+"""
+struct preTrainParameters
+
+Fields:
+PTsteps: number of pre-training steps
+PToutfreq: frequency of pre-training reporting
+The rest as in NNparameters but with PT prefix
+"""
+struct preTrainParameters
+    PTsteps::Int64
+    PToutfreq::Int64
+    PTREGP::Float64
+    PToptimizer::String
+    PTrate::Float64
+    PTmomentum::Float64
+    PTdecay1::Float64
+    PTdecay2::Float64
 end
 
 """
@@ -139,11 +155,13 @@ function parametersInit()
     globalFields = [String(field) for field in fieldnames(globalParameters)]
     MCFields = [String(field) for field in fieldnames(MCparameters)]
     NNFields = [String(field) for field in fieldnames(NNparameters)]
+    preTrainFields = [String(field) for field in fieldnames(preTrainParameters)]
 
     # Input variable arrays
     globalVars = []
     MCVars = []
     NNVars = []
+    preTrainVars = []
 
     # Loop over fieldnames and fieldtypes and over splitted lines
     # Global parameters
@@ -222,6 +240,20 @@ function parametersInit()
     end
     NNParms = NNparameters(NNVars...)
 
+    # Pre-training parameters
+    for (field, fieldtype) in zip(preTrainFields, fieldtypes(preTrainParameters))
+        for line in splittedLines
+            if length(line) != 0 && field == line[1]
+                if fieldtype != String
+                    append!(preTrainVars, parse(fieldtype, line[3]))
+                else
+                    append!(preTrainVars, [line[3]])
+                end
+            end
+        end
+    end
+    preTrainParms = preTrainParameters(preTrainVars...)
+
     # Read system input files
     systemParmsList = [] # list of systemParameters structs
     systemFields = [String(field) for field in fieldnames(systemParameters)]
@@ -279,7 +311,7 @@ function parametersInit()
         println("Running ML-IMC in the simulation mode.")
     end
 
-    return (globalParms, MCParms, NNParms, systemParmsList)
+    return (globalParms, MCParms, NNParms, preTrainParms, systemParmsList)
 end
 
 """
@@ -293,11 +325,11 @@ function readXTC(systemParms)
 end
 
 """
-function inputInit(globalParms, NNParms, systemParmsList)
+function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
 
 Initializes input data
 """
-function inputInit(globalParms, NNParms, systemParmsList)
+function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
     # Read reference data
     refRDFs = []
     for systemParms in systemParmsList
@@ -309,12 +341,14 @@ function inputInit(globalParms, NNParms, systemParmsList)
     # or load a model from a file for MC sampling
 
     # Initialize the optimizer
-    opt = optInit(NNParms)
     if globalParms.inputmodel == "random" || globalParms.inputmodel == "zero"
         # Initialize the model
         model = modelInit(NNParms, globalParms)
+        # Run pre-training if no initial model is given
+        opt = optInit(preTrainParms)
     else
         @load globalParms.inputmodel model
+        opt = optInit(NNParms)
     end
 
     if globalParms.mode == "training"
