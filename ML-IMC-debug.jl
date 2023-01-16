@@ -19,7 +19,7 @@ BLAS.set_num_threads(1)
 end
 
 # Initialize the parameters
-globalParms, MCParms, NNParms, systemParmsList = parametersInit()
+globalParms, MCParms, NNParms, preTrainParms, systemParmsList = parametersInit()
 
 @assert nworkers() % length(systemParmsList) == 0
 
