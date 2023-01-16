@@ -11,12 +11,12 @@ end
 
 function pbcdx(x1, x2, xsize)
     dx = x2 - x1
-    dx += -xsize * convert(Int, round(dx/xsize))
-    return dx
+    dx += -xsize * convert(Int32, round(dx/xsize))
+    return dx^2
 end
 
 function computeDistance(r1::Vector{Float64}, r2::Vector{Float64}, box::Vector{Float64})::Float64
-    return sqrt(reduce(+, map(x -> x^2, map(pbcdx, r1, r2, box))))
+    return sqrt.(reduce(+, map(pbcdx, r1, r2, box)))
 end
 
 function elementFunctionalLoop(frame)
@@ -34,12 +34,8 @@ function elementFunctionalLoop(frame)
     return distanceMatrix
 end
 
-function computeDistanceComponent(x1, x2, boxX)
-    return map(x -> x^2, map(pbcdx, x1, x2, boxX))
-end
-
-function getDistanceVector(r1::Vector{Float64}, coordinates, box::Vector{Float64})::Vector{Float64}
-    return vec(sqrt.(sum(broadcast(computeDistanceComponent, r1, coordinates, box), dims=1)))
+function getDistanceVector(r1, coordinates, box)
+    return vec(sqrt.(sum(broadcast(pbcdx, r1, coordinates, box), dims=1)))
 end
 
 function vectorFunctionalLoop(frame)
@@ -59,14 +55,16 @@ function fullVectorization(frame)
     coordinates = positions(frame)
     N::Int64 = length(frame) # number of atoms
     box::Vector{Float64} = lengths(UnitCell(frame)) # pbc box vector
-    return sqrt.(sum(broadcast(computeDistanceComponent, reshape(repeat(coordinates, N), (3, N, N)), coordinates, box), dims=1)) 
+    return sqrt.(sum(broadcast(pbcdx, reshape(repeat(coordinates, N), (3, N, N)), coordinates, box), dims=1))[1, :, :] 
 end
 
 function fullVectorizationCUDA(frame)
-    coordinates = CuArray(positions(frame))
-    #N = length(frame) # number of atoms
-    box = CuArray(lengths(UnitCell(frame))) # pbc box vector
-    return sqrt.(sum(broadcast(computeDistanceComponent, reshape(repeat(coordinates, 512), (3, 512, 512)), coordinates, box), dims=1))[1, :, :]
+	coordinates = Matrix{Float32}(positions(frame))
+	N::Int32 = length(frame)
+	box = Vector{Float32}(lengths(UnitCell(frame)))
+	coordinatesGPU = CuArray(coordinates)
+	boxGPU = CuArray(box)
+	return sqrt.(sum(broadcast(pbcdx, reshape(repeat(coordinates, N), (3, N, N)), coordinates, box), dims=1))[1, :, :]
 end
 
 traj = Trajectory("methanol-data/100CH3OH/100CH3OH-CG-200.xtc")
@@ -74,27 +72,28 @@ frame = read_step(traj, 1)
 
 distanceMatrixRef = reference(frame)
 println("Computing distance matrix with Chemfiles distance function:")
-#@btime reference($frame)
+@btime reference($frame)
 
 println("Computing distance matrix with element-wise distance computation:")
 distanceMatrixElementFuncLoop = elementFunctionalLoop(frame)
-#@btime elementFunctionalLoop($frame)
+@btime elementFunctionalLoop($frame)
 
 @assert abs(sum(distanceMatrixRef .- distanceMatrixElementFuncLoop)) / length(frame) < 1e-8
 
 println("Computing distance matrix with vector-wise distance computation:")
 distanceMatrixVectFuncLoop = vectorFunctionalLoop(frame)
-#@btime vectorFunctionalLoop($frame)
+@btime vectorFunctionalLoop($frame)
 
 @assert abs(sum(distanceMatrixRef .- distanceMatrixVectFuncLoop)) / length(frame) < 1e-8
 
 println("Computing distance matrix with a fully vectorized method:")
 distanceMatrixFullyVectorized = fullVectorization(frame)
-#@btime fullVectorization($frame)
+@btime fullVectorization($frame)
 
 @assert abs(sum(distanceMatrixRef .- distanceMatrixFullyVectorized)) / length(frame) < 1e-8
 
-println("Computing distance matrix with CUDA:")
+println("Computing distance matrix with CUDA (in Float32):")
 distanceMatrixCUDA = fullVectorizationCUDA(frame)
 
-@assert abs(sum(distanceMatrixRef .- distanceMatrixCUDA)) / length(frame) < 1e-8
+@assert abs(sum(Matrix{Float32}(distanceMatrixRef) .- Matrix{Float32}(distanceMatrixCUDA))) / length(frame) < 1e-3
+@btime fullVectorizationCUDA(frame)
