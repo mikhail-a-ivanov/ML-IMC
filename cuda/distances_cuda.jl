@@ -103,6 +103,13 @@ function runTests(benchmark=true)
 	distanceMatrixCUDA2 = buildDistanceMatrixCUDA2(coordinatesGPU, boxGPU, N)
 	@assert abs(sum(Matrix{Float32}(distanceMatrixRef) .- Matrix{Float32}(distanceMatrixCUDA2))) / length(frame) < 1e-3
 
+	r1 = coordinates[:, 1]
+	distanceVectorCPU = distanceVector(r1, coordinates, box)
+
+	r1GPU = CuArray(r1)
+	distanceVectorGPU = distanceVector(r1GPU, coordinatesGPU, boxGPU)
+	@assert abs(sum(Vector{Float32}(distanceVectorCPU) .- Vector{Float32}(distanceVectorGPU))) / length(frame) < 1e-3
+
 	if benchmark
 		println("Computing distance matrix with Chemfiles distance function on CPU (Float64):")
 		@btime reference($frame)
@@ -121,6 +128,12 @@ function runTests(benchmark=true)
 
 		println("Computing distance matrix with CUDA (Float32, no transfer to/from CPU):")
 		@btime CUDA.@sync buildDistanceMatrixCUDA2($coordinatesGPU, $boxGPU, $N)
+
+		println("Computing a single distance vector on CPU (Float64)")
+		@btime distanceVector($r1, $coordinates, $box)
+
+		println("Computing a single distance vector on GPU (Float32, no transfer to/from CPU)")
+		@btime CUDA.@sync distanceVector($r1GPU, $coordinatesGPU, $boxGPU)
 	end
 end
 
