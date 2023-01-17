@@ -67,28 +67,32 @@ function fullVectorizationCUDA(frame)
 	return sqrt.(sum(broadcast(pbcdx, reshape(repeat(coordinates, N), (3, N, N)), coordinates, box), dims=1))[1, :, :]
 end
 
+function fullVectorizationCUDA2(coordinates, box, N)
+	return sqrt.(sum(broadcast(pbcdx, reshape(repeat(coordinates, N), (3, N, N)), coordinates, box), dims=1))[1, :, :]
+end
+
 traj = Trajectory("methanol-data/100CH3OH/100CH3OH-CG-200.xtc")
 frame = read_step(traj, 1)
 
 distanceMatrixRef = reference(frame)
 println("Computing distance matrix with Chemfiles distance function:")
-@btime reference($frame)
+#@btime reference($frame)
 
 println("Computing distance matrix with element-wise distance computation:")
 distanceMatrixElementFuncLoop = elementFunctionalLoop(frame)
-@btime elementFunctionalLoop($frame)
+#@btime elementFunctionalLoop($frame)
 
 @assert abs(sum(distanceMatrixRef .- distanceMatrixElementFuncLoop)) / length(frame) < 1e-8
 
 println("Computing distance matrix with vector-wise distance computation:")
 distanceMatrixVectFuncLoop = vectorFunctionalLoop(frame)
-@btime vectorFunctionalLoop($frame)
+#@btime vectorFunctionalLoop($frame)
 
 @assert abs(sum(distanceMatrixRef .- distanceMatrixVectFuncLoop)) / length(frame) < 1e-8
 
 println("Computing distance matrix with a fully vectorized method:")
 distanceMatrixFullyVectorized = fullVectorization(frame)
-@btime fullVectorization($frame)
+#@btime fullVectorization($frame)
 
 @assert abs(sum(distanceMatrixRef .- distanceMatrixFullyVectorized)) / length(frame) < 1e-8
 
@@ -97,3 +101,15 @@ distanceMatrixCUDA = fullVectorizationCUDA(frame)
 
 @assert abs(sum(Matrix{Float32}(distanceMatrixRef) .- Matrix{Float32}(distanceMatrixCUDA))) / length(frame) < 1e-3
 @btime fullVectorizationCUDA(frame)
+
+coordinates = Matrix{Float32}(positions(frame))
+box = Vector{Float32}(lengths(UnitCell(frame)))
+N = length(frame)
+
+coordinatesGPU = CuArray(coordinates)
+boxGPU = CuArray(box)
+
+distanceMatrixCUDA2 = fullVectorizationCUDA2(coordinatesGPU, boxGPU, N)
+@assert abs(sum(Matrix{Float32}(distanceMatrixRef) .- Matrix{Float32}(distanceMatrixCUDA2))) / length(frame) < 1e-3
+
+@btime fullVectorizationCUDA2(coordinatesGPU, boxGPU, N)
