@@ -24,7 +24,7 @@ globalParms, MCParms, NNParms, preTrainParms, systemParmsList = parametersInit()
 @assert nworkers() % length(systemParmsList) == 0
 
 # Initialize the input data
-inputs = inputInit(globalParms, NNParms, systemParmsList)
+inputs = inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
 if globalParms.mode == "training"
     model, opt, refRDFs = inputs
 else
