@@ -23,7 +23,7 @@ Contains input data necessary for pre-computation
 """
 struct preComputeInput
     NNParms::NNparameters
-    systemParms::systemParameters
+    systemParms::SystemParameters
     refRDF::Vector{Float64}
 end
 
@@ -114,7 +114,7 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, mo
 Computes loss gradients for one frame
 """
 function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2,
-    model, preTrainParms::preTrainParameters, verbose=false)
+    model, preTrainParms::PreTrainParameters, verbose=false)
     parameters = Flux.params(model)
     loss = (ΔENN - ΔEPMF)^2
     regloss = sum(parameters[1] .^ 2) * preTrainParms.PTREGP
@@ -218,7 +218,7 @@ function preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
 
 Run pre-training for a given number of steps
 """
-function preTrain!(preTrainParms::preTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
+function preTrain!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
     println("\nRunning $(preTrainParms.PTsteps) steps of pre-training Monte-Carlo...\n")
     println("Neural network regularization parameter: $(preTrainParms.PTREGP)")
     reportOpt(opt)

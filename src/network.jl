@@ -8,11 +8,11 @@ struct MCSampleInput
 Used for packaging mcsample! inputs
 """
 struct MCSampleInput
-    globalParms::Any
-    MCParms::Any
-    NNParms::Any
-    systemParms::Any
-    model::Any
+    globalParms::GlobalParameters
+    MCParms::MCparameters
+    NNParms::NNparameters
+    systemParms::SystemParameters
+    model::Chain
 end
 
 """
@@ -21,13 +21,13 @@ struct MCAverages
 Used for packaging mcsample! outputs
 """
 struct MCAverages
-    descriptor::Any
-    energies::Any
-    crossAccumulators::Any
-    G2MatrixAccumulator::Any
-    acceptanceRatio::Any
-    systemParms::Any
-    mutatedStepAdjust::Any
+    descriptor::Vector{Float64}
+    energies::Vector{Float64}
+    crossAccumulators::Union{Nothing,Vector{Matrix{Float64}}}
+    G2MatrixAccumulator::Union{Nothing,Matrix{Float64}}
+    acceptanceRatio::Float64
+    systemParms::SystemParameters
+    mutatedStepAdjust::Float64
 end
 
 """
@@ -69,7 +69,7 @@ function crossAccumulatorsInit(NNParms, systemParms)
 Initialize cross correlation accumulator arrays
 """
 function crossAccumulatorsInit(NNParms, systemParms)
-    crossAccumulators = []
+    crossAccumulators = Vector{Matrix{Float64}}([])
     nlayers = length(NNParms.neurons)
     for layerId = 2:nlayers
         append!(
@@ -190,23 +190,23 @@ function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
         for parameters in Flux.params(model)
             regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
         end
-        println("Regularization Loss = ", round(regLoss, digits = 8))
-        println(io, "Regularization Loss = ", round(regLoss, digits = 8))
+        println("Regularization Loss = ", round(regLoss, digits=8))
+        println(io, "Regularization Loss = ", round(regLoss, digits=8))
         totalLoss = strLoss + regLoss
     else
         totalLoss = strLoss
         println("Regularization Loss = ", 0)
         println(io, "Regularization Loss = ", 0)
     end
-    println("Descriptor Loss = ", round(strLoss, digits = 8))
-    println(io, "Descriptor Loss = ", round(strLoss, digits = 8))
-    println(io, "Total Loss = ", round(totalLoss, digits = 8))
+    println("Descriptor Loss = ", round(strLoss, digits=8))
+    println(io, "Descriptor Loss = ", round(strLoss, digits=8))
+    println(io, "Total Loss = ", round(totalLoss, digits=8))
     # Abnormal max displacement is an indication
     # of a poor model, even if the total loss is low!
     # Low max displacement results in a severely
     # undersampled configuration - it becomes "stuck"
     # at the initial configuration
-    println(io, "Max displacement = ", round(meanMaxDisplacement, digits = 8))
+    println(io, "Max displacement = ", round(meanMaxDisplacement, digits=8))
     close(io)
     return (totalLoss)
 end
@@ -239,7 +239,7 @@ function buildchain(args...)
     nlayers = length(args)
     layers = []
     for (layerId, arg) in enumerate(args)
-        layer = Dense(arg..., bias = false)
+        layer = Dense(arg..., bias=false)
         append!(layers, [layer])
     end
     model = Chain(layers...)
@@ -367,8 +367,8 @@ function collectSystemAverages(
             )
         end
         # Compute loss and print some output info
-        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits = 4))
-        println("       Max displacement = ", round(meanMaxDisplacement, digits = 4))
+        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+        println("       Max displacement = ", round(meanMaxDisplacement, digits=4))
         if globalParms.mode == "training"
             meanLoss += loss(
                 systemOutput.descriptor,
@@ -383,7 +383,7 @@ function collectSystemAverages(
     end
     if globalParms.mode == "training"
         meanLoss /= length(systemParmsList)
-        println("   \nTotal Average Loss = ", round(meanLoss, digits = 8))
+        println("   \nTotal Average Loss = ", round(meanLoss, digits=8))
     end
     return (systemOutputs)
 end

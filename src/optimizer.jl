@@ -84,7 +84,7 @@ function optInit(preTrainParms::preTrainParameters)
 
 Initializes the optimizer for the pre-training
 """
-function optInit(preTrainParms::preTrainParameters)
+function optInit(preTrainParms::PreTrainParameters)
     if preTrainParms.PToptimizer == "Momentum"
         opt = Momentum(preTrainParms.PTrate, preTrainParms.PTmomentum)
 

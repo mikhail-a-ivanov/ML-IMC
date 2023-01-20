@@ -16,7 +16,7 @@ inputmodel:
 outputMode:
     default (rdf, energy, model); verbose (+gradients, +trajectories)            
 """
-struct globalParameters
+struct GlobalParameters
     systemFiles::Vector{String}
     mode::String
     inputmodel::String
@@ -81,7 +81,7 @@ PTsteps: number of pre-training steps
 PToutfreq: frequency of pre-training reporting
 The rest as in NNparameters but with PT prefix
 """
-struct preTrainParameters
+struct PreTrainParameters
     PTsteps::Int64
     PToutfreq::Int64
     PTREGP::Float64
@@ -109,7 +109,7 @@ T: temperature, K
 Δ: max displacement, Å
 targetAR: target acceptance ratio
 """
-struct systemParameters
+struct SystemParameters
     systemName::String
     trajfile::String
     topname::String
@@ -146,10 +146,10 @@ function parametersInit()
     splittedLines = [split(line) for line in lines]
 
     # Make a list of field names
-    globalFields = [String(field) for field in fieldnames(globalParameters)]
+    globalFields = [String(field) for field in fieldnames(GlobalParameters)]
     MCFields = [String(field) for field in fieldnames(MCparameters)]
     NNFields = [String(field) for field in fieldnames(NNparameters)]
-    preTrainFields = [String(field) for field in fieldnames(preTrainParameters)]
+    preTrainFields = [String(field) for field in fieldnames(PreTrainParameters)]
 
     # Input variable arrays
     globalVars = []
@@ -159,7 +159,7 @@ function parametersInit()
 
     # Loop over fieldnames and fieldtypes and over splitted lines
     # Global parameters
-    for (field, fieldtype) in zip(globalFields, fieldtypes(globalParameters))
+    for (field, fieldtype) in zip(globalFields, fieldtypes(GlobalParameters))
         for line in splittedLines
             if length(line) != 0 && field == line[1]
                 if field == "systemFiles"
@@ -182,7 +182,7 @@ function parametersInit()
             end
         end
     end
-    globalParms = globalParameters(globalVars...)
+    globalParms = GlobalParameters(globalVars...)
 
     # MC parameters
     for (field, fieldtype) in zip(MCFields, fieldtypes(MCparameters))
@@ -235,7 +235,7 @@ function parametersInit()
     NNParms = NNparameters(NNVars...)
 
     # Pre-training parameters
-    for (field, fieldtype) in zip(preTrainFields, fieldtypes(preTrainParameters))
+    for (field, fieldtype) in zip(preTrainFields, fieldtypes(PreTrainParameters))
         for line in splittedLines
             if length(line) != 0 && field == line[1]
                 if fieldtype != String
@@ -246,17 +246,17 @@ function parametersInit()
             end
         end
     end
-    preTrainParms = preTrainParameters(preTrainVars...)
+    preTrainParms = PreTrainParameters(preTrainVars...)
 
     # Read system input files
     systemParmsList = [] # list of systemParameters structs
-    systemFields = [String(field) for field in fieldnames(systemParameters)]
+    systemFields = [String(field) for field in fieldnames(SystemParameters)]
     for inputname in globalParms.systemFiles
         systemVars = []
         file = open(inputname, "r")
         lines = readlines(file)
         splittedLines = [split(line) for line in lines]
-        for (field, fieldtype) in zip(systemFields, fieldtypes(systemParameters))
+        for (field, fieldtype) in zip(systemFields, fieldtypes(SystemParameters))
             for line in splittedLines
                 if length(line) != 0 && field == line[1]
                     if field == "T"
@@ -291,7 +291,7 @@ function parametersInit()
                 end
             end
         end
-        systemParms = systemParameters(systemVars...)
+        systemParms = SystemParameters(systemVars...)
         append!(systemParmsList, [systemParms])
     end
 
