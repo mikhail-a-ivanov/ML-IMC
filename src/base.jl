@@ -116,6 +116,32 @@ function normalizehist!(hist, systemParms, box)
 end
 
 """
+function wrapFrame!(frame, box, pointIndex)
+
+Returns all of the atoms into the original PBC image
+"""
+function wrapFrame!(frame, box, pointIndex)
+    if (positions(frame)[1, pointIndex] < 0.0)
+        positions(frame)[1, pointIndex] += box[1]
+    end
+    if (positions(frame)[1, pointIndex] > box[1])
+        positions(frame)[1, pointIndex] -= box[1]
+    end
+    if (positions(frame)[2, pointIndex] < 0.0)
+        positions(frame)[2, pointIndex] += box[2]
+    end
+    if (positions(frame)[2, pointIndex] > box[2])
+        positions(frame)[2, pointIndex] -= box[2]
+    end
+    if (positions(frame)[3, pointIndex] < 0.0)
+        positions(frame)[3, pointIndex] += box[3]
+    end
+    if (positions(frame)[3, pointIndex] > box[3])
+        positions(frame)[3, pointIndex] -= box[3]
+    end
+end
+
+"""
 function atomicEnergy(inputlayer, model)
 
 Computes the potential energy of one particle
@@ -225,24 +251,7 @@ function mcmove!(
     positions(frame)[:, pointIndex] .+= dr
 
     # Check if all coordinates inside simulation box with PBC
-    if (positions(frame)[1, pointIndex] < 0.0)
-        positions(frame)[1, pointIndex] += box[1]
-    end
-    if (positions(frame)[1, pointIndex] > box[1])
-        positions(frame)[1, pointIndex] -= box[1]
-    end
-    if (positions(frame)[2, pointIndex] < 0.0)
-        positions(frame)[2, pointIndex] += box[2]
-    end
-    if (positions(frame)[2, pointIndex] > box[2])
-        positions(frame)[2, pointIndex] -= box[2]
-    end
-    if (positions(frame)[3, pointIndex] < 0.0)
-        positions(frame)[3, pointIndex] += box[3]
-    end
-    if (positions(frame)[3, pointIndex] > box[3])
-        positions(frame)[3, pointIndex] -= box[3]
-    end
+    wrapFrame!(frame, box, pointIndex)
 
     # Compute the updated distance vector
     distanceVector2 = Array{Float64}(undef, systemParms.N)
@@ -250,23 +259,6 @@ function mcmove!(
 
     # Acceptance counter
     accepted = 0
-
-    # Look for short distances if the repulsionLimit parameter
-    # is larger than zero
-    if systemParms.repulsionLimit > 0.0
-        # Reject the move prematurely if a single pair distance
-        # is below the repulsion limit
-        for distance in distanceVector2
-            if distance < systemParms.repulsionLimit && distance > 0.0
-                # Revert to the previous configuration
-                positions(frame)[:, pointIndex] .-= dr
-                # Pack mcarrays
-                mcarrays = (frame, distanceMatrix, G2Matrix1)
-                # Finish function execution
-                return (mcarrays, E, EpreviousVector, accepted)
-            end
-        end
-    end
 
     indexesForUpdate = getBoolMaskForUpdating(distanceVector2, systemParms, NNParms)
 
@@ -303,24 +295,7 @@ function mcmove!(
         positions(frame)[:, pointIndex] .-= dr
 
         # Check if all coordinates inside simulation box with PBC
-        if (positions(frame)[1, pointIndex] < 0.0)
-            positions(frame)[1, pointIndex] += box[1]
-        end
-        if (positions(frame)[1, pointIndex] > box[1])
-            positions(frame)[1, pointIndex] -= box[1]
-        end
-        if (positions(frame)[2, pointIndex] < 0.0)
-            positions(frame)[2, pointIndex] += box[2]
-        end
-        if (positions(frame)[2, pointIndex] > box[2])
-            positions(frame)[2, pointIndex] -= box[2]
-        end
-        if (positions(frame)[3, pointIndex] < 0.0)
-            positions(frame)[3, pointIndex] += box[3]
-        end
-        if (positions(frame)[3, pointIndex] > box[3])
-            positions(frame)[3, pointIndex] -= box[3]
-        end
+        wrapFrame!(frame, box, pointIndex)
 
         # Pack mcarrays
         mcarrays = (frame, distanceMatrix, G2Matrix1)

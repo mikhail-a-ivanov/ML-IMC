@@ -104,7 +104,6 @@ atomname: atomic symbol
 rdfname: reference RDF file
 Nbins: number of histogram bins
 binWidth: histogram bin width, Å
-repulsionLimit: minimum allowed pair distance, Å
 T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
 Δ: max displacement, Å
@@ -119,7 +118,6 @@ struct systemParameters
     rdfname::String
     Nbins::Int
     binWidth::Float64
-    repulsionLimit::Float64
     T::Float64
     β::Float64
     Δ::Float64
