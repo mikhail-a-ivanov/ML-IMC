@@ -98,17 +98,18 @@ function hist!(distanceMatrix, hist, systemParms)
 end
 
 """
-function normalizehist!(hist, systemParms)
+function normalizehist!(hist, systemParms, box)
 
 Normalizes distance histogram to RDF
 """
-function normalizehist!(hist, systemParms)
+function normalizehist!(hist, systemParms, box)
+    boxVolume = box[1] * box[2] * box[3]
     Npairs::Int = systemParms.N * (systemParms.N - 1) / 2
     bins = [bin * systemParms.binWidth for bin = 1:systemParms.Nbins]
     shellVolumes = [4 * π * systemParms.binWidth * bins[i]^2 for i in eachindex(bins)]
     rdfNorm = ones(Float64, systemParms.Nbins)
     for i in eachindex(rdfNorm)
-        rdfNorm[i] = systemParms.V / Npairs / shellVolumes[i]
+        rdfNorm[i] = boxVolume / Npairs / shellVolumes[i]
     end
     hist .*= rdfNorm
     return (hist)
@@ -198,6 +199,7 @@ function mcmove!(
     model,
     NNParms,
     systemParms,
+    box,
     rng,
     mutatedStepAdjust,
 )
@@ -224,22 +226,22 @@ function mcmove!(
 
     # Check if all coordinates inside simulation box with PBC
     if (positions(frame)[1, pointIndex] < 0.0)
-        positions(frame)[1, pointIndex] += systemParms.box[1]
+        positions(frame)[1, pointIndex] += box[1]
     end
-    if (positions(frame)[1, pointIndex] > systemParms.box[1])
-        positions(frame)[1, pointIndex] -= systemParms.box[1]
+    if (positions(frame)[1, pointIndex] > box[1])
+        positions(frame)[1, pointIndex] -= box[1]
     end
     if (positions(frame)[2, pointIndex] < 0.0)
-        positions(frame)[2, pointIndex] += systemParms.box[2]
+        positions(frame)[2, pointIndex] += box[2]
     end
-    if (positions(frame)[2, pointIndex] > systemParms.box[2])
-        positions(frame)[2, pointIndex] -= systemParms.box[2]
+    if (positions(frame)[2, pointIndex] > box[2])
+        positions(frame)[2, pointIndex] -= box[2]
     end
     if (positions(frame)[3, pointIndex] < 0.0)
-        positions(frame)[3, pointIndex] += systemParms.box[3]
+        positions(frame)[3, pointIndex] += box[3]
     end
-    if (positions(frame)[3, pointIndex] > systemParms.box[3])
-        positions(frame)[3, pointIndex] -= systemParms.box[3]
+    if (positions(frame)[3, pointIndex] > box[3])
+        positions(frame)[3, pointIndex] -= box[3]
     end
 
     # Compute the updated distance vector
@@ -302,22 +304,22 @@ function mcmove!(
 
         # Check if all coordinates inside simulation box with PBC
         if (positions(frame)[1, pointIndex] < 0.0)
-            positions(frame)[1, pointIndex] += systemParms.box[1]
+            positions(frame)[1, pointIndex] += box[1]
         end
-        if (positions(frame)[1, pointIndex] > systemParms.box[1])
-            positions(frame)[1, pointIndex] -= systemParms.box[1]
+        if (positions(frame)[1, pointIndex] > box[1])
+            positions(frame)[1, pointIndex] -= box[1]
         end
         if (positions(frame)[2, pointIndex] < 0.0)
-            positions(frame)[2, pointIndex] += systemParms.box[2]
+            positions(frame)[2, pointIndex] += box[2]
         end
-        if (positions(frame)[2, pointIndex] > systemParms.box[2])
-            positions(frame)[2, pointIndex] -= systemParms.box[2]
+        if (positions(frame)[2, pointIndex] > box[2])
+            positions(frame)[2, pointIndex] -= box[2]
         end
         if (positions(frame)[3, pointIndex] < 0.0)
-            positions(frame)[3, pointIndex] += systemParms.box[3]
+            positions(frame)[3, pointIndex] += box[3]
         end
-        if (positions(frame)[3, pointIndex] > systemParms.box[3])
-            positions(frame)[3, pointIndex] -= systemParms.box[3]
+        if (positions(frame)[3, pointIndex] > box[3])
+            positions(frame)[3, pointIndex] -= box[3]
         end
 
         # Pack mcarrays
@@ -364,11 +366,12 @@ function mcsample!(input)
     nframes = Int(size(traj)) - 1
     frameId = rand(rngXor, 1:nframes) # Don't take the first frame
     frame = deepcopy(read_step(traj, frameId))
+    box = lengths(UnitCell(frame))
 
     # Start writing MC trajectory
     if globalParms.outputMode == "verbose"
-        writeTraj(positions(frame), systemParms, trajFile, 'w')
-        writeTraj(positions(frame), systemParms, pdbFile, 'w')
+        writeTraj(positions(frame), box, systemParms, trajFile, 'w')
+        writeTraj(positions(frame), box, systemParms, pdbFile, 'w')
     end
 
     # Get the number of data points
@@ -416,6 +419,7 @@ function mcsample!(input)
             model,
             NNParms,
             systemParms,
+            box,
             rngXor,
             mutatedStepAdjust,
         )
@@ -429,6 +433,7 @@ function mcsample!(input)
             mutatedStepAdjust = stepAdjustment!(
                 mutatedStepAdjust,
                 systemParms,
+                box,
                 MCParms,
                 acceptedIntermediate,
             )
@@ -443,7 +448,7 @@ function mcsample!(input)
         # MC trajectory output
         if globalParms.outputMode == "verbose"
             if step % MCParms.trajout == 0
-                writeTraj(positions(mcarrays[1]), systemParms, trajFile, 'a')
+                writeTraj(positions(mcarrays[1]), box, systemParms, trajFile, 'a')
             end
         end
 
@@ -456,7 +461,7 @@ function mcsample!(input)
                 histAccumulator .+= hist
                 G2MatrixAccumulator .+= G2Matrix
                 # Normalize the histogram to RDF
-                normalizehist!(hist, systemParms)
+                normalizehist!(hist, systemParms, box)
                 updateCrossAccumulators!(crossAccumulators, G2Matrix, hist, model)
                 # Nullify the hist array for the next training iteration
                 hist = zeros(Float64, systemParms.Nbins)
@@ -481,7 +486,7 @@ function mcsample!(input)
 
     # Normalize the sampled distance histogram
     histAccumulator ./= prodDataPoints
-    normalizehist!(histAccumulator, systemParms)
+    normalizehist!(histAccumulator, systemParms, box)
 
     if globalParms.mode == "training"
         MCoutput = MCAverages(
@@ -513,11 +518,11 @@ function stepAdjustment!(systemParms, MCParms, acceptedIntermediate)
 
 MC step length adjustment
 """
-function stepAdjustment!(mutatedStepAdjust, systemParms, MCParms, acceptedIntermediate)
+function stepAdjustment!(mutatedStepAdjust, systemParms, box, MCParms, acceptedIntermediate)
     acceptanceRatio = acceptedIntermediate / MCParms.stepAdjustFreq
     mutatedStepAdjust = acceptanceRatio * mutatedStepAdjust / systemParms.targetAR
 
-    if mutatedStepAdjust > systemParms.box[1]
+    if mutatedStepAdjust > box[1]
         mutatedStepAdjust /= 2
     end
 

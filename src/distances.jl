@@ -7,7 +7,7 @@ Chemfiles frame
 Note that the Chemfiles distance
 function starts indexing atoms from 0!
 """
-function buildDistanceMatrix(frame)
+function buildDistanceMatrix_old(frame)
     N = length(frame)
     distanceMatrix = Array{Float64}(undef, (N, N))
     @inbounds for i = 0:N-1
@@ -39,14 +39,61 @@ function updateDistance!(frame, distanceVector, pointIndex)
 end
 
 """
-distanceCutoff(R, Rc = 10)
+function distanceCutoff(R, Rc = 6.0)
 
 Cutoff distance function (J. Chem. Phys. 134, 074106 (2011))
 """
-function distanceCutoff(R, Rc = 10)
+function distanceCutoff(R, Rc=6.0)
     if R > Rc
         return (0.0)
     else
-        return (0.5 * (cos(π * R / Rc) + 1))
+        return (0.5 * (cos(π * R / Rc) + 1.0))
     end
 end
+
+"""
+function squaredDistanceComponent(x1, x2, xsize)
+
+Computes distance between two points along a selected axis,
+taking the periodic boundary conditions into the account.
+The result is then squared.
+"""
+function squaredDistanceComponent(x1, x2, xsize)
+    dx = x2 - x1
+    dx += -xsize * convert(Int32, round(dx / xsize))
+    return dx^2
+end
+
+"""
+function computeDistance(r1, r2, box)
+
+Computes PBC distance between two points
+"""
+function computeDistance(r1, r2, box)
+    return sqrt.(reduce(+, map(squaredDistanceComponent, r1, r2, box)))
+end
+
+
+"""
+computeDistanceVector(r1, coordinates, box)
+
+Computes a vector of PBC distances between point r1
+and all the others in the simulation box
+"""
+function computeDistanceVector(r1, coordinates, box)
+    return vec(sqrt.(sum(broadcast(squaredDistanceComponent, r1, coordinates, box), dims=1)))
+end
+
+
+function buildDistanceMatrix(frame)
+    coordinates = positions(frame)
+    N::Int64 = length(frame) # number of atoms
+    box::Vector{Float64} = lengths(UnitCell(frame)) # pbc box vector
+
+    distanceMatrix = Matrix{Float64}(undef, N, N)
+    for i in 1:N
+        distanceMatrix[i, :] = computeDistanceVector(coordinates[:, i], coordinates, box)
+    end
+
+    return (distanceMatrix)
+end    

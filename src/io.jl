@@ -101,8 +101,6 @@ topname: name of the topology file
 trajfile: name of the trajectory file
 N: number of particles
 atomname: atomic symbol
-box: box vector, Å
-V: volume, Å^3
 rdfname: reference RDF file
 Nbins: number of histogram bins
 binWidth: histogram bin width, Å
@@ -118,8 +116,6 @@ struct systemParameters
     topname::String
     N::Int
     atomname::String
-    box::Vector{Float64}
-    V::Float64
     rdfname::String
     Nbins::Int
     binWidth::Float64
@@ -276,13 +272,9 @@ function parametersInit()
                         pdbFrame = read(pdb)
                         N = length(pdbFrame)
                         atomname = name(Atom(pdbFrame, 1))
-                        box = lengths(UnitCell(pdbFrame))
-                        V = box[1] * box[2] * box[3]
                         append!(systemVars, topname)
                         append!(systemVars, N)
                         append!(systemVars, [atomname])
-                        append!(systemVars, [box])
-                        append!(systemVars, V)
                     elseif field == "rdfname"
                         rdfname = [line[3]]
                         bins, rdf = readRDF("$(rdfname[1])")
@@ -394,16 +386,16 @@ function writeEnergies(outname, energies, MCParms, systemParms, slicing=1)
 end
 
 """
-function writetraj(conf, parameters, outname, mode='w')
+function writetraj(conf, box, parameters, outname, mode='w')
 
 Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
-function writeTraj(conf, systemParms, outname, mode='w')
+function writeTraj(conf, box, systemParms, outname, mode='w')
     # Create an empty Frame object
     frame = Frame()
     # Set PBC vectors
-    boxCenter = systemParms.box ./ 2
-    set_cell!(frame, UnitCell(systemParms.box))
+    boxCenter = box ./ 2
+    set_cell!(frame, UnitCell(box))
     # Add wrapped atomic coordinates to the frame
     for i = 1:systemParms.N
         wrappedAtomCoords = wrap!(UnitCell(frame), conf[:, i]) .+ boxCenter

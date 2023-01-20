@@ -220,9 +220,7 @@ Run pre-training for a given number of steps
 function preTrain!(preTrainParms::preTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
     println("\nRunning $(preTrainParms.PTsteps) steps of pre-training Monte-Carlo...\n")
     println("Neural network regularization parameter: $(preTrainParms.PTREGP)")
-    println("Optimizer type: $(preTrainParms.PToptimizer)")
-    println("Parameters of optimizer:")
-    println("Learning rate: $(preTrainParms.PTrate)")
+    reportOpt(opt)
 
     rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
     nsystems = length(systemParmsList)

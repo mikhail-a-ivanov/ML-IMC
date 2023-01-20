@@ -55,7 +55,6 @@ function main()
         end
         println("Using the following activation functions: $(NNParms.activations)")
         if globalParms.inputmodel == "random"
-            reportOpt(opt)
             # Run pretraining
             model = preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
             # Restore optimizer state to default
