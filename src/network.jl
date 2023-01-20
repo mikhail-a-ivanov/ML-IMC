@@ -37,7 +37,7 @@ Computes all gradients of energy with respect
 to all parameters in the given network
 """
 function computeEnergyGradients(symmFuncMatrix, model)
-    energyGradients = []
+    energyGradients = Vector{Matrix{Float64}}([])
     # Compute energy gradients
     gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
