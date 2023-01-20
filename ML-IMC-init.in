@@ -1,13 +1,13 @@
 # Global parameters
 systemFiles     = 100CH3OH-CG.in, 60CH3OH-CG.in, 40CH3OH-CG.in, 20CH3OH-CG.in        # List of input filenames for each system
 mode            = training                  # Run MC sampling (simulation) or ML-IMC optimization (training)
-inputmodel      = model-pre-trained.bson    # Specify a model name, "random" for random initialization or "zero" for zeros 
+inputmodel      = random    # Specify a model name, "random" for random initialization or "zero" for zeros 
                                             # in the first layer of the network
 outputMode      = default                   # default (rdf, energy, model); verbose (+gradients, +trajectories)                                    
 
 # Monte Carlo parameters
-steps          = 100000                # Total number of MC steps
-Eqsteps        = 50000                 # Equilibration MC steps
+steps          = 1000000                # Total number of MC steps
+Eqsteps        = 500000                 # Equilibration MC steps
 stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
 trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency
@@ -31,7 +31,7 @@ decay1          = 0.9                               # Decay of momentum (decay_1
 decay2          = 0.999
 
 # Pre-training parameters
-PTsteps         = 1000         # Number of pre-training steps
+PTsteps         = 10000         # Number of pre-training steps
 PToutfreq       = 100           # Frequency of pre-training reporting
 PTREGP          = 0.0           # Regularization parameter (set to zero to turn off regularization)
 PToptimizer     = AMSGrad

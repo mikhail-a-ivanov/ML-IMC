@@ -1,5 +1,5 @@
 """
-function builddistanceMatrix(frame)
+buildDistanceMatrixChemfiles(frame)
 
 Builds the distance matrix for a given
 Chemfiles frame
@@ -7,7 +7,7 @@ Chemfiles frame
 Note that the Chemfiles distance
 function starts indexing atoms from 0!
 """
-function buildDistanceMatrix_old(frame)
+function buildDistanceMatrixChemfiles(frame)
     N = length(frame)
     distanceMatrix = Array{Float64}(undef, (N, N))
     @inbounds for i = 0:N-1
@@ -85,6 +85,13 @@ function computeDistanceVector(r1, coordinates, box)
 end
 
 
+"""
+buildDistanceMatrix(frame)
+
+Builds the distance matrix for a given
+Chemfiles frame using my own distance functions
+(slightly faster but more memory consumption)
+"""
 function buildDistanceMatrix(frame)
     coordinates = positions(frame)
     N::Int64 = length(frame) # number of atoms

@@ -254,8 +254,8 @@ function mcmove!(
     wrapFrame!(frame, box, pointIndex)
 
     # Compute the updated distance vector
-    distanceVector2 = Array{Float64}(undef, systemParms.N)
-    distanceVector2 = updateDistance!(frame, distanceVector2, pointIndex)
+    point = positions(frame)[:, pointIndex]
+    distanceVector2 = computeDistanceVector(point, positions(frame), box)
 
     # Acceptance counter
     accepted = 0

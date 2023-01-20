@@ -148,6 +148,7 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     nframes = Int(size(traj)) - 1 # Don't take the first frame
     frameId = rand(rng, 1:nframes)
     frame = read_step(traj, frameId)
+    box = lengths(UnitCell(frame))
     # Pick a particle
     pointIndex = rand(rng, 1:systemParms.N)
 
@@ -176,8 +177,8 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     positions(frame)[:, pointIndex] .+= dr
 
     # Compute the updated distance vector
-    distanceVector2 = Array{Float64}(undef, systemParms.N)
-    distanceVector2 = updateDistance!(frame, distanceVector2, pointIndex)
+    point = positions(frame)[:, pointIndex]
+    distanceVector2 = computeDistanceVector(point, positions(frame), box)
 
     # Update the histogram
     hist = updatehist!(hist, distanceVector1, distanceVector2, systemParms)
