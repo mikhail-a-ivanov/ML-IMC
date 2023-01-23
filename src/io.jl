@@ -8,6 +8,8 @@ struct globalParameters
 Fields:
 systemFiles: 
     list of input filenames for each system
+symmetryFunctionFile:
+    name of file containing symmetry function information
 mode: 
     ML-IMC mode - training with reference data or simulation using a trained model
 inputmodel: 
@@ -18,6 +20,7 @@ outputMode:
 """
 struct GlobalParameters
     systemFiles::Vector{String}
+    symmetryFunctionFile::String
     mode::String
     inputmodel::String
     outputMode::String
@@ -42,13 +45,67 @@ struct MCparameters
 end
 
 """
+struct G2
+
+Radial symmetry function:
+G2 = ∑ exp(-eta * (Rij - rshift))^2 * fc(Rij, rcutoff)
+where fc is the smooth cutoff function  
+
+Fields:
+eta (Å^-2): 
+    parameter controlling the width of G2
+    eta = 1 / sqrt(2 * sigma)
+rcutoff (Å):
+    Cutoff radius
+rshift (Å):
+    distance shifting parameter
+"""
+struct G2
+    eta::Float64
+    rcutoff::Float64
+    rshift::Float64
+end
+
+
+"""
+struct G9
+
+Wide angular symmetry function
+G9 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta * 
+    exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2) * 
+    fc(Rij, rcutoff) * fc(Rik, rcutoff)
+
+where fc is the smooth cutoff function  
+
+Fields:
+eta (Å^-2): 
+    parameter controlling the width of the radial part of G9
+    eta = 1 / sqrt(2 * sigma)
+lambda: 
+    parameter controlling the phase of cosine function
+    either +1 or -1
+zeta:
+    parameter controlling angular resolution
+rcutoff (Å):
+    Cutoff radius
+rshift (Å):
+    distance shifting parameter
+"""
+struct G9
+    eta::Float64
+    lambda::Int8
+    zeta::Float64
+    rcutoff::Float64
+    rshift::Float64
+end
+
+"""
 struct NNparameters
 
 Fields:
-minR: min distance for G2 symmetry function, Å
-maxR: max distance for G2 symmetry function (cutoff), Å 
-sigma: sigma parameter in G2 symmetry function (gaussian width), Å
-neurons: number of neurons in the network
+G2Functions: list of G2 symmetry function parameters 
+G9Functions: list of G9 symmetry function parameters
+neurons: number of hidden neurons in the network
 iters: number of learning iterations
 activations: list of activation functions
 REGP: regularization parameter
@@ -59,9 +116,8 @@ decay1: decay of the optimizer (1)
 decay2: decay of the optimizer (2)
 """
 struct NNparameters
-    minR::Float64
-    maxR::Float64
-    sigma::Float64
+    G2Functions::Vector{G2}
+    G9Functions::Vector{G9}
     neurons::Vector{Int}
     iters::Int
     activations::Vector{String}
@@ -156,6 +212,8 @@ function parametersInit()
     MCVars = []
     NNVars = []
     preTrainVars = []
+    G2s = []
+    G9s = []
 
     # Loop over fieldnames and fieldtypes and over splitted lines
     # Global parameters
@@ -184,6 +242,27 @@ function parametersInit()
     end
     globalParms = GlobalParameters(globalVars...)
 
+    # Symmetry functions
+    symmetryFunctionFile = open(globalParms.symmetryFunctionFile, "r")
+    symmetryFunctionLines = readlines(symmetryFunctionFile)
+    splittedSymmetryFunctionLines = [split(line) for line in symmetryFunctionLines]
+    for line in splittedSymmetryFunctionLines
+        if length(line) != 0 && line[1] == "G2"
+            G2Parameters = []
+            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G2))
+                append!(G2Parameters, parse(fieldtype, line[fieldIndex+1]))
+            end
+            append!(G2s, [G2(G2Parameters...)])
+        end
+        if length(line) != 0 && line[1] == "G9"
+            G9Parameters = []
+            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G9))
+                append!(G9Parameters, parse(fieldtype, line[fieldIndex+1]))
+            end
+            append!(G9s, [G9(G9Parameters...)])
+        end
+    end
+
     # MC parameters
     for (field, fieldtype) in zip(MCFields, fieldtypes(MCparameters))
         for line in splittedLines
@@ -203,7 +282,8 @@ function parametersInit()
         for line in splittedLines
             if length(line) != 0 && field == line[1]
                 if field == "neurons"
-                    neurons = []
+                    inputNeurons = length(G2s) + length(G9s)
+                    neurons = [inputNeurons]
                     for (elementId, element) in enumerate(line)
                         if elementId > 2 && element != "#"
                             append!(neurons, parse(Int, strip(element, ',')))
@@ -232,7 +312,7 @@ function parametersInit()
             end
         end
     end
-    NNParms = NNparameters(NNVars...)
+    NNParms = NNparameters(G2s, G9s, NNVars...)
 
     # Pre-training parameters
     for (field, fieldtype) in zip(preTrainFields, fieldtypes(PreTrainParameters))

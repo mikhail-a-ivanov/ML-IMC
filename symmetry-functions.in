@@ -1,1 +1,21 @@
-# Symmetry functions
+### Symmetry functions
+# G2 symmetry functions (radial symmetry)
+# G2 <eta, Å^-2> <rcutoff, Å> <rshift, Å> 
+G2 0.125 6.0 0.10
+G2 0.125 6.0 1.00
+G2 0.125 6.0 2.00
+G2 0.125 6.0 2.50
+G2 0.125 6.0 3.00
+G2 0.125 6.0 3.25
+G2 0.125 6.0 3.50
+G2 0.125 6.0 3.75
+G2 0.125 6.0 4.00
+G2 0.125 6.0 4.50
+G2 0.125 6.0 5.00
+G2 0.125 6.0 5.50
+G2 0.125 6.0 6.00
+
+# G9 symmetry functions (wide angular symmetry)
+# G9 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
+G9 0.125  1 1.0 6.0 0.0
+G9 0.125 -1 1.0 6.0 0.0

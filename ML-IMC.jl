@@ -32,14 +32,21 @@ function main()
         model = inputs
     end
 
-    println("Using $(NNParms.neurons[1]) G2 values as the neural input for each atom")
-    η = 1 / (2 * NNParms.sigma^2)
-    println(
-        "G2 sigma parameter: $(NNParms.sigma) Å; the corresponding eta parameter: $(round(η, digits=2)) Å^-2",
-    )
-    Rss = Array{Float64}(LinRange(NNParms.minR, NNParms.maxR, NNParms.neurons[1]))
-    println("G2 Rs values: $(round.(Rss, digits=2)) Å")
-    println("G2 cutoff radius: $(NNParms.maxR) Å")
+    println("Using the following symmetry functions as the neural input for each atom:")
+    if NNParms.G2Functions != []
+        println("    G2 symmetry functions:")
+        println("    eta, Å^-2; rcutoff, Å; rshift, Å")
+        for G2Function in NNParms.G2Functions
+            println("       ", G2Function)
+        end
+    end
+    if NNParms.G9Functions != []
+        println("    G9 symmetry functions:")
+        println("    eta, Å^-2; lambda; zeta; rcutoff, Å; rshift, Å")
+        for G9Function in NNParms.G9Functions
+            println("       ", G9Function)
+        end
+    end
 
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)
