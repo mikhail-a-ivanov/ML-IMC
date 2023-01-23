@@ -16,7 +16,12 @@ G2 1.000 6.0 4.50
 G2 2.000 6.0 4.50
 G2 5.000 6.0 4.50
 
+# G3 symmetry functions (narrow angular symmetry)
+# G3 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
+G3 0.010  1.0 1.0 6.0 0.0
+G3 0.010 -1.0 1.0 6.0 0.0
+
 # G9 symmetry functions (wide angular symmetry)
 # G9 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
-G9 0.125  1 1.0 6.0 0.0
-G9 0.125 -1 1.0 6.0 0.0
+G9 0.010  1.0 1.0 6.0 0.0
+G9 0.010 -1.0 1.0 6.0 0.0

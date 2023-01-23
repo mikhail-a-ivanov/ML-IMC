@@ -66,6 +66,38 @@ struct G2
     rshift::Float64
 end
 
+"""
+struct G3
+
+Narrow angular symmetry function
+G3 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta * 
+    exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2 + (Rkj - rshift)^2) * 
+    fc(Rij, rcutoff) * fc(Rik, rcutoff) * fc(Rkj, rcutoff)
+
+where fc is the smooth cutoff function  
+
+Fields:
+eta (Å^-2): 
+    parameter controlling the width of the radial part of G9
+    eta = 1 / sqrt(2 * sigma)
+lambda: 
+    parameter controlling the phase of cosine function
+    either +1 or -1
+zeta:
+    parameter controlling angular resolution
+rcutoff (Å):
+    Cutoff radius
+rshift (Å):
+    distance shifting parameter
+"""
+struct G3
+    eta::Float64
+    lambda::Float64
+    zeta::Float64
+    rcutoff::Float64
+    rshift::Float64
+end
+
 
 """
 struct G9
@@ -93,7 +125,7 @@ rshift (Å):
 """
 struct G9
     eta::Float64
-    lambda::Int8
+    lambda::Float64
     zeta::Float64
     rcutoff::Float64
     rshift::Float64
@@ -103,7 +135,8 @@ end
 struct NNparameters
 
 Fields:
-G2Functions: list of G2 symmetry function parameters 
+G2Functions: list of G2 symmetry function parameters
+G3Functions: list of G3 symmetry function parameters  
 G9Functions: list of G9 symmetry function parameters
 maxDistanceCutoff: max distance cutoff
 neurons: number of hidden neurons in the network
@@ -118,6 +151,7 @@ decay2: decay of the optimizer (2)
 """
 struct NNparameters
     G2Functions::Vector{G2}
+    G3Functions::Vector{G3}
     G9Functions::Vector{G9}
     maxDistanceCutoff::Float64
     neurons::Vector{Int}
@@ -215,6 +249,7 @@ function parametersInit()
     NNVars = []
     preTrainVars = []
     G2s = []
+    G3s = []
     G9s = []
 
     # Loop over fieldnames and fieldtypes and over splitted lines
@@ -257,6 +292,13 @@ function parametersInit()
             end
             append!(G2s, [G2(G2Parameters...)])
         end
+        if length(line) != 0 && line[1] == "G3"
+            G3Parameters = []
+            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G3))
+                append!(G3Parameters, parse(fieldtype, line[fieldIndex+1]))
+            end
+            append!(G3s, [G3(G3Parameters...)])
+        end
         if length(line) != 0 && line[1] == "G9"
             G9Parameters = []
             for (fieldIndex, fieldtype) in enumerate(fieldtypes(G9))
@@ -269,6 +311,11 @@ function parametersInit()
     for G2Function in G2s
         if maxDistanceCutoff < G2Function.rcutoff
             maxDistanceCutoff = G2Function.rcutoff
+        end
+    end
+    for G3Function in G3s
+        if maxDistanceCutoff < G3Function.rcutoff
+            maxDistanceCutoff = G3Function.rcutoff
         end
     end
     for G9Function in G9s
@@ -296,7 +343,7 @@ function parametersInit()
         for line in splittedLines
             if length(line) != 0 && field == line[1]
                 if field == "neurons"
-                    inputNeurons = length(G2s) + length(G9s)
+                    inputNeurons = length(G2s) + length(G3s) + length(G9s)
                     neurons = [inputNeurons]
                     for (elementId, element) in enumerate(line)
                         if elementId > 2 && element != "#"
@@ -326,7 +373,7 @@ function parametersInit()
             end
         end
     end
-    NNParms = NNparameters(G2s, G9s, maxDistanceCutoff, NNVars...)
+    NNParms = NNparameters(G2s, G3s, G9s, maxDistanceCutoff, NNVars...)
 
     # Pre-training parameters
     for (field, fieldtype) in zip(preTrainFields, fieldtypes(PreTrainParameters))

@@ -52,13 +52,35 @@ function distanceCutoff(distance, rcutoff=6.0)
 end
 
 """
-function squaredDistanceComponent(x1, x2, xsize)
+function distanceComponent(x1, x2, xsize)
 
 Computes distance between two points along a selected axis,
 taking the periodic boundary conditions into the account.
-The result is then squared.
+"""
+function computeDistanceComponent(x1, x2, xsize)
+    dx = x2 - x1
+    dx += -xsize * convert(Int32, round(dx / xsize))
+    return dx
+end
+
+"""
+function computeDirectionalVector(r1, r2, box)
+
+Computes a directional vector between two
+points, taking the periodic boundary conditions into account
+"""
+function computeDirectionalVector(r1, r2, box)
+    return map(computeDistanceComponent, r1, r2, box)
+end
+
 """
 function squaredDistanceComponent(x1, x2, xsize)
+
+Computes distance between two points along a selected axis,
+taking the periodic boundary conditions into account
+The result is then squared.
+"""
+function computeSquaredDistanceComponent(x1, x2, xsize)
     dx = x2 - x1
     dx += -xsize * convert(Int32, round(dx / xsize))
     return dx^2
@@ -70,7 +92,7 @@ function computeDistance(r1, r2, box)
 Computes PBC distance between two points
 """
 function computeDistance(r1, r2, box)
-    return sqrt.(reduce(+, map(squaredDistanceComponent, r1, r2, box)))
+    return sqrt.(reduce(+, map(computeSquaredDistanceComponent, r1, r2, box)))
 end
 
 
@@ -81,7 +103,7 @@ Computes a vector of PBC distances between point r1
 and all the others in the simulation box
 """
 function computeDistanceVector(r1, coordinates, box)
-    return vec(sqrt.(sum(broadcast(squaredDistanceComponent, r1, coordinates, box), dims=1)))
+    return vec(sqrt.(sum(broadcast(computeSquaredDistanceComponent, r1, coordinates, box), dims=1)))
 end
 
 

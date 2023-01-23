@@ -40,6 +40,13 @@ function main()
             println("       ", G2Function)
         end
     end
+    if NNParms.G3Functions != []
+        println("    G3 symmetry functions:")
+        println("    eta, Å^-2; lambda; zeta; rcutoff, Å; rshift, Å")
+        for G3Function in NNParms.G3Functions
+            println("       ", G3Function)
+        end
+    end
     if NNParms.G9Functions != []
         println("    G9 symmetry functions:")
         println("    eta, Å^-2; lambda; zeta; rcutoff, Å; rshift, Å")
