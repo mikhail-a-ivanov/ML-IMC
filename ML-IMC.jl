@@ -47,6 +47,7 @@ function main()
             println("       ", G9Function)
         end
     end
+    println("Maximum cutoff distance: $(NNParms.maxDistanceCutoff) Å")
 
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)

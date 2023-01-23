@@ -15,7 +15,7 @@ Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function computeG2(distances, eta, rcutoff, rshift)
     sum = 0
-    @fastmath @inbounds @simd for distance in distances
+    @simd for distance in distances
         sum += computeG2Element(distance, eta, rcutoff, rshift)
     end
     return (sum)
@@ -67,13 +67,15 @@ function updateG2Matrix!(
             # Compute the change in G2 caused by the displacement of an atom
         else
             for (j, G2Function) in enumerate(G2Functions)
-                eta = G2Function.eta
                 rcutoff = G2Function.rcutoff
-                rshift = G2Function.rshift
-                G2_1 = computeG2Element(distanceVector1[i], eta, rcutoff, rshift)
-                G2_2 = computeG2Element(distanceVector2[i], eta, rcutoff, rshift)
-                ΔG2 = G2_2 - G2_1
-                G2Matrix[i, j] += ΔG2
+                if 0.0 < distanceVector2[i] < rcutoff || 0.0 < distanceVector1[i] < rcutoff
+                    eta = G2Function.eta
+                    rshift = G2Function.rshift
+                    G2_1 = computeG2Element(distanceVector1[i], eta, rcutoff, rshift)
+                    G2_2 = computeG2Element(distanceVector2[i], eta, rcutoff, rshift)
+                    ΔG2 = G2_2 - G2_1
+                    G2Matrix[i, j] += ΔG2
+                end
             end
         end
     end
