@@ -39,15 +39,15 @@ function updateDistance!(frame, distanceVector, pointIndex)
 end
 
 """
-function distanceCutoff(R, Rc = 6.0)
+function distanceCutoff(distance, rcutoff = 6.0)
 
 Cutoff distance function (J. Chem. Phys. 134, 074106 (2011))
 """
-function distanceCutoff(R, Rc=6.0)
-    if R > Rc
+function distanceCutoff(distance, rcutoff=6.0)
+    if distance > rcutoff
         return (0.0)
     else
-        return (0.5 * (cos(π * R / Rc) + 1.0))
+        return (0.5 * (cos(π * distance / rcutoff) + 1.0))
     end
 end
 
