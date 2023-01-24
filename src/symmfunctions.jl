@@ -202,8 +202,8 @@ function updateG3Matrix!(
                 zeta = G3Function.zeta
                 rcutoff = G3Function.rcutoff
                 rshift = G3Function.rshift
-                G3Matrix[selectedAtomIndex, G3Index] = computeG3(displacedAtomIndex, coordinates2, box, 
-                        distanceVector2, rcutoff, eta, zeta, lambda, rshift)
+                G3Matrix[selectedAtomIndex, G3Index] = computeG3(displacedAtomIndex, coordinates2, box,
+                    distanceVector2, rcutoff, eta, zeta, lambda, rshift)
             end
             # Compute the change in G3 caused by the displacement of an atom
             # New ijk triplet description
@@ -255,9 +255,9 @@ function updateG3Matrix!(
                                     @assert -1.0 <= cosAngle1 <= 1.0
                                     @assert -1.0 <= cosAngle2 <= 1.0
                                     # Compute differences in G3
-                                    G3_1 = computeG3element(cosAngle1, distance_ij_1, distance_ik, distance_kj_1, 
+                                    G3_1 = computeG3element(cosAngle1, distance_ij_1, distance_ik, distance_kj_1,
                                         rcutoff, eta, zeta, lambda, rshift)
-                                    G3_2 = computeG3element(cosAngle2, distance_ij_2, distance_ik, distance_kj_2, 
+                                    G3_2 = computeG3element(cosAngle2, distance_ij_2, distance_ik, distance_kj_2,
                                         rcutoff, eta, zeta, lambda, rshift)
                                     ΔG3 += 2.0^(1.0 - zeta) * (G3_2 - G3_1)
                                 end
@@ -293,19 +293,19 @@ end
 
 
 """
-function computeG9(i, coordinates, box, distanceVector, cutoff, eta, zeta, lambda, rshift)::Float64
+function computeG9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)::Float64
 
 Computes the total G9 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function computeG9(i, coordinates, box, distanceVector, cutoff, eta, zeta, lambda, rshift)::Float64
+function computeG9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)::Float64
     sum = 0.0
     @inbounds for k in eachindex(distanceVector)
         distance_ik = distanceVector[k]
         @inbounds @simd for j in 1:k-1
             distance_ij = distanceVector[j]
-            if 0 < distance_ij < cutoff && 0 < distance_ik < cutoff
+            if 0 < distance_ij < rcutoff && 0 < distance_ik < rcutoff
                 cosAngle = computeCosAngle(coordinates, box, i, j, k, distance_ij, distance_ik)
-                sum += computeG9element(cosAngle, distance_ij, distance_ik, cutoff, eta, zeta, lambda, rshift)
+                sum += computeG9element(cosAngle, distance_ij, distance_ik, rcutoff, eta, zeta, lambda, rshift)
             end
         end
     end
@@ -329,6 +329,99 @@ function buildG9Matrix(distanceMatrix, coordinates, box, G9Functions::Vector{G9}
             rcutoff = G9Function.rcutoff
             rshift = G9Function.rshift
             G9Matrix[i, j] = computeG9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)
+        end
+    end
+    return (G9Matrix)
+end
+
+"""
+function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box,
+    distanceVector1, distanceVector2, systemParms, G9Functions, displacedAtomIndex)
+
+Updates the G9 matrix with the displacement of a single atom
+"""
+function updateG9Matrix!(
+    G9Matrix,
+    coordinates1,
+    coordinates2,
+    box,
+    distanceVector1,
+    distanceVector2,
+    systemParms,
+    G9Functions::Vector{G9},
+    displacedAtomIndex,
+)
+    for selectedAtomIndex = 1:systemParms.N
+        # Rebuild the whole G9 matrix column for the displaced atom
+        if selectedAtomIndex == displacedAtomIndex
+            for (G9Index, G9Function) in enumerate(G9Functions)
+                eta = G9Function.eta
+                lambda = G9Function.lambda
+                zeta = G9Function.zeta
+                rcutoff = G9Function.rcutoff
+                rshift = G9Function.rshift
+                G9Matrix[selectedAtomIndex, G9Index] = computeG9(displacedAtomIndex, coordinates2, box,
+                    distanceVector2, rcutoff, eta, zeta, lambda, rshift)
+            end
+            # Compute the change in G9 caused by the displacement of an atom
+            # New ijk triplet description
+            # Central atom (i): selectedAtomIndex
+            # Second atom (j): displacedAtomIndex
+            # Third atom (k): thirdAtomIndex
+        else
+            for (G9Index, G9Function) in enumerate(G9Functions)
+                rcutoff = G9Function.rcutoff
+                distance_ij_1 = distanceVector1[selectedAtomIndex]
+                distance_ij_2 = distanceVector2[selectedAtomIndex]
+                # Ignore if the selected atom is far from the displaced atom
+                if 0.0 < distance_ij_2 < rcutoff || 0.0 < distance_ij_1 < rcutoff
+                    eta = G9Function.eta
+                    lambda = G9Function.lambda
+                    zeta = G9Function.zeta
+                    rshift = G9Function.rshift
+                    # Accumulate differences for the selected atom
+                    # over all third atoms
+                    ΔG9 = 0.0
+                    # Loop over all ik pairs
+                    for thirdAtomIndex in 1:systemParms.N
+                        # Make sure i != j != k
+                        if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
+                            # It does not make a difference whether
+                            # coordinates2 or coordinates1 are used -
+                            # both selectedAtom and thirdAtom have
+                            # have the same coordinates in the old and 
+                            # the updated configuration
+                            selectedAtom = coordinates2[:, selectedAtomIndex]
+                            thirdAtom = coordinates2[:, thirdAtomIndex]
+                            distance_ik = computeDistance(selectedAtom, thirdAtom, box)
+                            # The current ik pair is fixed so if r_ik > rcutoff
+                            # no change in this G9(i,j,k) is needed
+                            if 0.0 < distance_ik < rcutoff
+                                # Compute the contribution to the change
+                                # from the old configuration
+                                displacedAtom_1 = coordinates1[:, displacedAtomIndex]
+                                displacedAtom_2 = coordinates2[:, displacedAtomIndex]
+                                # Compute cos of angle
+                                vector_ij_1 = computeDirectionalVector(selectedAtom, displacedAtom_1, box)
+                                vector_ij_2 = computeDirectionalVector(selectedAtom, displacedAtom_2, box)
+                                vector_ik = computeDirectionalVector(selectedAtom, thirdAtom, box)
+                                cosAngle1 = dot(vector_ij_1, vector_ik) / (distance_ij_1 * distance_ik)
+                                cosAngle2 = dot(vector_ij_2, vector_ik) / (distance_ij_2 * distance_ik)
+                                @assert -1.0 <= cosAngle1 <= 1.0
+                                @assert -1.0 <= cosAngle2 <= 1.0
+                                # Compute differences in G9
+                                G9_1 = computeG9element(cosAngle1, distance_ij_1, distance_ik,
+                                    rcutoff, eta, zeta, lambda, rshift)
+                                G9_2 = computeG9element(cosAngle2, distance_ij_2, distance_ik,
+                                    rcutoff, eta, zeta, lambda, rshift)
+                                ΔG9 += 2.0^(1.0 - zeta) * (G9_2 - G9_1)
+                            end
+                        end
+                    end
+                    # Apply the computed differences
+                    G9Matrix[selectedAtomIndex, G9Index] += ΔG9
+                end
+            end
         end
     end
     return (G9Matrix)
