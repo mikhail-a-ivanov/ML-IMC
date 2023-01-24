@@ -93,7 +93,7 @@ function computeCosAngle(coordinates, box, i, j, k, distance_ij, distance_ik)::F
     vector_ij = computeDirectionalVector(vector_0i, coordinates[:, j], box)
     vector_ik = computeDirectionalVector(vector_0i, coordinates[:, k], box)
     cosAngle = dot(vector_ij, vector_ik) / (distance_ij * distance_ik)
-    @assert -1.0 < cosAngle < 1.0
+    @assert -1.0 <= cosAngle <= 1.0
     return (cosAngle)
 end
 
@@ -112,7 +112,7 @@ function computeTripletGeometry(coordinates, box, i, j, k, distance_ij, distance
     vector_ij = computeDirectionalVector(vector_0i, vector_0j, box)
     vector_ik = computeDirectionalVector(vector_0i, vector_0k, box)
     cosAngle = dot(vector_ij, vector_ik) / (distance_ij * distance_ik)
-    @assert -1.0 < cosAngle < 1.0
+    @assert -1.0 <= cosAngle <= 1.0
     return (cosAngle, distance_kj)
 end
 
@@ -246,17 +246,18 @@ function updateG3Matrix!(
                                 distance_kj_1 = computeDistance(displacedAtom_1, thirdAtom, box)
                                 distance_kj_2 = computeDistance(displacedAtom_2, thirdAtom, box)
                                 if 0.0 < distance_kj_1 < rcutoff || 0.0 < distance_kj_2 < rcutoff
-                                    cosAngle = computeCosAngle(
-                                        coordinates1, box, selectedAtomIndex, 
-                                        displacedAtomIndex, thirdAtomIndex, distance_ij_1, distance_ik)
-                                    G3_1 = computeG3element(cosAngle, distance_ij_1, distance_ik, distance_kj_1, 
+                                    # Compute cos of angle
+                                    vector_ij_1 = computeDirectionalVector(selectedAtom, displacedAtom_1, box)
+                                    vector_ij_2 = computeDirectionalVector(selectedAtom, displacedAtom_2, box)
+                                    vector_ik = computeDirectionalVector(selectedAtom, thirdAtom, box)
+                                    cosAngle1 = dot(vector_ij_1, vector_ik) / (distance_ij_1 * distance_ik)
+                                    cosAngle2 = dot(vector_ij_2, vector_ik) / (distance_ij_2 * distance_ik)
+                                    @assert -1.0 <= cosAngle1 <= 1.0
+                                    @assert -1.0 <= cosAngle2 <= 1.0
+                                    # Compute differences in G3
+                                    G3_1 = computeG3element(cosAngle1, distance_ij_1, distance_ik, distance_kj_1, 
                                         rcutoff, eta, zeta, lambda, rshift)
-                                    # Compute the contribution to the change
-                                    # from the updated configuration    
-                                    cosAngle = computeCosAngle(
-                                        coordinates2, box, selectedAtomIndex, 
-                                        displacedAtomIndex, thirdAtomIndex, distance_ij_2, distance_ik)
-                                    G3_2 = computeG3element(cosAngle, distance_ij_2, distance_ik, distance_kj_2, 
+                                    G3_2 = computeG3element(cosAngle2, distance_ij_2, distance_ik, distance_kj_2, 
                                         rcutoff, eta, zeta, lambda, rshift)
                                     ΔG3 += 2.0^(1.0 - zeta) * (G3_2 - G3_1)
                                 end
