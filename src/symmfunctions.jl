@@ -139,15 +139,15 @@ function computeG3(i, coordinates, box, distanceVector, cutoff, eta, zeta, lambd
 
 Computes the total G3 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function computeG3(i, coordinates, box, distanceVector, cutoff, eta, zeta, lambda, rshift)::Float64
+function computeG3(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)::Float64
     sum = 0.0
     @inbounds for k in eachindex(distanceVector)
         distance_ik = distanceVector[k]
         @inbounds @simd for j in 1:k-1
             distance_ij = distanceVector[j]
-            if 0 < distance_ij < cutoff && 0 < distance_ik < cutoff
+            if 0 < distance_ij < rcutoff && 0 < distance_ik < rcutoff
                 cosAngle, distance_kj = computeTripletGeometry(coordinates, box, i, j, k, distance_ij, distance_ik)
-                sum += computeG3element(cosAngle, distance_ij, distance_ik, distance_kj, cutoff, eta, zeta, lambda, rshift)
+                sum += computeG3element(cosAngle, distance_ij, distance_ik, distance_kj, rcutoff, eta, zeta, lambda, rshift)
             end
         end
     end
@@ -224,10 +224,10 @@ function updateG3Matrix!(
                     # Accumulate differences for the selected atom
                     # over all third atoms
                     ΔG3 = 0.0
-                    # Select all unique ik pairs
-                    for thirdAtomIndex in 1:selectedAtomIndex-1
+                    # Loop over all ik pairs
+                    for thirdAtomIndex in 1:systemParms.N
                         # Make sure i != j != k
-                        if thirdAtomIndex != displacedAtomIndex
+                        if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
                             # It does not make a difference whether
                             # coordinates2 or coordinates1 are used -
                             # both selectedAtom and thirdAtom have
@@ -241,19 +241,25 @@ function updateG3Matrix!(
                             if 0.0 < distance_ik < rcutoff
                                 # Compute the contribution to the change
                                 # from the old configuration
-                                cosAngle, distance_kj = computeTripletGeometry(
-                                    coordinates1, box, selectedAtomIndex, 
-                                    displacedAtomIndex, thirdAtomIndex, distance_ij_1, distance_ik)
-                                G3_1 = computeG3element(cosAngle, distance_ij_1, distance_ik, distance_kj, 
-                                    rcutoff, eta, zeta, lambda, rshift)
-                                # Compute the contribution to the change
-                                # from the updated configuration    
-                                cosAngle, distance_kj = computeTripletGeometry(
-                                    coordinates2, box, selectedAtomIndex, 
-                                    displacedAtomIndex, thirdAtomIndex, distance_ij_2, distance_ik)
-                                G3_2 = computeG3element(cosAngle, distance_ij_2, distance_ik, distance_kj, 
-                                    rcutoff, eta, zeta, lambda, rshift)
-                                ΔG3 += G3_2 - G3_1
+                                displacedAtom_1 = coordinates1[:, displacedAtomIndex]
+                                displacedAtom_2 = coordinates2[:, displacedAtomIndex]
+                                distance_kj_1 = computeDistance(displacedAtom_1, thirdAtom, box)
+                                distance_kj_2 = computeDistance(displacedAtom_2, thirdAtom, box)
+                                if 0.0 < distance_kj_1 < rcutoff || 0.0 < distance_kj_2 < rcutoff
+                                    cosAngle = computeCosAngle(
+                                        coordinates1, box, selectedAtomIndex, 
+                                        displacedAtomIndex, thirdAtomIndex, distance_ij_1, distance_ik)
+                                    G3_1 = computeG3element(cosAngle, distance_ij_1, distance_ik, distance_kj_1, 
+                                        rcutoff, eta, zeta, lambda, rshift)
+                                    # Compute the contribution to the change
+                                    # from the updated configuration    
+                                    cosAngle = computeCosAngle(
+                                        coordinates2, box, selectedAtomIndex, 
+                                        displacedAtomIndex, thirdAtomIndex, distance_ij_2, distance_ik)
+                                    G3_2 = computeG3element(cosAngle, distance_ij_2, distance_ik, distance_kj_2, 
+                                        rcutoff, eta, zeta, lambda, rshift)
+                                    ΔG3 += 2.0^(1.0 - zeta) * (G3_2 - G3_1)
+                                end
                             end
                         end
                     end
