@@ -8,12 +8,16 @@ Fields:
     histograms: list of distance histograms of each frame
     PMF: potential of mean force
     G2Matrices: list of G2 matrices of each frame
+    G3Matrices: list of G3 matrices of each frame
+    G9Matrices: list of G9 matrices of each frame
 """
 struct referenceData
     distanceMatrices::Vector{Matrix{Float64}}
     histograms::Vector{Vector{Float64}}
     PMF::Vector{Float64}
     G2Matrices::Vector{Matrix{Float64}}
+    G3Matrices::Vector{Matrix{Float64}}
+    G9Matrices::Vector{Matrix{Float64}}
 end
 
 """
@@ -70,20 +74,22 @@ end
 """
 function preComputeRefData(refDataInput)
 
-Pre-compute PMFs, distance and G2 matrices as well as the reference trajectory frames
+Pre-compute PMFs, distance and symmetry function matrices as well as the reference trajectory frames
 for later use in pre-training steps for a given system
 """
 function preComputeRefData(refDataInput::preComputeInput)
     distanceMatrices = []
     histograms = []
     G2Matrices = []
+    G3Matrices = []
+    G9Matrices = []
 
     # Unpack the input struct
     NNParms = refDataInput.NNParms
     systemParms = refDataInput.systemParms
     refRDF = refDataInput.refRDF
 
-    println("Pre-computing distances and G2 matrices for $(systemParms.systemName)...")
+    println("Pre-computing distances and symmetry function matrices for $(systemParms.systemName)...")
     PMF = computePMF(refRDF, systemParms)
 
     traj = readXTC(systemParms)
@@ -92,6 +98,8 @@ function preComputeRefData(refDataInput::preComputeInput)
     for frameId = 1:nframes
         #println("Frame $(frameId)...")
         frame = read_step(traj, frameId)
+        box = lengths(UnitCell(frame))
+        coordinates = positions(frame)
 
         distanceMatrix = buildDistanceMatrix(frame)
         append!(distanceMatrices, [distanceMatrix])
@@ -100,11 +108,21 @@ function preComputeRefData(refDataInput::preComputeInput)
         hist = hist!(distanceMatrix, hist, systemParms)
         append!(histograms, [hist])
 
-        G2Matrix = buildG2Matrix(distanceMatrix, NNParms)
+        G2Matrix = buildG2Matrix(distanceMatrix, NNParms.G2Functions)
         append!(G2Matrices, [G2Matrix])
+
+        if length(NNParms.G3Functions) > 0
+            G3Matrix = buildG3Matrix(distanceMatrix, coordinates, box, NNParms.G3Functions)
+            append!(G3Matrices, [G3Matrix])
+        end
+
+        if length(NNParms.G9Functions) > 0
+            G9Matrix = buildG9Matrix(distanceMatrix, coordinates, box, NNParms.G9Functions)
+            append!(G9Matrices, [G9Matrix])
+        end
     end
     # Save the output in the referenceData struct
-    refData = referenceData(distanceMatrices, histograms, PMF, G2Matrices)
+    refData = referenceData(distanceMatrices, histograms, PMF, G2Matrices, G3Matrices, G9Matrices)
     return (refData)
 end
 
