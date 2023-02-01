@@ -1,15 +1,15 @@
 # Global parameters
-systemFiles           = 100CH3OH-CG.in, 60CH3OH-CG.in, 40CH3OH-CG.in, 20CH3OH-CG.in        # List of input filenames for each system
-symmetryFunctionFile  = symmetry-functions.in     # 
-mode                  = training                  # Run MC sampling (simulation) or ML-IMC optimization (training)
-inputmodel            = random   # Specify a model name, "random" for random initialization or "zero" for zeros 
-                                            # in the first layer of the network
-outputMode      = default                   # default (rdf, energy, model); verbose (+gradients, +trajectories)                                    
+systemFiles           = 100CH3OH-CG.in, 60CH3OH-CG.in, 40CH3OH-CG.in, 20CH3OH-CG.in  # List of input filenames for each system
+symmetryFunctionFile  = symmetry-functions.in       # Symmetry function file 
+mode                  = training                    # Run MC sampling (simulation) or ML-IMC optimization (training)
+inputmodel            = random                      # Specify a model name, "random" for random initialization or "zero" for zeros 
+                                                    # in the first layer of the network
+outputMode      = default                           # default (rdf, energy, model); verbose (+gradients, +trajectories)                                    
 
 # Monte Carlo parameters
-steps          = 100000                # Total number of MC steps
-Eqsteps        = 50000                 # Equilibration MC steps
-stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
+steps          = 10000                # Total number of MC steps
+Eqsteps        = 5000                 # Equilibration MC steps
+stepAdjustFreq = 500                   # Frequency of MC step adjustment   
 trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency
 
@@ -26,7 +26,7 @@ decay1          = 0.9                               # Decay of momentum (decay_1
 decay2          = 0.999
 
 # Pre-training parameters
-PTsteps         = 1000          # Number of pre-training steps
+PTsteps         = 100          # Number of pre-training steps
 PToutfreq       = 100           # Frequency of pre-training reporting
 PTREGP          = 0.0           # Regularization parameter (set to zero to turn off regularization)
 PToptimizer     = AMSGrad

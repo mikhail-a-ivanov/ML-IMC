@@ -1,6 +1,29 @@
 using LinearAlgebra
 
 """
+function combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
+
+Combines symmetry function matrices into a single matrix
+"""
+function combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
+    if G3Matrix == [] && G9Matrix == []
+        symmFuncMatrix = G2Matrix
+    else
+        # Combine all symmetry functions into a temporary array
+        symmFuncMatrices = [
+            G2Matrix,
+            G3Matrix,
+            G9Matrix]
+
+        # Remove empty matrices
+        filter!(x -> x != [], symmFuncMatrices)
+        # Unpack symmetry functions and concatenate horizontally into a single matrix
+        symmFuncMatrix = hcat(symmFuncMatrices...)
+    end
+    return (symmFuncMatrix)
+end
+
+"""
 function computeG2Element(distance, eta, rcutoff, rshift)::Float64
 
 Computes a single exponent

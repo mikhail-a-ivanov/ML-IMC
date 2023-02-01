@@ -273,21 +273,8 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
         )
     end
 
-    # If no angular symmetry functions are provided, use G2 only
-    if refData.G3Matrices == [] && refData.G9Matrices == []
-        symmFuncMatrix2 = G2Matrix2
-    else
-        # Combine all symmetry functions into a temporary array
-        symmFuncMatrices = [
-            G2Matrix2,
-            G3Matrix2,
-            G9Matrix2]
-
-        # Remove empty matrices
-        filter!(x -> x != [], symmFuncMatrices)
-        # Unpack symmetry functions and concatenate horizontally into a single matrix
-        symmFuncMatrix2 = hcat(symmFuncMatrices...)
-    end
+    # Combine symmetry function matrices accumulators
+    symmFuncMatrix2 = combineSymmFuncMatrices(G2Matrix2, G3Matrix2, G9Matrix2)
 
     # Compute the NN energy again
     ENN2Vector = totalEnergyVector(symmFuncMatrix2, model, indexesForUpdate, ENN1Vector)

@@ -24,7 +24,7 @@ struct MCAverages
     descriptor::Vector{Float64}
     energies::Vector{Float64}
     crossAccumulators::Union{Nothing,Vector{Matrix{Float64}}}
-    G2MatrixAccumulator::Union{Nothing,Matrix{Float64}}
+    symmFuncMatrixAccumulator::Union{Nothing,Matrix{Float64}}
     acceptanceRatio::Float64
     systemParms::SystemParameters
     mutatedStepAdjust::Float64
@@ -315,7 +315,7 @@ function collectSystemAverages(
         meanEnergies = []
         if globalParms.mode == "training"
             meanCrossAccumulators = []
-            meanG2MatrixAccumulator = []
+            meansymmFuncMatrixAccumulator = []
         end
         meanAcceptanceRatio = []
         meanMaxDisplacement = []
@@ -328,8 +328,8 @@ function collectSystemAverages(
                 if globalParms.mode == "training"
                     append!(meanCrossAccumulators, [outputs[outputID].crossAccumulators])
                     append!(
-                        meanG2MatrixAccumulator,
-                        [outputs[outputID].G2MatrixAccumulator],
+                        meansymmFuncMatrixAccumulator,
+                        [outputs[outputID].symmFuncMatrixAccumulator],
                     )
                 end
                 append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
@@ -341,7 +341,7 @@ function collectSystemAverages(
         meanEnergies = mean(meanEnergies)
         if globalParms.mode == "training"
             meanCrossAccumulators = mean(meanCrossAccumulators)
-            meanG2MatrixAccumulator = mean(meanG2MatrixAccumulator)
+            meansymmFuncMatrixAccumulator = mean(meansymmFuncMatrixAccumulator)
         end
         meanAcceptanceRatio = mean(meanAcceptanceRatio)
         meanMaxDisplacement = mean(meanMaxDisplacement)
@@ -350,7 +350,7 @@ function collectSystemAverages(
                 meanDescriptor,
                 meanEnergies,
                 meanCrossAccumulators,
-                meanG2MatrixAccumulator,
+                meansymmFuncMatrixAccumulator,
                 meanAcceptanceRatio,
                 systemParms,
                 meanMaxDisplacement,
@@ -423,7 +423,7 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
             systemParms = systemParmsList[systemId]
             lossGradient = computeLossGradients(
                 systemOutput.crossAccumulators,
-                systemOutput.G2MatrixAccumulator,
+                systemOutput.symmFuncMatrixAccumulator,
                 systemOutput.descriptor,
                 refRDFs[systemId],
                 model,

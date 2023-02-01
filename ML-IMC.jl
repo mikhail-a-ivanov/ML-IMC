@@ -9,6 +9,7 @@ BLAS.set_num_threads(1)
     include("src/distances.jl")
     include("src/optimizer.jl")
     include("src/network.jl")
+    include("src/symmfunctions.jl")
     include("src/base.jl")
     include("src/pretraining.jl")
 end

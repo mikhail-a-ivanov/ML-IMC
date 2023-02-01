@@ -150,7 +150,11 @@ function mcmove!(
     mutatedStepAdjust,
 )
     # Unpack mcarrays
-    frame, distanceMatrix, G2Matrix1 = mcarrays
+    frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1 = mcarrays
+    # Optionally make a copy of the original coordinates
+    if G3Matrix1 != [] || G9Matrix1 != []
+        coordinates1 = copy(positions(frame))
+    end
 
     # Pick a particle
     pointIndex = rand(rng, Int32(1):Int32(systemParms.N))
@@ -190,13 +194,47 @@ function mcmove!(
         distanceVector1,
         distanceVector2,
         systemParms,
-        NNParms.G2Functions,
+        NNParms,
         pointIndex,
     )
 
+    # Make a copy of the original angular matrices and update them
+    G3Matrix2 = copy(G3Matrix1)
+    if G3Matrix1 != []
+        updateG3Matrix!(
+            G3Matrix2,
+            coordinates1,
+            positions(frame),
+            box,
+            distanceVector1,
+            distanceVector2,
+            systemParms,
+            NNParms,
+            pointIndex,
+        )
+    end
+
+    G9Matrix2 = copy(G9Matrix1)
+    if G9Matrix1 != []
+        updateG9Matrix!(
+            G9Matrix2,
+            coordinates1,
+            positions(frame),
+            box,
+            distanceVector1,
+            distanceVector2,
+            systemParms,
+            NNParms,
+            pointIndex,
+        )
+    end
+
+    # Combine symmetry function matrices accumulators
+    symmFuncMatrix2 = combineSymmFuncMatrices(G2Matrix2, G3Matrix2, G9Matrix2)
+
     # Compute the energy again
     # E2 = totalEnergyScalar(G2Matrix2, model) 
-    newEnergyVector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, EpreviousVector)
+    newEnergyVector = totalEnergyVector(symmFuncMatrix2, model, indexesForUpdate, EpreviousVector)
     E2 = sum(newEnergyVector)
 
     # Get energy difference
@@ -210,7 +248,7 @@ function mcmove!(
         distanceMatrix[pointIndex, :] = distanceVector2
         distanceMatrix[:, pointIndex] = distanceVector2
         # Pack mcarrays
-        mcarrays = (frame, distanceMatrix, G2Matrix2)
+        mcarrays = (frame, distanceMatrix, G2Matrix2, G3Matrix2, G9Matrix2)
         return (mcarrays, E, newEnergyVector, accepted)
     else
         positions(frame)[:, pointIndex] .-= dr
@@ -219,7 +257,7 @@ function mcmove!(
         wrapFrame!(frame, box, pointIndex)
 
         # Pack mcarrays
-        mcarrays = (frame, distanceMatrix, G2Matrix1)
+        mcarrays = (frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1)
         return (mcarrays, E, EpreviousVector, accepted)
     end
 
@@ -277,26 +315,41 @@ function mcsample!(input)
     # Build the distance matrix
     distanceMatrix = buildDistanceMatrix(frame)
 
-    # Build the G2 matrix
-    G2Matrix = buildG2Matrix(distanceMatrix, NNParms.G2Functions)
+    # Build the symmetry function matrices
+    G2Matrix = buildG2Matrix(distanceMatrix, NNParms)
+
+    G3Matrix = []
+    if length(NNParms.G3Functions) > 0
+        G3Matrix = buildG3Matrix(distanceMatrix, positions(frame), box, NNParms)
+    end
+
+    G9Matrix = []
+    if length(NNParms.G9Functions) > 0
+        G9Matrix = buildG3Matrix(distanceMatrix, positions(frame), box, NNParms)
+    end
 
     # Prepare a tuple of arrays that change duing the mcmove!
-    mcarrays = (frame, distanceMatrix, G2Matrix)
+    mcarrays = (frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix)
 
     # Initialize the distance histogram accumulator
     histAccumulator = zeros(Float64, systemParms.Nbins)
 
     # Build the cross correlation arrays for training,
     # an additional distance histogram array
-    # and the G2 matrix accumulator
+    # and the symmetry function matrix accumulator
     if globalParms.mode == "training"
         hist = zeros(Float64, systemParms.Nbins)
         G2MatrixAccumulator = zeros(size(G2Matrix))
+        G3MatrixAccumulator = zeros(size(G3Matrix))
+        G9MatrixAccumulator = zeros(size(G9Matrix))
         crossAccumulators = crossAccumulatorsInit(NNParms, systemParms)
     end
 
+    # Combine symmetry function matrices
+    symmFuncMatrix = combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
+
     # Initialize the starting energy and the energy array
-    EpreviousVector = totalEnergyVectorInit(G2Matrix, model)
+    EpreviousVector = totalEnergyVectorInit(symmFuncMatrix, model)
     E = sum(EpreviousVector)
     energies = zeros(totalDataPoints + 1)
     energies[1] = E
@@ -350,15 +403,25 @@ function mcsample!(input)
 
         # Accumulate the distance histogram
         if step % MCParms.outfreq == 0 && step > MCParms.Eqsteps
-            frame, distanceMatrix, G2Matrix = mcarrays
+            frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix = mcarrays
             # Update the cross correlation array during the training
             if globalParms.mode == "training"
                 hist = hist!(distanceMatrix, hist, systemParms)
                 histAccumulator .+= hist
                 G2MatrixAccumulator .+= G2Matrix
+                if G3Matrix != []
+                    G3MatrixAccumulator .+= G3Matrix
+                end
+                if G9Matrix != []
+                    G9MatrixAccumulator .+= G9Matrix
+                end
                 # Normalize the histogram to RDF
                 normalizehist!(hist, systemParms, box)
-                updateCrossAccumulators!(crossAccumulators, G2Matrix, hist, model)
+
+                # Combine symmetry function matrices
+                symmFuncMatrix = combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
+
+                updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, hist, model)
                 # Nullify the hist array for the next training iteration
                 hist = zeros(Float64, systemParms.Nbins)
             else
@@ -371,25 +434,34 @@ function mcsample!(input)
     acceptanceRatio = acceptedTotal / MCParms.steps
 
     # Unpack mcarrays and optionally normalize cross and G2Matrix accumulators
-    frame, distanceMatrix, G2Matrix = mcarrays
+    frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix = mcarrays # might remove this line
     if globalParms.mode == "training"
         # Normalize the cross correlation arrays
         for cross in crossAccumulators
             cross ./= prodDataPoints
         end
         G2MatrixAccumulator ./= prodDataPoints
+        if G3Matrix != []
+            G3MatrixAccumulator ./= prodDataPoints
+        end
+        if G9Matrix != []
+            G9MatrixAccumulator ./= prodDataPoints
+        end
     end
 
     # Normalize the sampled distance histogram
     histAccumulator ./= prodDataPoints
     normalizehist!(histAccumulator, systemParms, box)
 
+    # Combine symmetry function matrices accumulators
+    symmFuncMatrixAccumulator = combineSymmFuncMatrices(G2MatrixAccumulator, G3MatrixAccumulator, G9MatrixAccumulator)
+
     if globalParms.mode == "training"
         MCoutput = MCAverages(
             histAccumulator,
             energies,
             crossAccumulators,
-            G2MatrixAccumulator,
+            symmFuncMatrixAccumulator,
             acceptanceRatio,
             systemParms,
             mutatedStepAdjust,
