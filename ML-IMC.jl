@@ -55,6 +55,7 @@ function main()
         end
     end
     println("Maximum cutoff distance: $(NNParms.maxDistanceCutoff) Å")
+    println("Symmetry function scaling parameter: $(NNParms.symmFunctionScaling)")
 
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)

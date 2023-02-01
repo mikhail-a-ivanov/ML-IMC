@@ -139,6 +139,7 @@ G2Functions: list of G2 symmetry function parameters
 G3Functions: list of G3 symmetry function parameters  
 G9Functions: list of G9 symmetry function parameters
 maxDistanceCutoff: max distance cutoff
+symmFunctionScaling: scaling factor for the symmetry functions
 neurons: number of hidden neurons in the network
 iters: number of learning iterations
 activations: list of activation functions
@@ -154,6 +155,7 @@ struct NNparameters
     G3Functions::Vector{G3}
     G9Functions::Vector{G9}
     maxDistanceCutoff::Float64
+    symmFunctionScaling::Float64
     neurons::Vector{Int}
     iters::Int
     activations::Vector{String}
@@ -281,6 +283,7 @@ function parametersInit()
 
     # Symmetry functions
     maxDistanceCutoff = 0.0
+    scalingFactor = 1.0
     symmetryFunctionFile = open(globalParms.symmetryFunctionFile, "r")
     symmetryFunctionLines = readlines(symmetryFunctionFile)
     splittedSymmetryFunctionLines = [split(line) for line in symmetryFunctionLines]
@@ -305,6 +308,9 @@ function parametersInit()
                 append!(G9Parameters, parse(fieldtype, line[fieldIndex+1]))
             end
             append!(G9s, [G9(G9Parameters...)])
+        end
+        if length(line) != 0 && line[1] == "scaling"
+            scalingFactor = parse(Float64, line[3])
         end
     end
     # Set maximum distance cutoff
@@ -373,7 +379,7 @@ function parametersInit()
             end
         end
     end
-    NNParms = NNparameters(G2s, G3s, G9s, maxDistanceCutoff, NNVars...)
+    NNParms = NNparameters(G2s, G3s, G9s, maxDistanceCutoff, scalingFactor, NNVars...)
 
     # Pre-training parameters
     for (field, fieldtype) in zip(preTrainFields, fieldtypes(PreTrainParameters))

@@ -108,16 +108,16 @@ function preComputeRefData(refDataInput::preComputeInput)::referenceData
         hist = hist!(distanceMatrix, hist, systemParms)
         append!(histograms, [hist])
 
-        G2Matrix = buildG2Matrix(distanceMatrix, NNParms.G2Functions)
+        G2Matrix = buildG2Matrix(distanceMatrix, NNParms)
         append!(G2Matrices, [G2Matrix])
 
         if length(NNParms.G3Functions) > 0
-            G3Matrix = buildG3Matrix(distanceMatrix, coordinates, box, NNParms.G3Functions)
+            G3Matrix = buildG3Matrix(distanceMatrix, coordinates, box, NNParms)
             append!(G3Matrices, [G3Matrix])
         end
 
         if length(NNParms.G9Functions) > 0
-            G9Matrix = buildG9Matrix(distanceMatrix, coordinates, box, NNParms.G9Functions)
+            G9Matrix = buildG9Matrix(distanceMatrix, coordinates, box, NNParms)
             append!(G9Matrices, [G9Matrix])
         end
     end
@@ -182,12 +182,21 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     else
         # Make a copy of the original coordinates
         coordinates1 = copy(positions(frame))
-        # Combine all symmetry functions into a temporary array
-        symmFuncMatrices = [
-            refData.G2Matrices[frameId],
-            refData.G3Matrices[frameId],
-            refData.G9Matrices[frameId]]
-
+        # Combine symmetry function matrices
+        if refData.G3Matrices == []
+            symmFuncMatrices = [
+                refData.G2Matrices[frameId],
+                refData.G9Matrices[frameId]]
+        elseif refData.G9Matrices == []
+            symmFuncMatrices = [
+                refData.G2Matrices[frameId],
+                refData.G3Matrices[frameId]]
+        else
+            symmFuncMatrices = [
+                refData.G2Matrices[frameId],
+                refData.G3Matrices[frameId],
+                refData.G9Matrices[frameId]]
+        end
         # Unpack symmetry functions and concatenate horizontally into a single matrix
         symmFuncMatrix1 = hcat(symmFuncMatrices...)
     end
@@ -226,7 +235,7 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
         distanceVector1,
         distanceVector2,
         systemParms,
-        NNParms.G2Functions,
+        NNParms,
         pointIndex,
     )
 
@@ -242,7 +251,7 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
             distanceVector1,
             distanceVector2,
             systemParms,
-            NNParms.G3Functions,
+            NNParms,
             pointIndex,
         )
     end
@@ -259,7 +268,7 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
             distanceVector1,
             distanceVector2,
             systemParms,
-            NNParms.G9Functions,
+            NNParms,
             pointIndex,
         )
     end

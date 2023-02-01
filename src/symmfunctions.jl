@@ -24,27 +24,31 @@ function computeG2(distances, eta, rcutoff, rshift)::Float64
 end
 
 """
-function buildG2Matrix(distanceMatrix, G2Functions)
+function buildG2Matrix(distanceMatrix, NNParms)
 
 Builds a matrix of G2 values with varying Rs and η parameters for each atom in the configuration
 """
-function buildG2Matrix(distanceMatrix, G2Functions::Vector{G2})
+function buildG2Matrix(distanceMatrix, NNParms)
     N = size(distanceMatrix)[1]
-    G2Matrix = Matrix{Float64}(undef, N, length(G2Functions))
+    G2Matrix = Matrix{Float64}(undef, N, length(NNParms.G2Functions))
     for i = 1:N
         distanceVector = distanceMatrix[i, :]
-        for (j, G2Function) in enumerate(G2Functions)
+        for (j, G2Function) in enumerate(NNParms.G2Functions)
             eta = G2Function.eta
             rcutoff = G2Function.rcutoff
             rshift = G2Function.rshift
             G2Matrix[i, j] = computeG2(distanceVector, eta, rcutoff, rshift)
         end
     end
-    return (G2Matrix)
+    if NNParms.symmFunctionScaling == 1.0
+        return (G2Matrix)
+    else
+        return (G2Matrix .* NNParms.symmFunctionScaling)
+    end
 end
 
 """
-function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, G2Functions, pointIndex)
+function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
 
 Updates the G2 matrix with the displacement of a single atom
 """
@@ -53,22 +57,22 @@ function updateG2Matrix!(
     distanceVector1,
     distanceVector2,
     systemParms,
-    G2Functions::Vector{G2},
+    NNParms,
     pointIndex,
 )
     for i = 1:systemParms.N
         # Rebuild the whole G2 matrix column for the displaced particle
         if i == pointIndex
-            for (j, G2Function) in enumerate(G2Functions)
+            for (j, G2Function) in enumerate(NNParms.G2Functions)
                 eta = G2Function.eta
                 rcutoff = G2Function.rcutoff
                 rshift = G2Function.rshift
                 G2Matrix[pointIndex, j] =
-                    computeG2(distanceVector2, eta, rcutoff, rshift)
+                    computeG2(distanceVector2, eta, rcutoff, rshift) * NNParms.symmFunctionScaling
             end
             # Compute the change in G2 caused by the displacement of an atom
         else
-            for (j, G2Function) in enumerate(G2Functions)
+            for (j, G2Function) in enumerate(NNParms.G2Functions)
                 rcutoff = G2Function.rcutoff
                 if 0.0 < distanceVector2[i] < rcutoff || 0.0 < distanceVector1[i] < rcutoff
                     eta = G2Function.eta
@@ -76,7 +80,7 @@ function updateG2Matrix!(
                     G2_1 = computeG2Element(distanceVector1[i], eta, rcutoff, rshift)
                     G2_2 = computeG2Element(distanceVector2[i], eta, rcutoff, rshift)
                     ΔG2 = G2_2 - G2_1
-                    G2Matrix[i, j] += ΔG2
+                    G2Matrix[i, j] += ΔG2 * NNParms.symmFunctionScaling
                 end
             end
         end
@@ -157,16 +161,16 @@ function computeG3(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lamb
 end
 
 """
-function buildG3Matrix(distanceMatrix, coordinates, box, G3Functions)
+function buildG3Matrix(distanceMatrix, coordinates, box, NNParms)
 
 Builds a matrix of G3 values
 """
-function buildG3Matrix(distanceMatrix, coordinates, box, G3Functions::Vector{G3})
+function buildG3Matrix(distanceMatrix, coordinates, box, NNParms)
     N = size(distanceMatrix)[1]
-    G3Matrix = Matrix{Float64}(undef, N, length(G3Functions))
+    G3Matrix = Matrix{Float64}(undef, N, length(NNParms.G3Functions))
     for i = 1:N
         distanceVector = distanceMatrix[i, :]
-        for (j, G3Function) in enumerate(G3Functions)
+        for (j, G3Function) in enumerate(NNParms.G3Functions)
             eta = G3Function.eta
             lambda = G3Function.lambda
             zeta = G3Function.zeta
@@ -175,12 +179,16 @@ function buildG3Matrix(distanceMatrix, coordinates, box, G3Functions::Vector{G3}
             G3Matrix[i, j] = computeG3(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)
         end
     end
-    return (G3Matrix)
+    if NNParms.symmFunctionScaling == 1.0
+        return (G3Matrix)
+    else
+        return (G3Matrix .* NNParms.symmFunctionScaling)
+    end
 end
 
 """
 function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box,
-    distanceVector1, distanceVector2, systemParms, G3Functions, displacedAtomIndex)
+    distanceVector1, distanceVector2, systemParms, NNParms, displacedAtomIndex)
 
 Updates the G3 matrix with the displacement of a single atom
 """
@@ -192,20 +200,20 @@ function updateG3Matrix!(
     distanceVector1,
     distanceVector2,
     systemParms,
-    G3Functions::Vector{G3},
+    NNParms,
     displacedAtomIndex,
 )
     for selectedAtomIndex = 1:systemParms.N
         # Rebuild the whole G3 matrix column for the displaced atom
         if selectedAtomIndex == displacedAtomIndex
-            for (G3Index, G3Function) in enumerate(G3Functions)
+            for (G3Index, G3Function) in enumerate(NNParms.G3Functions)
                 eta = G3Function.eta
                 lambda = G3Function.lambda
                 zeta = G3Function.zeta
                 rcutoff = G3Function.rcutoff
                 rshift = G3Function.rshift
                 G3Matrix[selectedAtomIndex, G3Index] = computeG3(displacedAtomIndex, coordinates2, box,
-                    distanceVector2, rcutoff, eta, zeta, lambda, rshift)
+                    distanceVector2, rcutoff, eta, zeta, lambda, rshift) * NNParms.symmFunctionScaling
             end
             # Compute the change in G3 caused by the displacement of an atom
             # New ijk triplet description
@@ -213,7 +221,7 @@ function updateG3Matrix!(
             # Second atom (j): displacedAtomIndex
             # Third atom (k): thirdAtomIndex
         else
-            for (G3Index, G3Function) in enumerate(G3Functions)
+            for (G3Index, G3Function) in enumerate(NNParms.G3Functions)
                 rcutoff = G3Function.rcutoff
                 distance_ij_1 = distanceVector1[selectedAtomIndex]
                 distance_ij_2 = distanceVector2[selectedAtomIndex]
@@ -267,7 +275,7 @@ function updateG3Matrix!(
                         end
                     end
                     # Apply the computed differences
-                    G3Matrix[selectedAtomIndex, G3Index] += ΔG3
+                    G3Matrix[selectedAtomIndex, G3Index] += ΔG3 * NNParms.symmFunctionScaling
                 end
             end
         end
@@ -315,16 +323,16 @@ function computeG9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lamb
 end
 
 """
-function buildG9Matrix(distanceMatrix, coordinates, box, G9Functions)
+function buildG9Matrix(distanceMatrix, coordinates, box, NNParms)
 
 Builds a matrix of G9 values
 """
-function buildG9Matrix(distanceMatrix, coordinates, box, G9Functions::Vector{G9})
+function buildG9Matrix(distanceMatrix, coordinates, box, NNParms)
     N = size(distanceMatrix)[1]
-    G9Matrix = Matrix{Float64}(undef, N, length(G9Functions))
+    G9Matrix = Matrix{Float64}(undef, N, length(NNParms.G9Functions))
     for i = 1:N
         distanceVector = distanceMatrix[i, :]
-        for (j, G9Function) in enumerate(G9Functions)
+        for (j, G9Function) in enumerate(NNParms.G9Functions)
             eta = G9Function.eta
             lambda = G9Function.lambda
             zeta = G9Function.zeta
@@ -333,12 +341,16 @@ function buildG9Matrix(distanceMatrix, coordinates, box, G9Functions::Vector{G9}
             G9Matrix[i, j] = computeG9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)
         end
     end
-    return (G9Matrix)
+    if NNParms.symmFunctionScaling == 1.0
+        return (G9Matrix)
+    else
+        return (G9Matrix .* NNParms.symmFunctionScaling)
+    end
 end
 
 """
 function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box,
-    distanceVector1, distanceVector2, systemParms, G9Functions, displacedAtomIndex)
+    distanceVector1, distanceVector2, systemParms, NNParms, displacedAtomIndex)
 
 Updates the G9 matrix with the displacement of a single atom
 """
@@ -350,7 +362,7 @@ function updateG9Matrix!(
     distanceVector1,
     distanceVector2,
     systemParms,
-    G9Functions::Vector{G9},
+    NNParms,
     displacedAtomIndex,
 )
     for selectedAtomIndex = 1:systemParms.N
@@ -363,7 +375,7 @@ function updateG9Matrix!(
                 rcutoff = G9Function.rcutoff
                 rshift = G9Function.rshift
                 G9Matrix[selectedAtomIndex, G9Index] = computeG9(displacedAtomIndex, coordinates2, box,
-                    distanceVector2, rcutoff, eta, zeta, lambda, rshift)
+                    distanceVector2, rcutoff, eta, zeta, lambda, rshift) * NNParms.symmFunctionScaling
             end
             # Compute the change in G9 caused by the displacement of an atom
             # New ijk triplet description
@@ -421,7 +433,7 @@ function updateG9Matrix!(
                         end
                     end
                     # Apply the computed differences
-                    G9Matrix[selectedAtomIndex, G9Index] += ΔG9
+                    G9Matrix[selectedAtomIndex, G9Index] += ΔG9 * NNParms.symmFunctionScaling
                 end
             end
         end
