@@ -77,7 +77,7 @@ function preComputeRefData(refDataInput)
 Pre-compute PMFs, distance and symmetry function matrices as well as the reference trajectory frames
 for later use in pre-training steps for a given system
 """
-function preComputeRefData(refDataInput::preComputeInput)
+function preComputeRefData(refDataInput::preComputeInput)::referenceData
     distanceMatrices = []
     histograms = []
     G2Matrices = []
@@ -127,12 +127,13 @@ function preComputeRefData(refDataInput::preComputeInput)
 end
 
 """
-function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, preTrainParms, verbose=false)
+function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model, preTrainParms, verbose=false)
 
 Computes loss gradients for one frame
 """
-function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2,
+function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2,
     model, preTrainParms::PreTrainParameters, verbose=false)
+
     parameters = Flux.params(model)
     loss = (ΔENN - ΔEPMF)^2
     regloss = sum(parameters[1] .^ 2) * preTrainParms.PTREGP
@@ -144,8 +145,8 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, G2Matrix1, G2Matrix2,
     end
 
     # Compute dL/dw
-    ENN1Gradients = computeEnergyGradients(G2Matrix1, model)
-    ENN2Gradients = computeEnergyGradients(G2Matrix2, model)
+    ENN1Gradients = computeEnergyGradients(symmFuncMatrix1, model)
+    ENN2Gradients = computeEnergyGradients(symmFuncMatrix2, model)
     gradientScaling = 2 * (ΔENN - ΔEPMF)
 
     lossGradient = @. gradientScaling * (ENN2Gradients - ENN1Gradients)
@@ -171,14 +172,28 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     pointIndex = rand(rng, 1:systemParms.N)
 
     # Read reference data
-
     distanceMatrix = refData.distanceMatrices[frameId]
     hist = refData.histograms[frameId]
-    G2Matrix1 = refData.G2Matrices[frameId]
     PMF = refData.PMF
 
+    # If no angular symmetry functions are provided, use G2 only
+    if refData.G3Matrices == [] && refData.G9Matrices == []
+        symmFuncMatrix1 = refData.G2Matrices[frameId]
+    else
+        # Make a copy of the original coordinates
+        coordinates1 = copy(positions(frame))
+        # Combine all symmetry functions into a temporary array
+        symmFuncMatrices = [
+            refData.G2Matrices[frameId],
+            refData.G3Matrices[frameId],
+            refData.G9Matrices[frameId]]
+
+        # Unpack symmetry functions and concatenate horizontally into a single matrix
+        symmFuncMatrix1 = hcat(symmFuncMatrices...)
+    end
+
     # Compute energy of the initial configuration
-    ENN1Vector = totalEnergyVectorInit(G2Matrix1, model)
+    ENN1Vector = totalEnergyVectorInit(symmFuncMatrix1, model)
     ENN1 = sum(ENN1Vector)
     EPMF1 = sum(hist .* PMF)
 
@@ -202,21 +217,71 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     hist = updatehist!(hist, distanceVector1, distanceVector2, systemParms)
 
     # Get indexes for updating ENN
-    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, systemParms, NNParms)
+    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, NNParms)
 
     # Make a copy of the original G2 matrix and update it
-    G2Matrix2 = copy(G2Matrix1)
+    G2Matrix2 = copy(refData.G2Matrices[frameId])
     updateG2Matrix!(
         G2Matrix2,
         distanceVector1,
         distanceVector2,
         systemParms,
-        NNParms,
+        NNParms.G2Functions,
         pointIndex,
     )
 
+    # Make a copy of the original angular matrices and update them
+    G3Matrix2 = []
+    if refData.G3Matrices != []
+        G3Matrix2 = copy(refData.G3Matrices[frameId])
+        updateG3Matrix!(
+            G3Matrix2,
+            coordinates1,
+            positions(frame),
+            box,
+            distanceVector1,
+            distanceVector2,
+            systemParms,
+            NNParms.G3Functions,
+            pointIndex,
+        )
+    end
+
+    # Make a copy of the original angular matrices and update them
+    G9Matrix2 = []
+    if refData.G9Matrices != []
+        G9Matrix2 = copy(refData.G9Matrices[frameId])
+        updateG9Matrix!(
+            G9Matrix2,
+            coordinates1,
+            positions(frame),
+            box,
+            distanceVector1,
+            distanceVector2,
+            systemParms,
+            NNParms.G9Functions,
+            pointIndex,
+        )
+    end
+
+    # If no angular symmetry functions are provided, use G2 only
+    if refData.G3Matrices == [] && refData.G9Matrices == []
+        symmFuncMatrix2 = G2Matrix2
+    else
+        # Combine all symmetry functions into a temporary array
+        symmFuncMatrices = [
+            G2Matrix2,
+            G3Matrix2,
+            G9Matrix2]
+
+        # Remove empty matrices
+        filter!(x -> x != [], symmFuncMatrices)
+        # Unpack symmetry functions and concatenate horizontally into a single matrix
+        symmFuncMatrix2 = hcat(symmFuncMatrices...)
+    end
+
     # Compute the NN energy again
-    ENN2Vector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, ENN1Vector)
+    ENN2Vector = totalEnergyVector(symmFuncMatrix2, model, indexesForUpdate, ENN1Vector)
     ENN2 = sum(ENN2Vector)
     EPMF2 = sum(hist .* PMF)
 
@@ -228,7 +293,7 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     positions(frame)[:, pointIndex] .-= dr
     hist = updatehist!(hist, distanceVector2, distanceVector1, systemParms)
 
-    return (G2Matrix1, G2Matrix2, ΔENN, ΔEPMF)
+    return (symmFuncMatrix1, symmFuncMatrix2, ΔENN, ΔEPMF)
 end
 
 """
@@ -265,12 +330,12 @@ function preTrain!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, 
 
             # Run a pre-training step, compute energy differences with PMF and the neural network,
             # restore all input arguments to their original state
-            G2Matrix1, G2Matrix2, ΔENN, ΔEPMF = pretrainingMove!(
+            symmFuncMatrix1, symmFuncMatrix2, ΔENN, ΔEPMF = pretrainingMove!(
                 refData, model, NNParms, systemParmsList[systemId], rngXor)
 
             # Compute the loss gradient
             lossGradient = computePreTrainingLossGradients(
-                ΔENN, ΔEPMF, G2Matrix1, G2Matrix2, model, preTrainParms, verbose)
+                ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model, preTrainParms, verbose)
             append!(lossGradients, [lossGradient])
         end
         # Update the model

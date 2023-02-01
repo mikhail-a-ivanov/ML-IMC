@@ -73,12 +73,12 @@ function atomicEnergy(inputlayer, model)
 end
 
 """
-function totalEnergyScalar(symmFuncMatrix, model, systemParms)
+function totalEnergyScalar(symmFuncMatrix, model)
 
 Computes the total potential energy of the system
 """
-function totalEnergyScalar(symmFuncMatrix, systemParms)
-    N = systemParms.N
+function totalEnergyScalar(symmFuncMatrix, model)
+    N = size(symmFuncMatrix)[1]
     E = 0.0
     for i = 1:N
         E += atomicEnergy(symmFuncMatrix[i, :], model)
@@ -87,13 +87,13 @@ function totalEnergyScalar(symmFuncMatrix, systemParms)
 end
 
 """
-function getBoolMaskForUpdating(distanceVectorInput, systemParms, NNParms)
+function getBoolMaskForUpdating(distanceVectorInput, NNParms)
 
 Return boolean mask array of indexes for updating energies
 True if the distance between moved particle and i-th atom is less than NNParms.maxDistanceCutoff
 """
-function getBoolMaskForUpdating(distanceVectorInput, systemParms, NNParms)
-    N = systemParms.N
+function getBoolMaskForUpdating(distanceVectorInput, NNParms)
+    N = size(distanceVectorInput)[1]
     indexes = Array{Bool}(undef, N)
     for i = 1:N
         indexes[i] = (distanceVectorInput[i] < NNParms.maxDistanceCutoff)
@@ -102,12 +102,12 @@ function getBoolMaskForUpdating(distanceVectorInput, systemParms, NNParms)
 end
 
 """
-function totalEnergyVector(symmFuncMatrix, model, systemParms, indexesForUpdate, previousE)
+function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
 
 Computes vector of atomic energy contributions
 """
-function totalEnergyVector(symmFuncMatrix, model, systemParms, indexesForUpdate, previousE)
-    N = systemParms.N
+function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
+    N = size(symmFuncMatrix)[1]
     E = copy(previousE)
     for i = 1:N
         if indexesForUpdate[i]
@@ -118,12 +118,12 @@ function totalEnergyVector(symmFuncMatrix, model, systemParms, indexesForUpdate,
 end
 
 """
-function totalEnergyVectorInit(symmFuncMatrix, model, systemParms)
+function totalEnergyVectorInit(symmFuncMatrix, model)
 
 Computes initial vector of energies for the system
 """
-function totalEnergyVectorInit(symmFuncMatrix, model, systemParms)
-    N = systemParms.N
+function totalEnergyVectorInit(symmFuncMatrix, model)
+    N = size(symmFuncMatrix)[1]
     E = Array{Float64}(undef, N)
     for i = 1:N
         E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
@@ -181,7 +181,7 @@ function mcmove!(
     accepted = 0
 
     # Get indexes of atoms for energy contribution update
-    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, systemParms, NNParms)
+    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, NNParms)
 
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
@@ -195,8 +195,8 @@ function mcmove!(
     )
 
     # Compute the energy again
-    # E2 = totalEnergyScalar(G2Matrix2, model, systemParms) 
-    newEnergyVector = totalEnergyVector(G2Matrix2, model, systemParms, indexesForUpdate, EpreviousVector)
+    # E2 = totalEnergyScalar(G2Matrix2, model) 
+    newEnergyVector = totalEnergyVector(G2Matrix2, model, indexesForUpdate, EpreviousVector)
     E2 = sum(newEnergyVector)
 
     # Get energy difference
@@ -296,7 +296,7 @@ function mcsample!(input)
     end
 
     # Initialize the starting energy and the energy array
-    EpreviousVector = totalEnergyVectorInit(G2Matrix, model, systemParms)
+    EpreviousVector = totalEnergyVectorInit(G2Matrix, model)
     E = sum(EpreviousVector)
     energies = zeros(totalDataPoints + 1)
     energies[1] = E

@@ -1,3 +1,5 @@
+using LinearAlgebra
+
 """
 function computeG2Element(distance, eta, rcutoff, rshift)::Float64
 
