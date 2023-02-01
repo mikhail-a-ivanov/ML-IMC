@@ -391,7 +391,7 @@ function updateG9Matrix!(
     for selectedAtomIndex = 1:systemParms.N
         # Rebuild the whole G9 matrix column for the displaced atom
         if selectedAtomIndex == displacedAtomIndex
-            for (G9Index, G9Function) in enumerate(G9Functions)
+            for (G9Index, G9Function) in enumerate(NNParms.G9Functions)
                 eta = G9Function.eta
                 lambda = G9Function.lambda
                 zeta = G9Function.zeta
@@ -406,7 +406,7 @@ function updateG9Matrix!(
             # Second atom (j): displacedAtomIndex
             # Third atom (k): thirdAtomIndex
         else
-            for (G9Index, G9Function) in enumerate(G9Functions)
+            for (G9Index, G9Function) in enumerate(NNParms.G9Functions)
                 rcutoff = G9Function.rcutoff
                 distance_ij_1 = distanceVector1[selectedAtomIndex]
                 distance_ij_2 = distanceVector2[selectedAtomIndex]

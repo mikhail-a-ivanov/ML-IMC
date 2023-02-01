@@ -325,7 +325,7 @@ function mcsample!(input)
 
     G9Matrix = []
     if length(NNParms.G9Functions) > 0
-        G9Matrix = buildG3Matrix(distanceMatrix, positions(frame), box, NNParms)
+        G9Matrix = buildG9Matrix(distanceMatrix, positions(frame), box, NNParms)
     end
 
     # Prepare a tuple of arrays that change duing the mcmove!

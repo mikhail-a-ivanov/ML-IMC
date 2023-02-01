@@ -15,7 +15,7 @@ outfreq        = 1000                   # Output frequency
 
 # Network parameters
 neurons         = 20, 20, 1                     # Number of hidden neurons in the network
-iters           = 3                             # Number of learning iterations
+iters           = 2                             # Number of learning iterations
 activations     = relu, relu, identity          # Activation function
 REGP            = 1.0                               # Regularization parameter (set to zero to turn off regularization)
 optimizer       = AMSGrad                           # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)

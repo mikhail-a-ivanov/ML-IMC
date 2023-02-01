@@ -23,8 +23,8 @@ G3 0.001 -1.0 1.0 4.0 0.0
 
 # G9 symmetry functions (wide angular symmetry)
 # G9 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
-#G9 0.010  1.0 1.0 5.0 0.0
-#G9 0.010 -1.0 1.0 5.0 0.0
+G9 0.010  1.0 1.0 5.0 0.0
+G9 0.010 -1.0 1.0 5.0 0.0
 
 ### Symmetry function scaling factor (scaling = 1.0: no scaling)
 # Might be a good idea to set it to 1/N of particles within a cutoff sphere
