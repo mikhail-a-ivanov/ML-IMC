@@ -339,5 +339,6 @@ function preTrain!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, 
         updatemodel!(model, opt, meanLossGradients)
     end
     @save "model-pre-trained.bson" model
+    checkfile("model-pre-trained.bson")
     return (model)
 end

@@ -61,17 +61,8 @@ function main()
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)
         println("Training a model using $(nsystems) reference system(s)")
-        if globalParms.inputmodel == "random"
-            println("Initializing a new neural network with random weigths")
-        elseif globalParms.inputmodel == "zero"
-            println(
-                "Initializing a new neural network with zero weigths in the first layer",
-            )
-        else
-            println("Starting training from $(globalParms.inputmodel)")
-        end
         println("Using the following activation functions: $(NNParms.activations)")
-        if globalParms.inputmodel == "random"
+        if globalParms.modelFile == "none"
             # Run pretraining
             model = preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
             # Restore optimizer state to default
@@ -89,7 +80,7 @@ function main()
         train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     else
         @assert length(systemParmsList) == 1
-        println("Running simulation with $(globalParms.inputmodel)")
+        println("Running simulation with $(globalParms.modelFile)")
         # Run the simulation
         simulate!(model, globalParms, MCParms, NNParms, systemParmsList[1])
     end

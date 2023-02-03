@@ -183,7 +183,8 @@ function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
 Compute the error function
 """
 function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
-    io = open("loss.out", "a")
+    outname = "loss.out"
+    io = open(outname, "a")
     strLoss = sum((descriptorNN - descriptorref) .^ 2)
     if NNParms.REGP > 0
         regLoss = 0.0
@@ -208,6 +209,7 @@ function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
     # at the initial configuration
     println(io, "Max displacement = ", round(meanMaxDisplacement, digits=8))
     close(io)
+    checkfile(outname)
     return (totalLoss)
 end
 
@@ -247,11 +249,9 @@ function buildchain(args...)
 end
 
 """
-function modelInit(NNParms, globalParms)
-Generates a neural network with zero weigths
-in the first layer and random values in other layers
+function modelInit(NNParms)
 """
-function modelInit(NNParms, globalParms)
+function modelInit(NNParms)
     # Build initial model
     network = buildNetwork!(NNParms)
     println("Building a model...")
@@ -261,17 +261,6 @@ function modelInit(NNParms, globalParms)
     #println(typeof(model))
     println("   Number of layers: $(length(NNParms.neurons)) ")
     println("   Number of neurons in each layer: $(NNParms.neurons)")
-    nlayers = length(model.layers)
-    # Initialize weights
-    if globalParms.inputmodel == "zero"
-        for (layerId, layer) in enumerate(model.layers)
-            for column in eachrow(layer.weight)
-                if layerId == 1
-                    Flux.Optimise.update!(column, column)
-                end
-            end
-        end
-    end
     return (model)
 end
 
@@ -449,19 +438,19 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         # Average the gradients
         meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
 
-        # Write the model (before training!) and the gradients
+        # Write the model and opt (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
-        if globalParms.outputMode == "verbose"
-            @save "gradients-iter-$(iterString).bson" meanLossGradients
-        end
+        checkfile("model-iter-$(iterString).bson")
+        
+        @save "opt-iter-$(iterString).bson" opt
+        checkfile("opt-iter-$(iterString).bson")
 
-        # Update the model if the loss decreased
+        @save "gradients-iter-$(iterString).bson" meanLossGradients
+        checkfile("gradients-iter-$(iterString).bson")
+
+        # Update the model
         updatemodel!(model, opt, meanLossGradients)
 
-        # Save gradients that are mutated by opt
-        if globalParms.outputMode == "verbose"
-            @save "gradients-mutated-iter-$(iterString).bson" meanLossGradients
-        end
         # Move on to the next iteration
         iteration += 1
     end
