@@ -15,9 +15,9 @@ trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency
 
 # Network parameters
-neurons         = 20, 20, 1                     # Number of hidden neurons in the network
+neurons         = 20, 20, 1                     # Number of hidden neurons in the network (plus an output neuron)
 iters           = 3                             # Number of learning iterations
-activations     = relu, relu, identity          # Activation function
+activations     = relu, relu, identity          # Activation functions
 REGP            = 0.0                               # Regularization parameter (set to zero to turn off regularization)
 optimizer       = AMSGrad                           # Optimizer type (Recommended: AdaBelief, AMSGrad, Adam)
                                                     # for more info: https://fluxml.ai/Flux.jl/stable/training/optimisers/
