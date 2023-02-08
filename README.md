@@ -6,14 +6,14 @@
 
 Clone the repository and run:
 
-`julia -p n ML-IMC.jl ML-IMC-train.in | tee mc.out` where `n` is the number of available cores
+`julia -p n ML-IMC.jl | tee mc.out` where `n` is the number of available cores
 
 ## Required Julia packages
 
 **Julia version: 1.8**
 
 ```console
-pkg> add Dates, Statistics, LinearAlgebra, Distributed, Chemfiles, BSON, BenchmarkTools, Plots, StaticArrays, Flux, RandomNumbers
+pkg> add Dates, Statistics, LinearAlgebra, Distributed, Chemfiles, BSON, Flux, RandomNumbers
 ```
 
 Core packages:
@@ -22,7 +22,6 @@ Core packages:
 - `Distributed`
 - `Chemfiles`
 - `LinearAlgebra`
-- `StaticArrays`
 - `RandomNumbers`
 
 Other packages:
@@ -31,8 +30,6 @@ Other packages:
 - `Printf`
 - `BSON`
 - `Statistics`
-- `Plots`
-- `BenchmarkTools`
 
 ## Authors
 

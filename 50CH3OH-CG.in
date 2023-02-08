@@ -1,0 +1,8 @@
+# System parameters
+systemName     = 50CH3OH-CG                                  # System name
+topname        = methanol-data/50CH3OH/50CH3OH-CG.pdb        # Topology name
+trajfile       = methanol-data/50CH3OH/50CH3OH-CG-200.xtc    # Input configuration file
+rdfname        = methanol-data/50CH3OH/50CH3OH-CG.rdf        # Reference RDF file
+T              = 298.15                                      # [K]
+Δ              = 2.25                                        # Max displacement [Å]
+targetAR       = 0.5                                         # Target acceptance ratio
