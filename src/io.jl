@@ -506,37 +506,39 @@ function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
         checkfile(globalParms.modelFile)
         println("Reading model from $(globalParms.modelFile)")
         @load globalParms.modelFile model
-        # Either initialize the optimizer or read from a file
-        if globalParms.optimizerFile != "none"
-            checkfile(globalParms.optimizerFile)
-            println("Reading optimizer state from $(globalParms.optimizerFile)")
-            @load globalParms.optimizerFile opt
-        else
-            opt = optInit(NNParms)
-        end
-        # Optionally read gradients from a file
-        if globalParms.gradientsFile != "none"
-            checkfile(globalParms.gradientsFile)
-            println("Reading gradients from $(globalParms.gradientsFile)")
-            @load globalParms.gradientsFile meanLossGradients
-        end
-        # Update the model if both opt and gradients are restored
-        if globalParms.optimizerFile != "none" && globalParms.gradientsFile != "none"
-            println("\nUsing the restored gradients and optimizer to update the current model...\n")
-            updatemodel!(model, opt, meanLossGradients)
+        if globalParms.mode == "training"
+            # Either initialize the optimizer or read from a file
+            if globalParms.optimizerFile != "none"
+                checkfile(globalParms.optimizerFile)
+                println("Reading optimizer state from $(globalParms.optimizerFile)")
+                @load globalParms.optimizerFile opt
+            else
+                opt = optInit(NNParms)
+            end
+            # Optionally read gradients from a file
+            if globalParms.gradientsFile != "none"
+                checkfile(globalParms.gradientsFile)
+                println("Reading gradients from $(globalParms.gradientsFile)")
+                @load globalParms.gradientsFile meanLossGradients
+            end
+            # Update the model if both opt and gradients are restored
+            if globalParms.optimizerFile != "none" && globalParms.gradientsFile != "none"
+                println("\nUsing the restored gradients and optimizer to update the current model...\n")
+                updatemodel!(model, opt, meanLossGradients)
 
-            # Skip updating if no gradients are provided
-        elseif globalParms.optimizerFile != "none" && globalParms.gradientsFile == "none"
-            println("\nNo gradients were provided, rerunning the training iteration with the current model and restored optimizer...\n")
+                # Skip updating if no gradients are provided
+            elseif globalParms.optimizerFile != "none" && globalParms.gradientsFile == "none"
+                println("\nNo gradients were provided, rerunning the training iteration with the current model and restored optimizer...\n")
 
-            # Update the model if gradients are provided without the optimizer:
-            # valid for optimizer that do not save their state, e.g. Descent,
-            # otherwise might produce unexpected results
-        elseif globalParms.optimizerFile == "none" && globalParms.gradientsFile != "none"
-            println("\nUsing the restored gradients with reinitialized optimizer to update the current model...\n")
-            updatemodel!(model, opt, meanLossGradients)
-        else
-            println("\nNeither gradients nor optimizer were provided, rerunning the training iteration with the current model...\n")
+                # Update the model if gradients are provided without the optimizer:
+                # valid for optimizer that do not save their state, e.g. Descent,
+                # otherwise might produce unexpected results
+            elseif globalParms.optimizerFile == "none" && globalParms.gradientsFile != "none"
+                println("\nUsing the restored gradients with reinitialized optimizer to update the current model...\n")
+                updatemodel!(model, opt, meanLossGradients)
+            else
+                println("\nNeither gradients nor optimizer were provided, rerunning the training iteration with the current model...\n")
+            end
         end
     end
 
