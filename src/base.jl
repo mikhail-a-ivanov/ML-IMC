@@ -295,11 +295,19 @@ function mcsample!(input)
     # Initialize RNG
     rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
 
-    # Take a random frame from the equilibrated trajectory
-    traj = readXTC(systemParms)
-    nframes = Int(size(traj)) - 1
-    frameId = rand(rngXor, 1:nframes) # Don't take the first frame
-    frame = deepcopy(read_step(traj, frameId))
+    if globalParms.mode == "training"
+        # Take a random frame from the equilibrated trajectory
+        traj = readXTC(systemParms)
+        nframes = Int(size(traj)) - 1
+        frameId = rand(rngXor, 1:nframes) # Don't take the first frame
+        frame = deepcopy(read_step(traj, frameId))
+    else
+        # Read PDB data from the system.in file
+        pdb = readPDB(systemParms)
+        frame = deepcopy(read_step(pdb, 0))
+    end
+
+    # Get current box vectors
     box = lengths(UnitCell(frame))
 
     # Start writing MC trajectory
@@ -447,6 +455,7 @@ function mcsample!(input)
         if G9Matrix != []
             G9MatrixAccumulator ./= prodDataPoints
         end
+        symmFuncMatrixAccumulator = combineSymmFuncMatrices(G2MatrixAccumulator, G3MatrixAccumulator, G9MatrixAccumulator)
     end
 
     # Normalize the sampled distance histogram
@@ -454,8 +463,6 @@ function mcsample!(input)
     normalizehist!(histAccumulator, systemParms, box)
 
     # Combine symmetry function matrices accumulators
-    symmFuncMatrixAccumulator = combineSymmFuncMatrices(G2MatrixAccumulator, G3MatrixAccumulator, G9MatrixAccumulator)
-
     if globalParms.mode == "training"
         MCoutput = MCAverages(
             histAccumulator,

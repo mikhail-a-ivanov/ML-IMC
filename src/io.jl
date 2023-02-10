@@ -235,8 +235,8 @@ parameter structs
 """
 function parametersInit()
     # Read the input name from the command line argument
-    #inputname = ARGS[1]
-    inputname = "ML-IMC-init.in"
+    inputname = ARGS[1]
+    #inputname = "ML-IMC-init.in"
 
     # Constants
     NA::Float64 = 6.02214076 # [mol-1] * 10^-23
@@ -472,6 +472,17 @@ function readXTC(systemParms)
     checkfile(systemParms.trajfile)
     traj = Trajectory(systemParms.trajfile)
     return (traj)
+end
+
+"""
+function readPDB(systemParms)
+
+Reads input configuration from PDB file
+"""
+function readPDB(systemParms)
+    checkfile(systemParms.topname)
+    pdb = Trajectory(systemParms.topname)
+    return (pdb)
 end
 
 """
