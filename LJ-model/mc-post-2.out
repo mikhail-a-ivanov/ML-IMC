@@ -1,0 +1,126 @@
+Starting at: 2023-02-13T16:03:32.606
+Running ML-IMC in the training mode.
+Reading model from LJ-training/model-iter-10.bson
+Reading optimizer state from LJ-training/opt-iter-10.bson
+Reading gradients from LJ-training/gradients-iter-10.bson
+
+Using the restored gradients and optimizer to update the current model...
+
+Using the following symmetry functions as the neural input for each atom:
+    G2 symmetry functions:
+    eta, Å^-2; rcutoff, Å; rshift, Å
+       G2(0.125, 7.0, 0.0)
+       G2(4.0, 7.0, 3.0)
+       G2(4.0, 7.0, 3.5)
+       G2(4.0, 7.0, 4.0)
+       G2(4.0, 7.0, 4.5)
+       G2(4.0, 7.0, 5.0)
+       G2(4.0, 7.0, 5.5)
+       G2(4.0, 7.0, 6.0)
+       G2(4.0, 7.0, 6.5)
+Maximum cutoff distance: 7.0 Å
+Symmetry function scaling parameter: 1.0
+Training a model using 1 reference system(s)
+Using the following activation functions: ["identity"]
+
+Starting the main part of the training...
+
+Number of iterations: 10
+Running MC simulation on 4 rank(s)...
+
+Total number of steps: 4.0M
+Number of equilibration steps per rank: 0.5M
+
+Iteration 1...
+   System Ar_95K:
+       Acceptance ratio = 0.4971
+       Max displacement = 0.6295
+Regularization Loss = 0
+Descriptor Loss = 1.35727365
+   
+Total Average Loss = 1.35727365
+
+Iteration 2...
+   System Ar_95K:
+       Acceptance ratio = 0.4977
+       Max displacement = 0.6322
+Regularization Loss = 0
+Descriptor Loss = 1.2363057
+   
+Total Average Loss = 1.2363057
+
+Iteration 3...
+   System Ar_95K:
+       Acceptance ratio = 0.4995
+       Max displacement = 0.6262
+Regularization Loss = 0
+Descriptor Loss = 1.12727925
+   
+Total Average Loss = 1.12727925
+
+Iteration 4...
+   System Ar_95K:
+       Acceptance ratio = 0.5015
+       Max displacement = 0.6225
+Regularization Loss = 0
+Descriptor Loss = 1.20659469
+   
+Total Average Loss = 1.20659469
+
+Iteration 5...
+   System Ar_95K:
+       Acceptance ratio = 0.4979
+       Max displacement = 0.631
+Regularization Loss = 0
+Descriptor Loss = 0.93930104
+   
+Total Average Loss = 0.93930104
+
+Iteration 6...
+   System Ar_95K:
+       Acceptance ratio = 0.4995
+       Max displacement = 0.6201
+Regularization Loss = 0
+Descriptor Loss = 0.6781077
+   
+Total Average Loss = 0.6781077
+
+Iteration 7...
+   System Ar_95K:
+       Acceptance ratio = 0.5016
+       Max displacement = 0.6092
+Regularization Loss = 0
+Descriptor Loss = 0.63756857
+   
+Total Average Loss = 0.63756857
+
+Iteration 8...
+   System Ar_95K:
+       Acceptance ratio = 0.4992
+       Max displacement = 0.6158
+Regularization Loss = 0
+Descriptor Loss = 0.67756118
+   
+Total Average Loss = 0.67756118
+
+Iteration 9...
+   System Ar_95K:
+       Acceptance ratio = 0.5002
+       Max displacement = 0.6093
+Regularization Loss = 0
+Descriptor Loss = 0.68330339
+   
+Total Average Loss = 0.68330339
+
+Iteration 10...
+   System Ar_95K:
+       Acceptance ratio = 0.4992
+       Max displacement = 0.6148
+Regularization Loss = 0
+Descriptor Loss = 0.58248691
+   
+Total Average Loss = 0.58248691
+The training is finished!
+Stopping at: 2023-02-13T16:23:38.698
+
+Walltime: 20 minutes, 6 seconds, 92 milliseconds
