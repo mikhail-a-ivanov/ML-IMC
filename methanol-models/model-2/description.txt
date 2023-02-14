@@ -9,9 +9,9 @@ Model outline:
 
 Training procedure:
 1. Trained according to "ML-IMC-init-training.in".
-2. Post-training starts from "random-model-9/model-iter-04.bson" (iteration 4 of the main training)
+2. Post-training starts from "6G2-narrow-wide-repulsion-rc-8/random-model-9/model-iter-04.bson" (iteration 4 of the main training)
 according to "ML-IMC-init-posttraining.in".
-3. The final model corresponds to "random-model-11/model-iter-80.bson".
+3. The final model corresponds to "continuation-rc-8/random-model-11/model-iter-80.bson".
 
 Model performance:
    System 100CH3OH-CG:

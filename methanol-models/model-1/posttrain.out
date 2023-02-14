@@ -1,0 +1,2463 @@
+      From worker 17:	┌ Error: No CUDA-capable device found
+      From worker 17:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 14:	┌ Error: No CUDA-capable device found
+      From worker 14:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 15:	┌ Error: No CUDA-capable device found
+      From worker 15:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 4:	┌ Error: No CUDA-capable device found
+      From worker 4:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 2:	┌ Error: No CUDA-capable device found
+      From worker 2:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 9:	┌ Error: No CUDA-capable device found
+      From worker 9:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 3:	┌ Error: No CUDA-capable device found
+      From worker 3:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 13:	┌ Error: No CUDA-capable device found
+      From worker 13:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 10:	┌ Error: No CUDA-capable device found
+      From worker 10:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 7:	┌ Error: No CUDA-capable device found
+      From worker 7:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 5:	┌ Error: No CUDA-capable device found
+      From worker 5:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 16:	┌ Error: No CUDA-capable device found
+      From worker 16:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 11:	┌ Error: No CUDA-capable device found
+      From worker 11:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 12:	┌ Error: No CUDA-capable device found
+      From worker 12:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 6:	┌ Error: No CUDA-capable device found
+      From worker 6:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 8:	┌ Error: No CUDA-capable device found
+      From worker 8:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+Starting at: 2023-02-09T23:05:56.061
+Running ML-IMC in the training mode.
+Reading model from model-iter-03.bson
+
+Neither gradients nor optimizer were provided, rerunning the training iteration with the current model...
+
+Using the following symmetry functions as the neural input for each atom:
+    G2 symmetry functions:
+    eta, Å^-2; rcutoff, Å; rshift, Å
+       G2(0.125, 7.0, 0.0)
+       G2(2.0, 7.0, 3.0)
+       G2(2.0, 7.0, 3.4)
+       G2(2.0, 7.0, 3.85)
+       G2(2.0, 7.0, 4.55)
+       G2(2.0, 7.0, 5.5)
+Maximum cutoff distance: 7.0 Å
+Symmetry function scaling parameter: 1.0
+Training a model using 4 reference system(s)
+Using the following activation functions: ["identity", "relu", "relu", "identity"]
+
+Starting the main part of the training...
+
+Number of iterations: 100
+Running MC simulation on 16 rank(s)...
+
+Total number of steps: 32.0M
+Number of equilibration steps per rank: 0.5M
+
+Iteration 1...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.1663
+Regularization Loss = 0
+Descriptor Loss = 0.72295413
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 1.6241
+Regularization Loss = 0
+Descriptor Loss = 0.55300089
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4958
+       Max displacement = 2.0385
+Regularization Loss = 0
+Descriptor Loss = 0.75480389
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4965
+       Max displacement = 3.6276
+Regularization Loss = 0
+Descriptor Loss = 0.85945955
+   
+Total Average Loss = 0.72255461
+
+Iteration 2...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4972
+       Max displacement = 1.1702
+Regularization Loss = 0
+Descriptor Loss = 0.66315988
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5007
+       Max displacement = 1.6108
+Regularization Loss = 0
+Descriptor Loss = 0.50953734
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5033
+       Max displacement = 2.0041
+Regularization Loss = 0
+Descriptor Loss = 0.68450692
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4957
+       Max displacement = 3.6308
+Regularization Loss = 0
+Descriptor Loss = 0.75413452
+   
+Total Average Loss = 0.65283467
+
+Iteration 3...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 1.1739
+Regularization Loss = 0
+Descriptor Loss = 0.60222429
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 1.6172
+Regularization Loss = 0
+Descriptor Loss = 0.47228761
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4974
+       Max displacement = 2.0667
+Regularization Loss = 0
+Descriptor Loss = 0.66420292
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 3.6095
+Regularization Loss = 0
+Descriptor Loss = 0.69374685
+   
+Total Average Loss = 0.60811542
+
+Iteration 4...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.499
+       Max displacement = 1.189
+Regularization Loss = 0
+Descriptor Loss = 0.57349619
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 1.653
+Regularization Loss = 0
+Descriptor Loss = 0.43673895
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.499
+       Max displacement = 2.0769
+Regularization Loss = 0
+Descriptor Loss = 0.63023584
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 3.5695
+Regularization Loss = 0
+Descriptor Loss = 0.64836918
+   
+Total Average Loss = 0.57221004
+
+Iteration 5...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.503
+       Max displacement = 1.1711
+Regularization Loss = 0
+Descriptor Loss = 0.52060199
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.501
+       Max displacement = 1.6483
+Regularization Loss = 0
+Descriptor Loss = 0.39273762
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 2.0867
+Regularization Loss = 0
+Descriptor Loss = 0.52636576
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 3.612
+Regularization Loss = 0
+Descriptor Loss = 0.59864609
+   
+Total Average Loss = 0.50958787
+
+Iteration 6...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.499
+       Max displacement = 1.1785
+Regularization Loss = 0
+Descriptor Loss = 0.46845999
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.6602
+Regularization Loss = 0
+Descriptor Loss = 0.35279201
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4971
+       Max displacement = 2.1465
+Regularization Loss = 0
+Descriptor Loss = 0.46133374
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5007
+       Max displacement = 3.6319
+Regularization Loss = 0
+Descriptor Loss = 0.56666043
+   
+Total Average Loss = 0.46231154
+
+Iteration 7...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4999
+       Max displacement = 1.18
+Regularization Loss = 0
+Descriptor Loss = 0.41786605
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.7173
+Regularization Loss = 0
+Descriptor Loss = 0.31999632
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 2.1566
+Regularization Loss = 0
+Descriptor Loss = 0.38482457
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.503
+       Max displacement = 3.6469
+Regularization Loss = 0
+Descriptor Loss = 0.51545626
+   
+Total Average Loss = 0.4095358
+
+Iteration 8...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 1.2012
+Regularization Loss = 0
+Descriptor Loss = 0.39925644
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4978
+       Max displacement = 1.7385
+Regularization Loss = 0
+Descriptor Loss = 0.28540558
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 2.1716
+Regularization Loss = 0
+Descriptor Loss = 0.34587208
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5005
+       Max displacement = 3.7502
+Regularization Loss = 0
+Descriptor Loss = 0.50070621
+   
+Total Average Loss = 0.38281008
+
+Iteration 9...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5003
+       Max displacement = 1.2032
+Regularization Loss = 0
+Descriptor Loss = 0.36528964
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.501
+       Max displacement = 1.7184
+Regularization Loss = 0
+Descriptor Loss = 0.27365966
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 2.2211
+Regularization Loss = 0
+Descriptor Loss = 0.32898602
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 3.7984
+Regularization Loss = 0
+Descriptor Loss = 0.46385976
+   
+Total Average Loss = 0.35794877
+
+Iteration 10...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4971
+       Max displacement = 1.2238
+Regularization Loss = 0
+Descriptor Loss = 0.34602897
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 1.7565
+Regularization Loss = 0
+Descriptor Loss = 0.23065337
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 2.2693
+Regularization Loss = 0
+Descriptor Loss = 0.27844492
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5047
+       Max displacement = 3.7607
+Regularization Loss = 0
+Descriptor Loss = 0.47582506
+   
+Total Average Loss = 0.33273808
+
+Iteration 11...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4999
+       Max displacement = 1.2654
+Regularization Loss = 0
+Descriptor Loss = 0.3265172
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 1.8026
+Regularization Loss = 0
+Descriptor Loss = 0.22178474
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 2.2803
+Regularization Loss = 0
+Descriptor Loss = 0.26531962
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5045
+       Max displacement = 3.8363
+Regularization Loss = 0
+Descriptor Loss = 0.44670674
+   
+Total Average Loss = 0.31508207
+
+Iteration 12...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5006
+       Max displacement = 1.2682
+Regularization Loss = 0
+Descriptor Loss = 0.30999625
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 1.7683
+Regularization Loss = 0
+Descriptor Loss = 0.22077054
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5
+       Max displacement = 2.3017
+Regularization Loss = 0
+Descriptor Loss = 0.25375575
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4981
+       Max displacement = 4.0006
+Regularization Loss = 0
+Descriptor Loss = 0.45407614
+   
+Total Average Loss = 0.30964967
+
+Iteration 13...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 1.248
+Regularization Loss = 0
+Descriptor Loss = 0.28685397
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.495
+       Max displacement = 1.847
+Regularization Loss = 0
+Descriptor Loss = 0.19880688
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 2.3375
+Regularization Loss = 0
+Descriptor Loss = 0.24635993
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 3.9917
+Regularization Loss = 0
+Descriptor Loss = 0.45941245
+   
+Total Average Loss = 0.29785831
+
+Iteration 14...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 1.2413
+Regularization Loss = 0
+Descriptor Loss = 0.2797636
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4993
+       Max displacement = 1.8142
+Regularization Loss = 0
+Descriptor Loss = 0.20232012
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 2.3459
+Regularization Loss = 0
+Descriptor Loss = 0.23117281
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5051
+       Max displacement = 3.9422
+Regularization Loss = 0
+Descriptor Loss = 0.45352074
+   
+Total Average Loss = 0.29169432
+
+Iteration 15...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 1.2513
+Regularization Loss = 0
+Descriptor Loss = 0.27274664
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 1.8411
+Regularization Loss = 0
+Descriptor Loss = 0.18556433
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 2.3996
+Regularization Loss = 0
+Descriptor Loss = 0.23398161
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 4.0561
+Regularization Loss = 0
+Descriptor Loss = 0.48408722
+   
+Total Average Loss = 0.29409495
+
+Iteration 16...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4975
+       Max displacement = 1.2624
+Regularization Loss = 0
+Descriptor Loss = 0.26527904
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.8244
+Regularization Loss = 0
+Descriptor Loss = 0.19335707
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.496
+       Max displacement = 2.4382
+Regularization Loss = 0
+Descriptor Loss = 0.2405526
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 4.0969
+Regularization Loss = 0
+Descriptor Loss = 0.48981363
+   
+Total Average Loss = 0.29725059
+
+Iteration 17...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5041
+       Max displacement = 1.2538
+Regularization Loss = 0
+Descriptor Loss = 0.25467553
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 1.822
+Regularization Loss = 0
+Descriptor Loss = 0.18880096
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4973
+       Max displacement = 2.4178
+Regularization Loss = 0
+Descriptor Loss = 0.23612811
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5019
+       Max displacement = 4.0629
+Regularization Loss = 0
+Descriptor Loss = 0.49613137
+   
+Total Average Loss = 0.29393399
+
+Iteration 18...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4971
+       Max displacement = 1.2619
+Regularization Loss = 0
+Descriptor Loss = 0.26252692
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 1.8398
+Regularization Loss = 0
+Descriptor Loss = 0.18201559
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 2.4152
+Regularization Loss = 0
+Descriptor Loss = 0.23627804
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 4.0707
+Regularization Loss = 0
+Descriptor Loss = 0.48906222
+   
+Total Average Loss = 0.29247069
+
+Iteration 19...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5016
+       Max displacement = 1.2579
+Regularization Loss = 0
+Descriptor Loss = 0.25232438
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5009
+       Max displacement = 1.8334
+Regularization Loss = 0
+Descriptor Loss = 0.17904362
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5019
+       Max displacement = 2.3874
+Regularization Loss = 0
+Descriptor Loss = 0.238322
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5017
+       Max displacement = 4.069
+Regularization Loss = 0
+Descriptor Loss = 0.48678018
+   
+Total Average Loss = 0.28911755
+
+Iteration 20...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5016
+       Max displacement = 1.2325
+Regularization Loss = 0
+Descriptor Loss = 0.26375354
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4953
+       Max displacement = 1.8829
+Regularization Loss = 0
+Descriptor Loss = 0.17827312
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4983
+       Max displacement = 2.4192
+Regularization Loss = 0
+Descriptor Loss = 0.2355082
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5038
+       Max displacement = 4.0551
+Regularization Loss = 0
+Descriptor Loss = 0.49180138
+   
+Total Average Loss = 0.29233406
+
+Iteration 21...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 1.2684
+Regularization Loss = 0
+Descriptor Loss = 0.25537213
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 1.8742
+Regularization Loss = 0
+Descriptor Loss = 0.17176657
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5032
+       Max displacement = 2.3788
+Regularization Loss = 0
+Descriptor Loss = 0.23232401
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5
+       Max displacement = 4.0551
+Regularization Loss = 0
+Descriptor Loss = 0.47095005
+   
+Total Average Loss = 0.28260319
+
+Iteration 22...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 1.2826
+Regularization Loss = 0
+Descriptor Loss = 0.249661
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.855
+Regularization Loss = 0
+Descriptor Loss = 0.17476076
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 2.4324
+Regularization Loss = 0
+Descriptor Loss = 0.22922064
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4993
+       Max displacement = 4.0627
+Regularization Loss = 0
+Descriptor Loss = 0.4676704
+   
+Total Average Loss = 0.2803282
+
+Iteration 23...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 1.2883
+Regularization Loss = 0
+Descriptor Loss = 0.26097817
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5016
+       Max displacement = 1.8487
+Regularization Loss = 0
+Descriptor Loss = 0.1658395
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 2.429
+Regularization Loss = 0
+Descriptor Loss = 0.22628149
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 4.0096
+Regularization Loss = 0
+Descriptor Loss = 0.46849021
+   
+Total Average Loss = 0.28039734
+
+Iteration 24...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4999
+       Max displacement = 1.2586
+Regularization Loss = 0
+Descriptor Loss = 0.26103865
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4963
+       Max displacement = 1.8596
+Regularization Loss = 0
+Descriptor Loss = 0.17660513
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 2.4017
+Regularization Loss = 0
+Descriptor Loss = 0.22609152
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 3.9923
+Regularization Loss = 0
+Descriptor Loss = 0.44860231
+   
+Total Average Loss = 0.2780844
+
+Iteration 25...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 1.2503
+Regularization Loss = 0
+Descriptor Loss = 0.26255399
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4957
+       Max displacement = 1.8525
+Regularization Loss = 0
+Descriptor Loss = 0.17435016
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 2.3928
+Regularization Loss = 0
+Descriptor Loss = 0.21869948
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5032
+       Max displacement = 3.8988
+Regularization Loss = 0
+Descriptor Loss = 0.45157664
+   
+Total Average Loss = 0.27679507
+
+Iteration 26...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5008
+       Max displacement = 1.2855
+Regularization Loss = 0
+Descriptor Loss = 0.2758077
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.8584
+Regularization Loss = 0
+Descriptor Loss = 0.1657857
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 2.3863
+Regularization Loss = 0
+Descriptor Loss = 0.21301078
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5005
+       Max displacement = 3.9482
+Regularization Loss = 0
+Descriptor Loss = 0.44248541
+   
+Total Average Loss = 0.27427239
+
+Iteration 27...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 1.2765
+Regularization Loss = 0
+Descriptor Loss = 0.27554855
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5026
+       Max displacement = 1.8058
+Regularization Loss = 0
+Descriptor Loss = 0.16841693
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5027
+       Max displacement = 2.3618
+Regularization Loss = 0
+Descriptor Loss = 0.21335043
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4983
+       Max displacement = 3.9598
+Regularization Loss = 0
+Descriptor Loss = 0.43688855
+   
+Total Average Loss = 0.27355112
+
+Iteration 28...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4982
+       Max displacement = 1.2723
+Regularization Loss = 0
+Descriptor Loss = 0.28187759
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5008
+       Max displacement = 1.8177
+Regularization Loss = 0
+Descriptor Loss = 0.16551571
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 2.3712
+Regularization Loss = 0
+Descriptor Loss = 0.21492501
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5064
+       Max displacement = 3.7929
+Regularization Loss = 0
+Descriptor Loss = 0.43100895
+   
+Total Average Loss = 0.27333181
+
+Iteration 29...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 1.2891
+Regularization Loss = 0
+Descriptor Loss = 0.29491078
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5028
+       Max displacement = 1.8307
+Regularization Loss = 0
+Descriptor Loss = 0.1519825
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4978
+       Max displacement = 2.4083
+Regularization Loss = 0
+Descriptor Loss = 0.21046227
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5042
+       Max displacement = 3.8102
+Regularization Loss = 0
+Descriptor Loss = 0.4204939
+   
+Total Average Loss = 0.26946236
+
+Iteration 30...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5017
+       Max displacement = 1.2248
+Regularization Loss = 0
+Descriptor Loss = 0.28184323
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5029
+       Max displacement = 1.8291
+Regularization Loss = 0
+Descriptor Loss = 0.15149868
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 2.391
+Regularization Loss = 0
+Descriptor Loss = 0.19906899
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 3.9082
+Regularization Loss = 0
+Descriptor Loss = 0.42571565
+   
+Total Average Loss = 0.26453164
+
+Iteration 31...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 1.2599
+Regularization Loss = 0
+Descriptor Loss = 0.28079341
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 1.8474
+Regularization Loss = 0
+Descriptor Loss = 0.156589
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 2.3718
+Regularization Loss = 0
+Descriptor Loss = 0.20307186
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4951
+       Max displacement = 3.9553
+Regularization Loss = 0
+Descriptor Loss = 0.41000369
+   
+Total Average Loss = 0.26261449
+
+Iteration 32...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5024
+       Max displacement = 1.2722
+Regularization Loss = 0
+Descriptor Loss = 0.31020159
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4972
+       Max displacement = 1.8765
+Regularization Loss = 0
+Descriptor Loss = 0.15421971
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 2.4042
+Regularization Loss = 0
+Descriptor Loss = 0.20830198
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5029
+       Max displacement = 3.8169
+Regularization Loss = 0
+Descriptor Loss = 0.41664366
+   
+Total Average Loss = 0.27234173
+
+Iteration 33...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5055
+       Max displacement = 1.2432
+Regularization Loss = 0
+Descriptor Loss = 0.29665839
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4991
+       Max displacement = 1.8297
+Regularization Loss = 0
+Descriptor Loss = 0.15628731
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4979
+       Max displacement = 2.3939
+Regularization Loss = 0
+Descriptor Loss = 0.2045865
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4999
+       Max displacement = 3.8455
+Regularization Loss = 0
+Descriptor Loss = 0.41026817
+   
+Total Average Loss = 0.26695009
+
+Iteration 34...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4961
+       Max displacement = 1.3075
+Regularization Loss = 0
+Descriptor Loss = 0.31083123
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.8214
+Regularization Loss = 0
+Descriptor Loss = 0.16269759
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 2.3862
+Regularization Loss = 0
+Descriptor Loss = 0.200497
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5033
+       Max displacement = 3.7956
+Regularization Loss = 0
+Descriptor Loss = 0.41524059
+   
+Total Average Loss = 0.2723166
+
+Iteration 35...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.2778
+Regularization Loss = 0
+Descriptor Loss = 0.30647359
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 1.8155
+Regularization Loss = 0
+Descriptor Loss = 0.15781808
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4982
+       Max displacement = 2.3961
+Regularization Loss = 0
+Descriptor Loss = 0.20371128
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4993
+       Max displacement = 3.8955
+Regularization Loss = 0
+Descriptor Loss = 0.413574
+   
+Total Average Loss = 0.27039424
+
+Iteration 36...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4965
+       Max displacement = 1.286
+Regularization Loss = 0
+Descriptor Loss = 0.29754306
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 1.8159
+Regularization Loss = 0
+Descriptor Loss = 0.15620682
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5008
+       Max displacement = 2.3953
+Regularization Loss = 0
+Descriptor Loss = 0.207767
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 3.9074
+Regularization Loss = 0
+Descriptor Loss = 0.41813346
+   
+Total Average Loss = 0.26991259
+
+Iteration 37...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4979
+       Max displacement = 1.2789
+Regularization Loss = 0
+Descriptor Loss = 0.30195514
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 1.8306
+Regularization Loss = 0
+Descriptor Loss = 0.15006629
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.504
+       Max displacement = 2.3532
+Regularization Loss = 0
+Descriptor Loss = 0.19870098
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4987
+       Max displacement = 3.9081
+Regularization Loss = 0
+Descriptor Loss = 0.42062567
+   
+Total Average Loss = 0.26783702
+
+Iteration 38...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 1.2714
+Regularization Loss = 0
+Descriptor Loss = 0.29865523
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4979
+       Max displacement = 1.8336
+Regularization Loss = 0
+Descriptor Loss = 0.15975549
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 2.3969
+Regularization Loss = 0
+Descriptor Loss = 0.20715415
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5043
+       Max displacement = 3.7947
+Regularization Loss = 0
+Descriptor Loss = 0.43031758
+   
+Total Average Loss = 0.27397061
+
+Iteration 39...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4981
+       Max displacement = 1.2822
+Regularization Loss = 0
+Descriptor Loss = 0.30106023
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4984
+       Max displacement = 1.8539
+Regularization Loss = 0
+Descriptor Loss = 0.15286481
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.496
+       Max displacement = 2.4489
+Regularization Loss = 0
+Descriptor Loss = 0.20804986
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5023
+       Max displacement = 3.8528
+Regularization Loss = 0
+Descriptor Loss = 0.43081853
+   
+Total Average Loss = 0.27319836
+
+Iteration 40...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 1.2644
+Regularization Loss = 0
+Descriptor Loss = 0.2943649
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 1.8634
+Regularization Loss = 0
+Descriptor Loss = 0.15193705
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4961
+       Max displacement = 2.4537
+Regularization Loss = 0
+Descriptor Loss = 0.20850038
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5022
+       Max displacement = 3.8615
+Regularization Loss = 0
+Descriptor Loss = 0.43256844
+   
+Total Average Loss = 0.27184269
+
+Iteration 41...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4958
+       Max displacement = 1.2963
+Regularization Loss = 0
+Descriptor Loss = 0.29184807
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 1.8661
+Regularization Loss = 0
+Descriptor Loss = 0.14940629
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 2.4072
+Regularization Loss = 0
+Descriptor Loss = 0.21018972
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 3.9148
+Regularization Loss = 0
+Descriptor Loss = 0.44155357
+   
+Total Average Loss = 0.27324941
+
+Iteration 42...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4975
+       Max displacement = 1.2935
+Regularization Loss = 0
+Descriptor Loss = 0.29109494
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 1.8819
+Regularization Loss = 0
+Descriptor Loss = 0.15202681
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5017
+       Max displacement = 2.3993
+Regularization Loss = 0
+Descriptor Loss = 0.21381949
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 3.9271
+Regularization Loss = 0
+Descriptor Loss = 0.45606403
+   
+Total Average Loss = 0.27825132
+
+Iteration 43...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 1.3195
+Regularization Loss = 0
+Descriptor Loss = 0.31497883
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4986
+       Max displacement = 1.8814
+Regularization Loss = 0
+Descriptor Loss = 0.15111538
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 2.449
+Regularization Loss = 0
+Descriptor Loss = 0.22336247
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5022
+       Max displacement = 3.8985
+Regularization Loss = 0
+Descriptor Loss = 0.4624383
+   
+Total Average Loss = 0.28797375
+
+Iteration 44...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 1.2414
+Regularization Loss = 0
+Descriptor Loss = 0.28333116
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.8831
+Regularization Loss = 0
+Descriptor Loss = 0.15167745
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4952
+       Max displacement = 2.4867
+Regularization Loss = 0
+Descriptor Loss = 0.2315761
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4993
+       Max displacement = 3.9604
+Regularization Loss = 0
+Descriptor Loss = 0.46379859
+   
+Total Average Loss = 0.28259582
+
+Iteration 45...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4984
+       Max displacement = 1.2793
+Regularization Loss = 0
+Descriptor Loss = 0.27565197
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5026
+       Max displacement = 1.8469
+Regularization Loss = 0
+Descriptor Loss = 0.15879547
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5028
+       Max displacement = 2.4134
+Regularization Loss = 0
+Descriptor Loss = 0.23498084
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 3.9052
+Regularization Loss = 0
+Descriptor Loss = 0.46973409
+   
+Total Average Loss = 0.28479059
+
+Iteration 46...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5019
+       Max displacement = 1.2982
+Regularization Loss = 0
+Descriptor Loss = 0.2873202
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 1.8765
+Regularization Loss = 0
+Descriptor Loss = 0.16698254
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4964
+       Max displacement = 2.4867
+Regularization Loss = 0
+Descriptor Loss = 0.23700501
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5034
+       Max displacement = 3.9231
+Regularization Loss = 0
+Descriptor Loss = 0.47944153
+   
+Total Average Loss = 0.29268732
+
+Iteration 47...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.499
+       Max displacement = 1.277
+Regularization Loss = 0
+Descriptor Loss = 0.27290506
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4983
+       Max displacement = 1.8805
+Regularization Loss = 0
+Descriptor Loss = 0.16713986
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5008
+       Max displacement = 2.4114
+Regularization Loss = 0
+Descriptor Loss = 0.22524699
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 3.998
+Regularization Loss = 0
+Descriptor Loss = 0.46833756
+   
+Total Average Loss = 0.28340737
+
+Iteration 48...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5008
+       Max displacement = 1.2803
+Regularization Loss = 0
+Descriptor Loss = 0.27926345
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 1.8704
+Regularization Loss = 0
+Descriptor Loss = 0.17734183
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.499
+       Max displacement = 2.4682
+Regularization Loss = 0
+Descriptor Loss = 0.23302364
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 4.0046
+Regularization Loss = 0
+Descriptor Loss = 0.46650985
+   
+Total Average Loss = 0.28903469
+
+Iteration 49...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5057
+       Max displacement = 1.2308
+Regularization Loss = 0
+Descriptor Loss = 0.26917753
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 1.8554
+Regularization Loss = 0
+Descriptor Loss = 0.17704943
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5042
+       Max displacement = 2.3971
+Regularization Loss = 0
+Descriptor Loss = 0.23700142
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 3.9762
+Regularization Loss = 0
+Descriptor Loss = 0.47115344
+   
+Total Average Loss = 0.28859546
+
+Iteration 50...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.497
+       Max displacement = 1.3206
+Regularization Loss = 0
+Descriptor Loss = 0.2874883
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5036
+       Max displacement = 1.8251
+Regularization Loss = 0
+Descriptor Loss = 0.17834462
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 2.4408
+Regularization Loss = 0
+Descriptor Loss = 0.23046141
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5041
+       Max displacement = 3.8562
+Regularization Loss = 0
+Descriptor Loss = 0.46084675
+   
+Total Average Loss = 0.28928527
+
+Iteration 51...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5053
+       Max displacement = 1.2865
+Regularization Loss = 0
+Descriptor Loss = 0.30356613
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4978
+       Max displacement = 1.8808
+Regularization Loss = 0
+Descriptor Loss = 0.17352096
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4999
+       Max displacement = 2.4431
+Regularization Loss = 0
+Descriptor Loss = 0.2289848
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4963
+       Max displacement = 3.9778
+Regularization Loss = 0
+Descriptor Loss = 0.44449693
+   
+Total Average Loss = 0.28764221
+
+Iteration 52...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4955
+       Max displacement = 1.3053
+Regularization Loss = 0
+Descriptor Loss = 0.28160661
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4961
+       Max displacement = 1.8519
+Regularization Loss = 0
+Descriptor Loss = 0.18675906
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 2.4296
+Regularization Loss = 0
+Descriptor Loss = 0.23230003
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 3.8681
+Regularization Loss = 0
+Descriptor Loss = 0.44302915
+   
+Total Average Loss = 0.28592371
+
+Iteration 53...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4984
+       Max displacement = 1.2889
+Regularization Loss = 0
+Descriptor Loss = 0.28685867
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 1.8651
+Regularization Loss = 0
+Descriptor Loss = 0.17261288
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5026
+       Max displacement = 2.3832
+Regularization Loss = 0
+Descriptor Loss = 0.22559865
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 3.842
+Regularization Loss = 0
+Descriptor Loss = 0.44481229
+   
+Total Average Loss = 0.28247062
+
+Iteration 54...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4968
+       Max displacement = 1.2671
+Regularization Loss = 0
+Descriptor Loss = 0.29261938
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 1.8331
+Regularization Loss = 0
+Descriptor Loss = 0.17148859
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 2.4321
+Regularization Loss = 0
+Descriptor Loss = 0.2249559
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5034
+       Max displacement = 3.8218
+Regularization Loss = 0
+Descriptor Loss = 0.44291516
+   
+Total Average Loss = 0.28299476
+
+Iteration 55...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5035
+       Max displacement = 1.2332
+Regularization Loss = 0
+Descriptor Loss = 0.29296552
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4993
+       Max displacement = 1.8669
+Regularization Loss = 0
+Descriptor Loss = 0.16244988
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.501
+       Max displacement = 2.4002
+Regularization Loss = 0
+Descriptor Loss = 0.21170206
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5051
+       Max displacement = 3.7736
+Regularization Loss = 0
+Descriptor Loss = 0.42902399
+   
+Total Average Loss = 0.27403536
+
+Iteration 56...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.504
+       Max displacement = 1.2493
+Regularization Loss = 0
+Descriptor Loss = 0.31851433
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.496
+       Max displacement = 1.8549
+Regularization Loss = 0
+Descriptor Loss = 0.1699615
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5037
+       Max displacement = 2.3881
+Regularization Loss = 0
+Descriptor Loss = 0.21626233
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.497
+       Max displacement = 3.9196
+Regularization Loss = 0
+Descriptor Loss = 0.41990197
+   
+Total Average Loss = 0.28116003
+
+Iteration 57...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 1.2356
+Regularization Loss = 0
+Descriptor Loss = 0.31710752
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 1.8388
+Regularization Loss = 0
+Descriptor Loss = 0.16019885
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4972
+       Max displacement = 2.45
+Regularization Loss = 0
+Descriptor Loss = 0.2053761
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5044
+       Max displacement = 3.7772
+Regularization Loss = 0
+Descriptor Loss = 0.41939541
+   
+Total Average Loss = 0.27551947
+
+Iteration 58...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4954
+       Max displacement = 1.2646
+Regularization Loss = 0
+Descriptor Loss = 0.32823509
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4999
+       Max displacement = 1.8354
+Regularization Loss = 0
+Descriptor Loss = 0.15818136
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5016
+       Max displacement = 2.4063
+Regularization Loss = 0
+Descriptor Loss = 0.21001525
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 3.8183
+Regularization Loss = 0
+Descriptor Loss = 0.40824739
+   
+Total Average Loss = 0.27616977
+
+Iteration 59...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4962
+       Max displacement = 1.2942
+Regularization Loss = 0
+Descriptor Loss = 0.35818011
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 1.8617
+Regularization Loss = 0
+Descriptor Loss = 0.16115584
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 2.3912
+Regularization Loss = 0
+Descriptor Loss = 0.20278788
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 3.8966
+Regularization Loss = 0
+Descriptor Loss = 0.41757671
+   
+Total Average Loss = 0.28492514
+
+Iteration 60...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5022
+       Max displacement = 1.2229
+Regularization Loss = 0
+Descriptor Loss = 0.34545474
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5025
+       Max displacement = 1.8046
+Regularization Loss = 0
+Descriptor Loss = 0.16207063
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4955
+       Max displacement = 2.4313
+Regularization Loss = 0
+Descriptor Loss = 0.19600705
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5023
+       Max displacement = 3.7555
+Regularization Loss = 0
+Descriptor Loss = 0.38992519
+   
+Total Average Loss = 0.2733644
+
+Iteration 61...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 1.2368
+Regularization Loss = 0
+Descriptor Loss = 0.35705709
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 1.8312
+Regularization Loss = 0
+Descriptor Loss = 0.1579264
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 2.37
+Regularization Loss = 0
+Descriptor Loss = 0.19660393
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4991
+       Max displacement = 3.7895
+Regularization Loss = 0
+Descriptor Loss = 0.399602
+   
+Total Average Loss = 0.27779735
+
+Iteration 62...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5019
+       Max displacement = 1.286
+Regularization Loss = 0
+Descriptor Loss = 0.40439367
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5028
+       Max displacement = 1.8067
+Regularization Loss = 0
+Descriptor Loss = 0.15651063
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4949
+       Max displacement = 2.4449
+Regularization Loss = 0
+Descriptor Loss = 0.19667231
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5003
+       Max displacement = 3.7848
+Regularization Loss = 0
+Descriptor Loss = 0.39330233
+   
+Total Average Loss = 0.28771974
+
+Iteration 63...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.2239
+Regularization Loss = 0
+Descriptor Loss = 0.35767622
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4979
+       Max displacement = 1.8397
+Regularization Loss = 0
+Descriptor Loss = 0.16165984
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 2.3803
+Regularization Loss = 0
+Descriptor Loss = 0.1875243
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4993
+       Max displacement = 3.7858
+Regularization Loss = 0
+Descriptor Loss = 0.39621442
+   
+Total Average Loss = 0.27576869
+
+Iteration 64...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 1.2486
+Regularization Loss = 0
+Descriptor Loss = 0.37210262
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5
+       Max displacement = 1.8208
+Regularization Loss = 0
+Descriptor Loss = 0.16423734
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5024
+       Max displacement = 2.366
+Regularization Loss = 0
+Descriptor Loss = 0.18633566
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4941
+       Max displacement = 3.8741
+Regularization Loss = 0
+Descriptor Loss = 0.38738567
+   
+Total Average Loss = 0.27751532
+
+Iteration 65...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 1.2379
+Regularization Loss = 0
+Descriptor Loss = 0.38010067
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 1.8265
+Regularization Loss = 0
+Descriptor Loss = 0.17264585
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4957
+       Max displacement = 2.4151
+Regularization Loss = 0
+Descriptor Loss = 0.18701169
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 3.7641
+Regularization Loss = 0
+Descriptor Loss = 0.40389374
+   
+Total Average Loss = 0.28591299
+
+Iteration 66...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4948
+       Max displacement = 1.2591
+Regularization Loss = 0
+Descriptor Loss = 0.38729814
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 1.8222
+Regularization Loss = 0
+Descriptor Loss = 0.16608098
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 2.39
+Regularization Loss = 0
+Descriptor Loss = 0.18802884
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5024
+       Max displacement = 3.7146
+Regularization Loss = 0
+Descriptor Loss = 0.39331932
+   
+Total Average Loss = 0.28368182
+
+Iteration 67...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4986
+       Max displacement = 1.2156
+Regularization Loss = 0
+Descriptor Loss = 0.37974949
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 1.8026
+Regularization Loss = 0
+Descriptor Loss = 0.16813595
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4986
+       Max displacement = 2.4028
+Regularization Loss = 0
+Descriptor Loss = 0.18206803
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5051
+       Max displacement = 3.6869
+Regularization Loss = 0
+Descriptor Loss = 0.39911943
+   
+Total Average Loss = 0.28226822
+
+Iteration 68...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 1.2531
+Regularization Loss = 0
+Descriptor Loss = 0.38810328
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4978
+       Max displacement = 1.8249
+Regularization Loss = 0
+Descriptor Loss = 0.17272312
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 2.3999
+Regularization Loss = 0
+Descriptor Loss = 0.18076544
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4981
+       Max displacement = 3.7985
+Regularization Loss = 0
+Descriptor Loss = 0.38226874
+   
+Total Average Loss = 0.28096515
+
+Iteration 69...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.2544
+Regularization Loss = 0
+Descriptor Loss = 0.39706472
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5025
+       Max displacement = 1.7816
+Regularization Loss = 0
+Descriptor Loss = 0.17869657
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 2.3668
+Regularization Loss = 0
+Descriptor Loss = 0.17839564
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 3.7743
+Regularization Loss = 0
+Descriptor Loss = 0.39325958
+   
+Total Average Loss = 0.28685413
+
+Iteration 70...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5021
+       Max displacement = 1.2208
+Regularization Loss = 0
+Descriptor Loss = 0.3951604
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.8216
+Regularization Loss = 0
+Descriptor Loss = 0.16961826
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5008
+       Max displacement = 2.3766
+Regularization Loss = 0
+Descriptor Loss = 0.18086074
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 3.7469
+Regularization Loss = 0
+Descriptor Loss = 0.38100995
+   
+Total Average Loss = 0.28166234
+
+Iteration 71...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4981
+       Max displacement = 1.2405
+Regularization Loss = 0
+Descriptor Loss = 0.39409592
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 1.8191
+Regularization Loss = 0
+Descriptor Loss = 0.17246389
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5009
+       Max displacement = 2.4024
+Regularization Loss = 0
+Descriptor Loss = 0.17653122
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4991
+       Max displacement = 3.7806
+Regularization Loss = 0
+Descriptor Loss = 0.37926904
+   
+Total Average Loss = 0.28059002
+
+Iteration 72...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5034
+       Max displacement = 1.2522
+Regularization Loss = 0
+Descriptor Loss = 0.41804643
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4987
+       Max displacement = 1.8179
+Regularization Loss = 0
+Descriptor Loss = 0.1682183
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 2.3906
+Regularization Loss = 0
+Descriptor Loss = 0.17286791
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5026
+       Max displacement = 3.7493
+Regularization Loss = 0
+Descriptor Loss = 0.36441656
+   
+Total Average Loss = 0.2808873
+
+Iteration 73...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4986
+       Max displacement = 1.2654
+Regularization Loss = 0
+Descriptor Loss = 0.41255622
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4954
+       Max displacement = 1.8628
+Regularization Loss = 0
+Descriptor Loss = 0.15966059
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.508
+       Max displacement = 2.3188
+Regularization Loss = 0
+Descriptor Loss = 0.17761878
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4974
+       Max displacement = 3.8515
+Regularization Loss = 0
+Descriptor Loss = 0.3625894
+   
+Total Average Loss = 0.27810625
+
+Iteration 74...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 1.2312
+Regularization Loss = 0
+Descriptor Loss = 0.40307605
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 1.8348
+Regularization Loss = 0
+Descriptor Loss = 0.14726997
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 2.4181
+Regularization Loss = 0
+Descriptor Loss = 0.17654764
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4963
+       Max displacement = 3.9045
+Regularization Loss = 0
+Descriptor Loss = 0.36303505
+   
+Total Average Loss = 0.27248218
+
+Iteration 75...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5036
+       Max displacement = 1.2456
+Regularization Loss = 0
+Descriptor Loss = 0.4069417
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 1.8429
+Regularization Loss = 0
+Descriptor Loss = 0.15670328
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5015
+       Max displacement = 2.3969
+Regularization Loss = 0
+Descriptor Loss = 0.18046608
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4955
+       Max displacement = 3.9275
+Regularization Loss = 0
+Descriptor Loss = 0.36207788
+   
+Total Average Loss = 0.27654724
+
+Iteration 76...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5007
+       Max displacement = 1.2788
+Regularization Loss = 0
+Descriptor Loss = 0.42190818
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.8539
+Regularization Loss = 0
+Descriptor Loss = 0.1509561
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5016
+       Max displacement = 2.4253
+Regularization Loss = 0
+Descriptor Loss = 0.18193969
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4984
+       Max displacement = 3.8965
+Regularization Loss = 0
+Descriptor Loss = 0.36177512
+   
+Total Average Loss = 0.27914477
+
+Iteration 77...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4962
+       Max displacement = 1.2657
+Regularization Loss = 0
+Descriptor Loss = 0.38969887
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.8515
+Regularization Loss = 0
+Descriptor Loss = 0.15168751
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 2.4661
+Regularization Loss = 0
+Descriptor Loss = 0.18763904
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4987
+       Max displacement = 3.9014
+Regularization Loss = 0
+Descriptor Loss = 0.37962736
+   
+Total Average Loss = 0.27716319
+
+Iteration 78...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5025
+       Max displacement = 1.2392
+Regularization Loss = 0
+Descriptor Loss = 0.38314066
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4982
+       Max displacement = 1.8615
+Regularization Loss = 0
+Descriptor Loss = 0.1525456
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5035
+       Max displacement = 2.411
+Regularization Loss = 0
+Descriptor Loss = 0.19056852
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5006
+       Max displacement = 3.8944
+Regularization Loss = 0
+Descriptor Loss = 0.39026309
+   
+Total Average Loss = 0.27912947
+
+Iteration 79...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5017
+       Max displacement = 1.26
+Regularization Loss = 0
+Descriptor Loss = 0.38112739
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4979
+       Max displacement = 1.8579
+Regularization Loss = 0
+Descriptor Loss = 0.1495777
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4985
+       Max displacement = 2.4834
+Regularization Loss = 0
+Descriptor Loss = 0.19386736
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 3.9317
+Regularization Loss = 0
+Descriptor Loss = 0.39338733
+   
+Total Average Loss = 0.27948994
+
+Iteration 80...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 1.2752
+Regularization Loss = 0
+Descriptor Loss = 0.37816486
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5031
+       Max displacement = 1.8292
+Regularization Loss = 0
+Descriptor Loss = 0.15180129
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4983
+       Max displacement = 2.4832
+Regularization Loss = 0
+Descriptor Loss = 0.20448537
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5022
+       Max displacement = 3.8704
+Regularization Loss = 0
+Descriptor Loss = 0.3919965
+   
+Total Average Loss = 0.28161201
+
+Iteration 81...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 1.2457
+Regularization Loss = 0
+Descriptor Loss = 0.35703513
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 1.8124
+Regularization Loss = 0
+Descriptor Loss = 0.16078467
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5009
+       Max displacement = 2.4661
+Regularization Loss = 0
+Descriptor Loss = 0.20522878
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5006
+       Max displacement = 3.9188
+Regularization Loss = 0
+Descriptor Loss = 0.41267499
+   
+Total Average Loss = 0.28393089
+
+Iteration 82...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5025
+       Max displacement = 1.2408
+Regularization Loss = 0
+Descriptor Loss = 0.35079816
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5069
+       Max displacement = 1.8077
+Regularization Loss = 0
+Descriptor Loss = 0.1519816
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4975
+       Max displacement = 2.503
+Regularization Loss = 0
+Descriptor Loss = 0.21499219
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5039
+       Max displacement = 3.8735
+Regularization Loss = 0
+Descriptor Loss = 0.42294011
+   
+Total Average Loss = 0.28517802
+
+Iteration 83...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5021
+       Max displacement = 1.2637
+Regularization Loss = 0
+Descriptor Loss = 0.35296396
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4975
+       Max displacement = 1.9037
+Regularization Loss = 0
+Descriptor Loss = 0.14705505
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 2.4889
+Regularization Loss = 0
+Descriptor Loss = 0.22030262
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5041
+       Max displacement = 3.8583
+Regularization Loss = 0
+Descriptor Loss = 0.4290049
+   
+Total Average Loss = 0.28733163
+
+Iteration 84...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5042
+       Max displacement = 1.2641
+Regularization Loss = 0
+Descriptor Loss = 0.35849351
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 1.8427
+Regularization Loss = 0
+Descriptor Loss = 0.15740679
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 2.4556
+Regularization Loss = 0
+Descriptor Loss = 0.22241482
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5047
+       Max displacement = 3.8543
+Regularization Loss = 0
+Descriptor Loss = 0.42943323
+   
+Total Average Loss = 0.29193709
+
+Iteration 85...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 1.2949
+Regularization Loss = 0
+Descriptor Loss = 0.36199131
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5
+       Max displacement = 1.8746
+Regularization Loss = 0
+Descriptor Loss = 0.15588356
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 2.467
+Regularization Loss = 0
+Descriptor Loss = 0.22188564
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5026
+       Max displacement = 3.8799
+Regularization Loss = 0
+Descriptor Loss = 0.42631835
+   
+Total Average Loss = 0.29151971
+
+Iteration 86...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 1.2693
+Regularization Loss = 0
+Descriptor Loss = 0.33960138
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 1.8498
+Regularization Loss = 0
+Descriptor Loss = 0.15595904
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 2.4949
+Regularization Loss = 0
+Descriptor Loss = 0.21605408
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.499
+       Max displacement = 3.9543
+Regularization Loss = 0
+Descriptor Loss = 0.43613355
+   
+Total Average Loss = 0.28693701
+
+Iteration 87...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4985
+       Max displacement = 1.2712
+Regularization Loss = 0
+Descriptor Loss = 0.33788938
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4965
+       Max displacement = 1.8922
+Regularization Loss = 0
+Descriptor Loss = 0.15848327
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 2.4918
+Regularization Loss = 0
+Descriptor Loss = 0.22141486
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 3.8695
+Regularization Loss = 0
+Descriptor Loss = 0.43886706
+   
+Total Average Loss = 0.28916364
+
+Iteration 88...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 1.2296
+Regularization Loss = 0
+Descriptor Loss = 0.33200709
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5006
+       Max displacement = 1.8529
+Regularization Loss = 0
+Descriptor Loss = 0.16477334
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4978
+       Max displacement = 2.5117
+Regularization Loss = 0
+Descriptor Loss = 0.22746806
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5009
+       Max displacement = 3.9248
+Regularization Loss = 0
+Descriptor Loss = 0.43757511
+   
+Total Average Loss = 0.2904559
+
+Iteration 89...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.501
+       Max displacement = 1.2866
+Regularization Loss = 0
+Descriptor Loss = 0.3567415
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4949
+       Max displacement = 1.919
+Regularization Loss = 0
+Descriptor Loss = 0.15570689
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5007
+       Max displacement = 2.4915
+Regularization Loss = 0
+Descriptor Loss = 0.21969098
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.495
+       Max displacement = 4.0408
+Regularization Loss = 0
+Descriptor Loss = 0.43390228
+   
+Total Average Loss = 0.29151041
+
+Iteration 90...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5005
+       Max displacement = 1.303
+Regularization Loss = 0
+Descriptor Loss = 0.37613378
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 1.8477
+Regularization Loss = 0
+Descriptor Loss = 0.16295362
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5022
+       Max displacement = 2.4522
+Regularization Loss = 0
+Descriptor Loss = 0.2068353
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5006
+       Max displacement = 3.8854
+Regularization Loss = 0
+Descriptor Loss = 0.42920613
+   
+Total Average Loss = 0.29378221
+
+Iteration 91...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5035
+       Max displacement = 1.2466
+Regularization Loss = 0
+Descriptor Loss = 0.3479056
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4952
+       Max displacement = 1.893
+Regularization Loss = 0
+Descriptor Loss = 0.15966464
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4987
+       Max displacement = 2.4876
+Regularization Loss = 0
+Descriptor Loss = 0.20548459
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4985
+       Max displacement = 3.9214
+Regularization Loss = 0
+Descriptor Loss = 0.42314585
+   
+Total Average Loss = 0.28405017
+
+Iteration 92...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5
+       Max displacement = 1.2643
+Regularization Loss = 0
+Descriptor Loss = 0.36089389
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4984
+       Max displacement = 1.8663
+Regularization Loss = 0
+Descriptor Loss = 0.1593114
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5029
+       Max displacement = 2.4466
+Regularization Loss = 0
+Descriptor Loss = 0.20460193
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4975
+       Max displacement = 3.924
+Regularization Loss = 0
+Descriptor Loss = 0.42000143
+   
+Total Average Loss = 0.28620216
+
+Iteration 93...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 1.3013
+Regularization Loss = 0
+Descriptor Loss = 0.39989859
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5003
+       Max displacement = 1.843
+Regularization Loss = 0
+Descriptor Loss = 0.16055536
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4968
+       Max displacement = 2.5261
+Regularization Loss = 0
+Descriptor Loss = 0.21214471
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5039
+       Max displacement = 3.7903
+Regularization Loss = 0
+Descriptor Loss = 0.42480359
+   
+Total Average Loss = 0.29935056
+
+Iteration 94...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 1.3059
+Regularization Loss = 0
+Descriptor Loss = 0.40020323
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4986
+       Max displacement = 1.8641
+Regularization Loss = 0
+Descriptor Loss = 0.15441593
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5006
+       Max displacement = 2.4664
+Regularization Loss = 0
+Descriptor Loss = 0.19952868
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4984
+       Max displacement = 3.8919
+Regularization Loss = 0
+Descriptor Loss = 0.41810578
+   
+Total Average Loss = 0.29306341
+
+Iteration 95...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 1.2858
+Regularization Loss = 0
+Descriptor Loss = 0.40908113
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5054
+       Max displacement = 1.7895
+Regularization Loss = 0
+Descriptor Loss = 0.15476162
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5032
+       Max displacement = 2.4415
+Regularization Loss = 0
+Descriptor Loss = 0.20371125
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4985
+       Max displacement = 3.8782
+Regularization Loss = 0
+Descriptor Loss = 0.39992555
+   
+Total Average Loss = 0.29186989
+
+Iteration 96...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 1.2255
+Regularization Loss = 0
+Descriptor Loss = 0.37600712
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4966
+       Max displacement = 1.8527
+Regularization Loss = 0
+Descriptor Loss = 0.16592785
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 2.4491
+Regularization Loss = 0
+Descriptor Loss = 0.19236281
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 3.8234
+Regularization Loss = 0
+Descriptor Loss = 0.39565696
+   
+Total Average Loss = 0.28248869
+
+Iteration 97...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4959
+       Max displacement = 1.2945
+Regularization Loss = 0
+Descriptor Loss = 0.4036521
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 1.8323
+Regularization Loss = 0
+Descriptor Loss = 0.15692422
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 2.4586
+Regularization Loss = 0
+Descriptor Loss = 0.19303925
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5003
+       Max displacement = 3.8423
+Regularization Loss = 0
+Descriptor Loss = 0.39717622
+   
+Total Average Loss = 0.28769795
+
+Iteration 98...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5019
+       Max displacement = 1.2148
+Regularization Loss = 0
+Descriptor Loss = 0.39393269
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4956
+       Max displacement = 1.8842
+Regularization Loss = 0
+Descriptor Loss = 0.15668389
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 2.4335
+Regularization Loss = 0
+Descriptor Loss = 0.19507567
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 3.8761
+Regularization Loss = 0
+Descriptor Loss = 0.38645869
+   
+Total Average Loss = 0.28303773
+
+Iteration 99...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.2365
+Regularization Loss = 0
+Descriptor Loss = 0.39595985
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 1.8056
+Regularization Loss = 0
+Descriptor Loss = 0.17039298
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5012
+       Max displacement = 2.4379
+Regularization Loss = 0
+Descriptor Loss = 0.18898313
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5011
+       Max displacement = 3.7821
+Regularization Loss = 0
+Descriptor Loss = 0.37574434
+   
+Total Average Loss = 0.28277007
+
+Iteration 100...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.499
+       Max displacement = 1.2392
+Regularization Loss = 0
+Descriptor Loss = 0.40949174
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5007
+       Max displacement = 1.7958
+Regularization Loss = 0
+Descriptor Loss = 0.1758661
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4975
+       Max displacement = 2.4723
+Regularization Loss = 0
+Descriptor Loss = 0.18535714
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5047
+       Max displacement = 3.717
+Regularization Loss = 0
+Descriptor Loss = 0.39028326
+   
+Total Average Loss = 0.29024956
+The training is finished!
+Stopping at: 2023-02-10T09:02:45.751
+
+Walltime: 9 hours, 56 minutes, 49 seconds, 690 milliseconds
