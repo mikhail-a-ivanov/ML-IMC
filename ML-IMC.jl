@@ -23,7 +23,9 @@ function main()
     globalParms, MCParms, NNParms, preTrainParms, systemParmsList = parametersInit()
 
     # Check if the number of workers is divisble by the number of ref systems
-    @assert nworkers() % length(systemParmsList) == 0
+    @assert(nworkers() % length(systemParmsList) == 0,
+        "Number of requested CPU cores ($(nworkers())) " * 
+        "must be divisible by the number of systems ($(length(systemParmsList)))!")
 
     # Initialize the input data
     inputs = inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
@@ -79,7 +81,8 @@ function main()
         println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
         train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     else
-        @assert length(systemParmsList) == 1
+        @assert(length(systemParmsList) == 1, 
+            "Only one system at a time can be simulated!")
         println("Running simulation with $(globalParms.modelFile)")
         # Run the simulation
         simulate!(model, globalParms, MCParms, NNParms, systemParmsList[1])

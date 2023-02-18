@@ -239,7 +239,7 @@ function parametersInit()
         inputname = ARGS[1]
     else
         println("No input file was provided!")
-        println("Trying to read input data from 'ML-IMC-init.in ...'")
+        println("Trying to read input data from ML-IMC-init.in")
         inputname = "ML-IMC-init.in"
         checkfile(inputname)
     end
