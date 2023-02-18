@@ -235,9 +235,15 @@ parameter structs
 """
 function parametersInit()
     # Read the input name from the command line argument
-    inputname = ARGS[1]
-    #inputname = "ML-IMC-init.in"
-
+    if length(ARGS) > 0 
+        inputname = ARGS[1]
+    else
+        println("No input file was provided!")
+        println("Trying to read input data from 'ML-IMC-init.in ...'")
+        inputname = "ML-IMC-init.in"
+        checkfile(inputname)
+    end
+        
     # Constants
     NA::Float64 = 6.02214076 # [mol-1] * 10^-23
     kB::Float64 = 1.38064852 * NA / 1000 # [kJ/(mol*K)]

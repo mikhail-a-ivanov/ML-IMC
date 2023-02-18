@@ -30,7 +30,11 @@ Computes a single exponent
 of the G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function computeG2Element(distance, eta, rcutoff, rshift)::Float64
-    return (exp(-eta * (distance - rshift)^2) * distanceCutoff(distance, rcutoff))
+    if distance > 0.0
+        return exp(-eta * (distance - rshift)^2) * distanceCutoff(distance, rcutoff)
+    else
+        return 0.0
+    end
 end
 
 """

@@ -17,13 +17,13 @@ G2 4.000 7.0 6.50
 
 # G3 symmetry functions (narrow angular symmetry)
 # G3 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
-# G3 0.001  1.0 1.0 4.0 0.0
-# G3 0.001 -1.0 1.0 4.0 0.0
+#G3 0.001  1.0 1.0 5.0 0.0
+#G3 0.001 -1.0 1.0 5.0 0.0
 
 # G9 symmetry functions (wide angular symmetry)
 # G9 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
-# G9 0.010  1.0 1.0 4.0 0.0
-# G9 0.010 -1.0 1.0 4.0 0.0
+#G9 0.001  1.0 1.0 5.0 0.0
+#G9 0.001 -1.0 1.0 5.0 0.0
 
 ### Symmetry function scaling factor (scaling = 1.0: no scaling)
 scaling = 1.0
