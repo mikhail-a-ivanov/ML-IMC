@@ -237,11 +237,14 @@ function parametersInit()
     # Read the input name from the command line argument
     if length(ARGS) > 0 
         inputname = ARGS[1]
-    else
+    # Check if no input file is provided
+    # or if ML-IMC is started from jupyter
+    # in the latter case the first argument has "json" extension
+    end
+    if length(ARGS) == 0 || occursin("json", ARGS[1])
         println("No input file was provided!")
         println("Trying to read input data from ML-IMC-init.in")
         inputname = "ML-IMC-init.in"
-        checkfile(inputname)
     end
         
     # Constants
