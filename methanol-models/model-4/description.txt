@@ -8,8 +8,7 @@ Model outline:
 
 Training procedure:
 1. Trained according to "ML-IMC-init-training.in".
-2. Post-training starts from "methanol-NN-2/random-model-1/model-iter-10.bson" (iteration 10 of the main training)
-according to "ML-IMC-init-posttraining.in".
+2. The final model is taken after 10th iteration (methanol-NN-2/random-model-1/model-iter-10.bson)
 
 Model performance:
    System 100CH3OH-CG:
