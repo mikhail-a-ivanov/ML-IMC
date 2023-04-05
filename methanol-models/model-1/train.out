@@ -1,0 +1,5453 @@
+      From worker 6:	┌ Error: No CUDA-capable device found
+      From worker 6:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 11:	┌ Error: No CUDA-capable device found
+      From worker 11:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 10:	┌ Error: No CUDA-capable device found
+      From worker 10:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 4:	┌ Error: No CUDA-capable device found
+      From worker 4:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 16:	┌ Error: No CUDA-capable device found
+      From worker 16:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 5:	┌ Error: No CUDA-capable device found
+      From worker 5:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 3:	┌ Error: No CUDA-capable device found
+      From worker 3:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 8:	┌ Error: No CUDA-capable device found
+      From worker 8:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 14:	┌ Error: No CUDA-capable device found
+      From worker 14:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 17:	┌ Error: No CUDA-capable device found
+      From worker 17:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 12:	┌ Error: No CUDA-capable device found
+      From worker 12:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 13:	┌ Error: No CUDA-capable device found
+      From worker 13:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 9:	┌ Error: No CUDA-capable device found
+      From worker 9:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 2:	┌ Error: No CUDA-capable device found
+      From worker 2:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 7:	┌ Error: No CUDA-capable device found
+      From worker 7:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+      From worker 15:	┌ Error: No CUDA-capable device found
+      From worker 15:	└ @ CUDA ~/.julia/packages/CUDA/ZdCxS/src/initialization.jl:92
+Starting at: 2023-02-09T21:54:47.262
+Running ML-IMC in the training mode.
+Initializing a new neural network with random weigths
+Building a model...
+Chain(Dense(6 => 40; bias=false), Dense(40 => 40, relu; bias=false), Dense(40 => 40, relu; bias=false), Dense(40 => 1; bias=false))
+   Number of layers: 5 
+   Number of neurons in each layer: [6, 40, 40, 40, 1]
+Using the following symmetry functions as the neural input for each atom:
+    G2 symmetry functions:
+    eta, Å^-2; rcutoff, Å; rshift, Å
+       G2(0.125, 7.0, 0.0)
+       G2(2.0, 7.0, 3.0)
+       G2(2.0, 7.0, 3.4)
+       G2(2.0, 7.0, 3.85)
+       G2(2.0, 7.0, 4.55)
+       G2(2.0, 7.0, 5.5)
+Maximum cutoff distance: 7.0 Å
+Symmetry function scaling parameter: 1.0
+Training a model using 4 reference system(s)
+Using the following activation functions: ["identity", "relu", "relu", "identity"]
+
+Running 25000 steps of pre-training Monte-Carlo...
+
+Neural network regularization parameter: 0.0
+Optimizer type: AMSGrad
+   Parameters:
+       Learning rate: 0.0005
+       Decays: (0.9, 0.999)
+      From worker 4:	Pre-computing distances and symmetry function matrices for 60CH3OH-CG...
+      From worker 6:	Pre-computing distances and symmetry function matrices for 20CH3OH-CG...
+      From worker 3:	Pre-computing distances and symmetry function matrices for 100CH3OH-CG...
+      From worker 5:	Pre-computing distances and symmetry function matrices for 40CH3OH-CG...
+
+Step 1...
+
+   Energy loss: 0.132
+   PMF energy difference: 0.3316
+   NN energy difference: -0.0316
+   Regularization loss: 0.0
+   Energy loss: 0.0009
+   PMF energy difference: 0.0808
+   NN energy difference: 0.0509
+   Regularization loss: 0.0
+   Energy loss: 0.0717
+   PMF energy difference: -0.2949
+   NN energy difference: -0.0271
+   Regularization loss: 0.0
+   Energy loss: 4769.8345
+   PMF energy difference: 69.0768
+   NN energy difference: 0.0128
+   Regularization loss: 0.0
+
+Step 100...
+
+   Energy loss: 0.925
+   PMF energy difference: 1.1627
+   NN energy difference: 0.2009
+   Regularization loss: 0.0
+   Energy loss: 1.161
+   PMF energy difference: 2.442
+   NN energy difference: 3.5195
+   Regularization loss: 0.0
+   Energy loss: 48.787
+   PMF energy difference: -1.7562
+   NN energy difference: -8.7409
+   Regularization loss: 0.0
+   Energy loss: 1.1073
+   PMF energy difference: 0.1088
+   NN energy difference: 1.1611
+   Regularization loss: 0.0
+
+Step 200...
+
+   Energy loss: 32.7268
+   PMF energy difference: -0.6613
+   NN energy difference: 5.0594
+   Regularization loss: 0.0
+   Energy loss: 0.707
+   PMF energy difference: 8.8116
+   NN energy difference: 9.6525
+   Regularization loss: 0.0
+   Energy loss: 7.8555
+   PMF energy difference: -0.7581
+   NN energy difference: 2.0447
+   Regularization loss: 0.0
+   Energy loss: 1.0034
+   PMF energy difference: 2.654
+   NN energy difference: 1.6523
+   Regularization loss: 0.0
+
+Step 300...
+
+   Energy loss: 7.9947
+   PMF energy difference: 14.5724
+   NN energy difference: 11.7449
+   Regularization loss: 0.0
+   Energy loss: 112.3457
+   PMF energy difference: 0.8927
+   NN energy difference: 11.4921
+   Regularization loss: 0.0
+   Energy loss: 6.0759
+   PMF energy difference: -1.2129
+   NN energy difference: -3.6778
+   Regularization loss: 0.0
+   Energy loss: 1.1959
+   PMF energy difference: -2.4587
+   NN energy difference: -3.5522
+   Regularization loss: 0.0
+
+Step 400...
+
+   Energy loss: 1.3083
+   PMF energy difference: 1.692
+   NN energy difference: 0.5482
+   Regularization loss: 0.0
+   Energy loss: 3.3776
+   PMF energy difference: -3.1726
+   NN energy difference: -1.3348
+   Regularization loss: 0.0
+   Energy loss: 7.1361
+   PMF energy difference: 3.4895
+   NN energy difference: 6.1609
+   Regularization loss: 0.0
+   Energy loss: 0.8302
+   PMF energy difference: 2.6674
+   NN energy difference: 1.7563
+   Regularization loss: 0.0
+
+Step 500...
+
+   Energy loss: 0.0258
+   PMF energy difference: -0.2936
+   NN energy difference: -0.1331
+   Regularization loss: 0.0
+   Energy loss: 55.1191
+   PMF energy difference: 3.3057
+   NN energy difference: -4.1185
+   Regularization loss: 0.0
+   Energy loss: 36.6855
+   PMF energy difference: 2.7192
+   NN energy difference: -3.3377
+   Regularization loss: 0.0
+   Energy loss: 2.4969
+   PMF energy difference: 2.2893
+   NN energy difference: 0.7091
+   Regularization loss: 0.0
+
+Step 600...
+
+   Energy loss: 0.108
+   PMF energy difference: -1.2601
+   NN energy difference: -0.9315
+   Regularization loss: 0.0
+   Energy loss: 40.1872
+   PMF energy difference: -3.9021
+   NN energy difference: -10.2414
+   Regularization loss: 0.0
+   Energy loss: 1.61
+   PMF energy difference: 9.2034
+   NN energy difference: 7.9346
+   Regularization loss: 0.0
+   Energy loss: 0.9134
+   PMF energy difference: 0.2908
+   NN energy difference: -0.6649
+   Regularization loss: 0.0
+
+Step 700...
+
+   Energy loss: 18.9996
+   PMF energy difference: -1.2845
+   NN energy difference: -5.6433
+   Regularization loss: 0.0
+   Energy loss: 9.1626
+   PMF energy difference: 1.4738
+   NN energy difference: 4.5008
+   Regularization loss: 0.0
+   Energy loss: 5.8485
+   PMF energy difference: -2.4744
+   NN energy difference: -0.0561
+   Regularization loss: 0.0
+   Energy loss: 0.0023
+   PMF energy difference: 0.8802
+   NN energy difference: 0.8327
+   Regularization loss: 0.0
+
+Step 800...
+
+   Energy loss: 5.996
+   PMF energy difference: 0.3994
+   NN energy difference: 2.8481
+   Regularization loss: 0.0
+   Energy loss: 2.2274
+   PMF energy difference: -0.647
+   NN energy difference: 0.8454
+   Regularization loss: 0.0
+   Energy loss: 1.4154
+   PMF energy difference: -2.2056
+   NN energy difference: -1.0159
+   Regularization loss: 0.0
+   Energy loss: 10.0999
+   PMF energy difference: 0.9884
+   NN energy difference: -2.1897
+   Regularization loss: 0.0
+
+Step 900...
+
+   Energy loss: 16.7066
+   PMF energy difference: 2.0072
+   NN energy difference: 6.0946
+   Regularization loss: 0.0
+   Energy loss: 13.6543
+   PMF energy difference: 19.7152
+   NN energy difference: 16.0201
+   Regularization loss: 0.0
+   Energy loss: 0.2501
+   PMF energy difference: -3.2395
+   NN energy difference: -2.7394
+   Regularization loss: 0.0
+   Energy loss: 0.7489
+   PMF energy difference: 1.9421
+   NN energy difference: 1.0767
+   Regularization loss: 0.0
+
+Step 1000...
+
+   Energy loss: 7.8812
+   PMF energy difference: -0.1001
+   NN energy difference: -2.9074
+   Regularization loss: 0.0
+   Energy loss: 27.9935
+   PMF energy difference: 3.3244
+   NN energy difference: 8.6153
+   Regularization loss: 0.0
+   Energy loss: 0.3381
+   PMF energy difference: 3.2573
+   NN energy difference: 3.8388
+   Regularization loss: 0.0
+   Energy loss: 0.0827
+   PMF energy difference: 7.2522
+   NN energy difference: 7.5398
+   Regularization loss: 0.0
+
+Step 1100...
+
+   Energy loss: 1.3317
+   PMF energy difference: -0.9265
+   NN energy difference: 0.2275
+   Regularization loss: 0.0
+   Energy loss: 0.3119
+   PMF energy difference: 2.5112
+   NN energy difference: 1.9528
+   Regularization loss: 0.0
+   Energy loss: 14.4344
+   PMF energy difference: 2.3861
+   NN energy difference: -1.4132
+   Regularization loss: 0.0
+   Energy loss: 1.9456
+   PMF energy difference: -0.8331
+   NN energy difference: 0.5617
+   Regularization loss: 0.0
+
+Step 1200...
+
+   Energy loss: 1.3735
+   PMF energy difference: 11.7002
+   NN energy difference: 12.8722
+   Regularization loss: 0.0
+   Energy loss: 5.8786
+   PMF energy difference: 41.2153
+   NN energy difference: 38.7907
+   Regularization loss: 0.0
+   Energy loss: 5.6716
+   PMF energy difference: 0.5402
+   NN energy difference: -1.8413
+   Regularization loss: 0.0
+   Energy loss: 33.0853
+   PMF energy difference: 5.1498
+   NN energy difference: -0.6022
+   Regularization loss: 0.0
+
+Step 1300...
+
+   Energy loss: 0.0864
+   PMF energy difference: -0.8496
+   NN energy difference: -1.1436
+   Regularization loss: 0.0
+   Energy loss: 0.0229
+   PMF energy difference: 0.9911
+   NN energy difference: 1.1423
+   Regularization loss: 0.0
+   Energy loss: 7.0327
+   PMF energy difference: -1.1039
+   NN energy difference: 1.548
+   Regularization loss: 0.0
+   Energy loss: 4.0966
+   PMF energy difference: 13.3416
+   NN energy difference: 15.3656
+   Regularization loss: 0.0
+
+Step 1400...
+
+   Energy loss: 11.1027
+   PMF energy difference: -2.4209
+   NN energy difference: 0.9112
+   Regularization loss: 0.0
+   Energy loss: 0.6994
+   PMF energy difference: -0.2251
+   NN energy difference: -1.0615
+   Regularization loss: 0.0
+   Energy loss: 1.3282
+   PMF energy difference: 1.194
+   NN energy difference: 2.3465
+   Regularization loss: 0.0
+   Energy loss: 0.1303
+   PMF energy difference: 1.7023
+   NN energy difference: 1.3413
+   Regularization loss: 0.0
+
+Step 1500...
+
+   Energy loss: 5.9182
+   PMF energy difference: 3.7863
+   NN energy difference: 1.3536
+   Regularization loss: 0.0
+   Energy loss: 2.0578
+   PMF energy difference: 1.8922
+   NN energy difference: 0.4577
+   Regularization loss: 0.0
+   Energy loss: 9.84
+   PMF energy difference: 7.0921
+   NN energy difference: 10.2289
+   Regularization loss: 0.0
+   Energy loss: 1.4633
+   PMF energy difference: 1.3456
+   NN energy difference: 0.136
+   Regularization loss: 0.0
+
+Step 1600...
+
+   Energy loss: 0.1311
+   PMF energy difference: -3.3466
+   NN energy difference: -3.7087
+   Regularization loss: 0.0
+   Energy loss: 7.1774
+   PMF energy difference: 37.5947
+   NN energy difference: 34.9156
+   Regularization loss: 0.0
+   Energy loss: 3.5776
+   PMF energy difference: 14.6442
+   NN energy difference: 12.7528
+   Regularization loss: 0.0
+   Energy loss: 1.1392
+   PMF energy difference: -3.8292
+   NN energy difference: -4.8966
+   Regularization loss: 0.0
+
+Step 1700...
+
+   Energy loss: 14.6736
+   PMF energy difference: 18.1481
+   NN energy difference: 14.3175
+   Regularization loss: 0.0
+   Energy loss: 1.5201
+   PMF energy difference: 0.6891
+   NN energy difference: -0.5438
+   Regularization loss: 0.0
+   Energy loss: 0.0357
+   PMF energy difference: 0.5405
+   NN energy difference: 0.7294
+   Regularization loss: 0.0
+   Energy loss: 0.3424
+   PMF energy difference: 0.7893
+   NN energy difference: 0.2041
+   Regularization loss: 0.0
+
+Step 1800...
+
+   Energy loss: 0.0262
+   PMF energy difference: -1.2679
+   NN energy difference: -1.4297
+   Regularization loss: 0.0
+   Energy loss: 1.4758
+   PMF energy difference: 1.0683
+   NN energy difference: -0.1465
+   Regularization loss: 0.0
+   Energy loss: 14.5361
+   PMF energy difference: 3.4827
+   NN energy difference: -0.3299
+   Regularization loss: 0.0
+   Energy loss: 0.3271
+   PMF energy difference: 0.3143
+   NN energy difference: 0.8863
+   Regularization loss: 0.0
+
+Step 1900...
+
+   Energy loss: 4.3059
+   PMF energy difference: 29.0017
+   NN energy difference: 26.9266
+   Regularization loss: 0.0
+   Energy loss: 3.9785
+   PMF energy difference: 40.1978
+   NN energy difference: 38.2031
+   Regularization loss: 0.0
+   Energy loss: 4.6086
+   PMF energy difference: -0.0077
+   NN energy difference: 2.1391
+   Regularization loss: 0.0
+   Energy loss: 0.7201
+   PMF energy difference: 1.4785
+   NN energy difference: 2.327
+   Regularization loss: 0.0
+
+Step 2000...
+
+   Energy loss: 18.6119
+   PMF energy difference: 20.7507
+   NN energy difference: 16.4366
+   Regularization loss: 0.0
+   Energy loss: 3.3887
+   PMF energy difference: -0.0015
+   NN energy difference: 1.8394
+   Regularization loss: 0.0
+   Energy loss: 0.3083
+   PMF energy difference: 0.1664
+   NN energy difference: 0.7217
+   Regularization loss: 0.0
+   Energy loss: 0.3078
+   PMF energy difference: -1.5803
+   NN energy difference: -1.0255
+   Regularization loss: 0.0
+
+Step 2100...
+
+   Energy loss: 8.1286
+   PMF energy difference: 14.7263
+   NN energy difference: 17.5774
+   Regularization loss: 0.0
+   Energy loss: 0.0485
+   PMF energy difference: -4.1014
+   NN energy difference: -3.8812
+   Regularization loss: 0.0
+   Energy loss: 0.1227
+   PMF energy difference: -1.9088
+   NN energy difference: -1.5585
+   Regularization loss: 0.0
+   Energy loss: 2.1441
+   PMF energy difference: 0.5383
+   NN energy difference: -0.926
+   Regularization loss: 0.0
+
+Step 2200...
+
+   Energy loss: 0.1163
+   PMF energy difference: 0.5537
+   NN energy difference: 0.2126
+   Regularization loss: 0.0
+   Energy loss: 0.0127
+   PMF energy difference: 1.4229
+   NN energy difference: 1.3103
+   Regularization loss: 0.0
+   Energy loss: 0.3347
+   PMF energy difference: 19.8864
+   NN energy difference: 19.3078
+   Regularization loss: 0.0
+   Energy loss: 1.7512
+   PMF energy difference: -1.7799
+   NN energy difference: -0.4566
+   Regularization loss: 0.0
+
+Step 2300...
+
+   Energy loss: 6.1241
+   PMF energy difference: -0.6006
+   NN energy difference: 1.8741
+   Regularization loss: 0.0
+   Energy loss: 3.0813
+   PMF energy difference: 1.0569
+   NN energy difference: 2.8123
+   Regularization loss: 0.0
+   Energy loss: 16.044
+   PMF energy difference: 7.6307
+   NN energy difference: 11.6362
+   Regularization loss: 0.0
+   Energy loss: 1.7545
+   PMF energy difference: 7.5534
+   NN energy difference: 8.878
+   Regularization loss: 0.0
+
+Step 2400...
+
+   Energy loss: 0.1072
+   PMF energy difference: 6.3105
+   NN energy difference: 6.6379
+   Regularization loss: 0.0
+   Energy loss: 2.5091
+   PMF energy difference: 2.5063
+   NN energy difference: 0.9223
+   Regularization loss: 0.0
+   Energy loss: 0.074
+   PMF energy difference: -1.6643
+   NN energy difference: -1.9363
+   Regularization loss: 0.0
+   Energy loss: 18.4985
+   PMF energy difference: 58.2952
+   NN energy difference: 62.5962
+   Regularization loss: 0.0
+
+Step 2500...
+
+   Energy loss: 0.0888
+   PMF energy difference: 1.373
+   NN energy difference: 1.671
+   Regularization loss: 0.0
+   Energy loss: 2.1092
+   PMF energy difference: 9.4659
+   NN energy difference: 10.9182
+   Regularization loss: 0.0
+   Energy loss: 2.1794
+   PMF energy difference: 1.115
+   NN energy difference: -0.3613
+   Regularization loss: 0.0
+   Energy loss: 0.4033
+   PMF energy difference: 1.0911
+   NN energy difference: 0.456
+   Regularization loss: 0.0
+
+Step 2600...
+
+   Energy loss: 0.0805
+   PMF energy difference: 10.6212
+   NN energy difference: 10.905
+   Regularization loss: 0.0
+   Energy loss: 86.6974
+   PMF energy difference: 94.5176
+   NN energy difference: 85.2064
+   Regularization loss: 0.0
+   Energy loss: 3.3881
+   PMF energy difference: -1.3594
+   NN energy difference: -3.2001
+   Regularization loss: 0.0
+   Energy loss: 0.27
+   PMF energy difference: -0.7228
+   NN energy difference: -1.2424
+   Regularization loss: 0.0
+
+Step 2700...
+
+   Energy loss: 0.4197
+   PMF energy difference: 6.1512
+   NN energy difference: 6.7991
+   Regularization loss: 0.0
+   Energy loss: 0.1628
+   PMF energy difference: -0.1962
+   NN energy difference: -0.5997
+   Regularization loss: 0.0
+   Energy loss: 3.1352
+   PMF energy difference: 47.5705
+   NN energy difference: 49.3412
+   Regularization loss: 0.0
+   Energy loss: 0.8812
+   PMF energy difference: 1.8471
+   NN energy difference: 0.9084
+   Regularization loss: 0.0
+
+Step 2800...
+
+   Energy loss: 1.2589
+   PMF energy difference: 4.3578
+   NN energy difference: 3.2358
+   Regularization loss: 0.0
+   Energy loss: 25.241
+   PMF energy difference: 66.6081
+   NN energy difference: 61.5841
+   Regularization loss: 0.0
+   Energy loss: 0.3981
+   PMF energy difference: -2.5466
+   NN energy difference: -1.9156
+   Regularization loss: 0.0
+   Energy loss: 1.2786
+   PMF energy difference: 1.2171
+   NN energy difference: 0.0863
+   Regularization loss: 0.0
+
+Step 2900...
+
+   Energy loss: 0.1017
+   PMF energy difference: -1.2861
+   NN energy difference: -0.9673
+   Regularization loss: 0.0
+   Energy loss: 11.0983
+   PMF energy difference: 25.1168
+   NN energy difference: 21.7854
+   Regularization loss: 0.0
+   Energy loss: 0.7213
+   PMF energy difference: 3.7322
+   NN energy difference: 2.8829
+   Regularization loss: 0.0
+   Energy loss: 1.016
+   PMF energy difference: -0.0492
+   NN energy difference: 0.9588
+   Regularization loss: 0.0
+
+Step 3000...
+
+   Energy loss: 1.0165
+   PMF energy difference: -2.3317
+   NN energy difference: -1.3235
+   Regularization loss: 0.0
+   Energy loss: 0.0165
+   PMF energy difference: -1.4583
+   NN energy difference: -1.5866
+   Regularization loss: 0.0
+   Energy loss: 0.0094
+   PMF energy difference: 0.8915
+   NN energy difference: 0.7944
+   Regularization loss: 0.0
+   Energy loss: 1.7784
+   PMF energy difference: 2.5229
+   NN energy difference: 1.1893
+   Regularization loss: 0.0
+
+Step 3100...
+
+   Energy loss: 3.5556
+   PMF energy difference: 24.5263
+   NN energy difference: 22.6407
+   Regularization loss: 0.0
+   Energy loss: 0.5492
+   PMF energy difference: 0.664
+   NN energy difference: -0.0771
+   Regularization loss: 0.0
+   Energy loss: 4.4188
+   PMF energy difference: 3.6282
+   NN energy difference: 1.5261
+   Regularization loss: 0.0
+   Energy loss: 0.0211
+   PMF energy difference: -2.633
+   NN energy difference: -2.4877
+   Regularization loss: 0.0
+
+Step 3200...
+
+   Energy loss: 0.1989
+   PMF energy difference: 1.4998
+   NN energy difference: 1.9457
+   Regularization loss: 0.0
+   Energy loss: 16.7871
+   PMF energy difference: 90.9511
+   NN energy difference: 86.8539
+   Regularization loss: 0.0
+   Energy loss: 0.1448
+   PMF energy difference: -0.6494
+   NN energy difference: -1.0299
+   Regularization loss: 0.0
+   Energy loss: 6.3134
+   PMF energy difference: -2.1003
+   NN energy difference: 0.4124
+   Regularization loss: 0.0
+
+Step 3300...
+
+   Energy loss: 0.0015
+   PMF energy difference: -10.8046
+   NN energy difference: -10.7658
+   Regularization loss: 0.0
+   Energy loss: 0.0599
+   PMF energy difference: 0.6216
+   NN energy difference: 0.3769
+   Regularization loss: 0.0
+   Energy loss: 0.6764
+   PMF energy difference: -1.7682
+   NN energy difference: -0.9458
+   Regularization loss: 0.0
+   Energy loss: 0.7783
+   PMF energy difference: 3.2668
+   NN energy difference: 2.3846
+   Regularization loss: 0.0
+
+Step 3400...
+
+   Energy loss: 0.0349
+   PMF energy difference: 1.471
+   NN energy difference: 1.6579
+   Regularization loss: 0.0
+   Energy loss: 0.4246
+   PMF energy difference: -2.4352
+   NN energy difference: -3.0869
+   Regularization loss: 0.0
+   Energy loss: 0.009
+   PMF energy difference: -0.211
+   NN energy difference: -0.3059
+   Regularization loss: 0.0
+   Energy loss: 0.0254
+   PMF energy difference: -0.755
+   NN energy difference: -0.5958
+   Regularization loss: 0.0
+
+Step 3500...
+
+   Energy loss: 0.7554
+   PMF energy difference: -0.5388
+   NN energy difference: 0.3304
+   Regularization loss: 0.0
+   Energy loss: 4.2937
+   PMF energy difference: -2.6396
+   NN energy difference: -4.7117
+   Regularization loss: 0.0
+   Energy loss: 24.2515
+   PMF energy difference: 32.7126
+   NN energy difference: 27.788
+   Regularization loss: 0.0
+   Energy loss: 1.6422
+   PMF energy difference: 2.9846
+   NN energy difference: 1.7031
+   Regularization loss: 0.0
+
+Step 3600...
+
+   Energy loss: 0.044
+   PMF energy difference: -0.0387
+   NN energy difference: -0.2484
+   Regularization loss: 0.0
+   Energy loss: 0.0635
+   PMF energy difference: 0.9895
+   NN energy difference: 1.2414
+   Regularization loss: 0.0
+   Energy loss: 0.5203
+   PMF energy difference: 2.4759
+   NN energy difference: 1.7546
+   Regularization loss: 0.0
+   Energy loss: 3.9325
+   PMF energy difference: -0.6665
+   NN energy difference: 1.3166
+   Regularization loss: 0.0
+
+Step 3700...
+
+   Energy loss: 1.1803
+   PMF energy difference: 0.3842
+   NN energy difference: -0.7022
+   Regularization loss: 0.0
+   Energy loss: 24.2736
+   PMF energy difference: 40.2774
+   NN energy difference: 35.3506
+   Regularization loss: 0.0
+   Energy loss: 0.0521
+   PMF energy difference: -0.7399
+   NN energy difference: -0.5117
+   Regularization loss: 0.0
+   Energy loss: 1.6874
+   PMF energy difference: -0.9099
+   NN energy difference: 0.3891
+   Regularization loss: 0.0
+
+Step 3800...
+
+   Energy loss: 1.6357
+   PMF energy difference: 2.4265
+   NN energy difference: 3.7054
+   Regularization loss: 0.0
+   Energy loss: 2.131
+   PMF energy difference: -1.403
+   NN energy difference: 0.0568
+   Regularization loss: 0.0
+   Energy loss: 1.4821
+   PMF energy difference: 1.6366
+   NN energy difference: 2.8541
+   Regularization loss: 0.0
+   Energy loss: 0.663
+   PMF energy difference: -0.6589
+   NN energy difference: 0.1554
+   Regularization loss: 0.0
+
+Step 3900...
+
+   Energy loss: 0.4094
+   PMF energy difference: 3.3822
+   NN energy difference: 2.7424
+   Regularization loss: 0.0
+   Energy loss: 1.6305
+   PMF energy difference: 0.9794
+   NN energy difference: 2.2563
+   Regularization loss: 0.0
+   Energy loss: 0.8975
+   PMF energy difference: 2.0521
+   NN energy difference: 1.1047
+   Regularization loss: 0.0
+   Energy loss: 0.4019
+   PMF energy difference: 0.8483
+   NN energy difference: 0.2144
+   Regularization loss: 0.0
+
+Step 4000...
+
+   Energy loss: 0.3891
+   PMF energy difference: -2.9691
+   NN energy difference: -3.5929
+   Regularization loss: 0.0
+   Energy loss: 0.9358
+   PMF energy difference: -1.2969
+   NN energy difference: -2.2642
+   Regularization loss: 0.0
+   Energy loss: 3.7026
+   PMF energy difference: 0.1349
+   NN energy difference: -1.7893
+   Regularization loss: 0.0
+   Energy loss: 12.4805
+   PMF energy difference: 4.5482
+   NN energy difference: 1.0154
+   Regularization loss: 0.0
+
+Step 4100...
+
+   Energy loss: 1.7186
+   PMF energy difference: 1.4171
+   NN energy difference: 0.1061
+   Regularization loss: 0.0
+   Energy loss: 4.9066
+   PMF energy difference: 1.0907
+   NN energy difference: 3.3058
+   Regularization loss: 0.0
+   Energy loss: 16.9467
+   PMF energy difference: 3.1972
+   NN energy difference: -0.9195
+   Regularization loss: 0.0
+   Energy loss: 0.0624
+   PMF energy difference: 0.7036
+   NN energy difference: 0.4538
+   Regularization loss: 0.0
+
+Step 4200...
+
+   Energy loss: 4.5892
+   PMF energy difference: 22.5811
+   NN energy difference: 20.4389
+   Regularization loss: 0.0
+   Energy loss: 14.3985
+   PMF energy difference: 50.8208
+   NN energy difference: 47.0262
+   Regularization loss: 0.0
+   Energy loss: 2.0342
+   PMF energy difference: 2.7908
+   NN energy difference: 4.2171
+   Regularization loss: 0.0
+   Energy loss: 2.6859
+   PMF energy difference: 2.4009
+   NN energy difference: 0.762
+   Regularization loss: 0.0
+
+Step 4300...
+
+   Energy loss: 3.6629
+   PMF energy difference: 3.3176
+   NN energy difference: 5.2315
+   Regularization loss: 0.0
+   Energy loss: 0.5256
+   PMF energy difference: 2.9109
+   NN energy difference: 2.1859
+   Regularization loss: 0.0
+   Energy loss: 0.2305
+   PMF energy difference: 25.4742
+   NN energy difference: 25.9543
+   Regularization loss: 0.0
+   Energy loss: 0.3704
+   PMF energy difference: 18.8166
+   NN energy difference: 18.2079
+   Regularization loss: 0.0
+
+Step 4400...
+
+   Energy loss: 0.0085
+   PMF energy difference: -2.6652
+   NN energy difference: -2.7573
+   Regularization loss: 0.0
+   Energy loss: 3.6721
+   PMF energy difference: 4.9939
+   NN energy difference: 6.9102
+   Regularization loss: 0.0
+   Energy loss: 0.205
+   PMF energy difference: 1.2011
+   NN energy difference: 0.7484
+   Regularization loss: 0.0
+   Energy loss: 0.0423
+   PMF energy difference: 0.2386
+   NN energy difference: 0.033
+   Regularization loss: 0.0
+
+Step 4500...
+
+   Energy loss: 1.5425
+   PMF energy difference: 11.2111
+   NN energy difference: 9.9691
+   Regularization loss: 0.0
+   Energy loss: 14.2971
+   PMF energy difference: 21.4037
+   NN energy difference: 17.6226
+   Regularization loss: 0.0
+   Energy loss: 2.9115
+   PMF energy difference: 39.4668
+   NN energy difference: 37.7605
+   Regularization loss: 0.0
+   Energy loss: 1.073
+   PMF energy difference: 2.6252
+   NN energy difference: 1.5894
+   Regularization loss: 0.0
+
+Step 4600...
+
+   Energy loss: 0.9854
+   PMF energy difference: -1.6102
+   NN energy difference: -0.6176
+   Regularization loss: 0.0
+   Energy loss: 3.7334
+   PMF energy difference: 0.2171
+   NN energy difference: -1.7151
+   Regularization loss: 0.0
+   Energy loss: 16.376
+   PMF energy difference: 40.6915
+   NN energy difference: 36.6448
+   Regularization loss: 0.0
+   Energy loss: 0.0396
+   PMF energy difference: -0.5433
+   NN energy difference: -0.3443
+   Regularization loss: 0.0
+
+Step 4700...
+
+   Energy loss: 1.593
+   PMF energy difference: 11.9005
+   NN energy difference: 10.6383
+   Regularization loss: 0.0
+   Energy loss: 0.246
+   PMF energy difference: -0.1415
+   NN energy difference: 0.3545
+   Regularization loss: 0.0
+   Energy loss: 0.0354
+   PMF energy difference: -1.4298
+   NN energy difference: -1.2416
+   Regularization loss: 0.0
+   Energy loss: 0.0323
+   PMF energy difference: 0.118
+   NN energy difference: 0.2976
+   Regularization loss: 0.0
+
+Step 4800...
+
+   Energy loss: 0.7645
+   PMF energy difference: 3.6327
+   NN energy difference: 2.7584
+   Regularization loss: 0.0
+   Energy loss: 0.0238
+   PMF energy difference: 0.3601
+   NN energy difference: 0.2057
+   Regularization loss: 0.0
+   Energy loss: 0.829
+   PMF energy difference: -3.3457
+   NN energy difference: -2.4352
+   Regularization loss: 0.0
+   Energy loss: 16.1732
+   PMF energy difference: 27.4027
+   NN energy difference: 23.3811
+   Regularization loss: 0.0
+
+Step 4900...
+
+   Energy loss: 0.4231
+   PMF energy difference: 2.742
+   NN energy difference: 3.3924
+   Regularization loss: 0.0
+   Energy loss: 0.0291
+   PMF energy difference: -0.5199
+   NN energy difference: -0.6905
+   Regularization loss: 0.0
+   Energy loss: 29.1947
+   PMF energy difference: 45.3551
+   NN energy difference: 39.9519
+   Regularization loss: 0.0
+   Energy loss: 2.991
+   PMF energy difference: 4.9043
+   NN energy difference: 3.1749
+   Regularization loss: 0.0
+
+Step 5000...
+
+   Energy loss: 0.0912
+   PMF energy difference: 46.9933
+   NN energy difference: 46.6914
+   Regularization loss: 0.0
+   Energy loss: 0.6519
+   PMF energy difference: 2.1614
+   NN energy difference: 1.354
+   Regularization loss: 0.0
+   Energy loss: 0.6114
+   PMF energy difference: 85.4755
+   NN energy difference: 86.2574
+   Regularization loss: 0.0
+   Energy loss: 23.7624
+   PMF energy difference: 78.313
+   NN energy difference: 83.1877
+   Regularization loss: 0.0
+
+Step 5100...
+
+   Energy loss: 2.3823
+   PMF energy difference: 0.2785
+   NN energy difference: -1.265
+   Regularization loss: 0.0
+   Energy loss: 0.2565
+   PMF energy difference: -0.4816
+   NN energy difference: -0.988
+   Regularization loss: 0.0
+   Energy loss: 1.0809
+   PMF energy difference: 3.8787
+   NN energy difference: 2.839
+   Regularization loss: 0.0
+   Energy loss: 0.1903
+   PMF energy difference: -1.0922
+   NN energy difference: -0.656
+   Regularization loss: 0.0
+
+Step 5200...
+
+   Energy loss: 0.4358
+   PMF energy difference: 0.8506
+   NN energy difference: 1.5107
+   Regularization loss: 0.0
+   Energy loss: 0.4848
+   PMF energy difference: 1.4368
+   NN energy difference: 2.133
+   Regularization loss: 0.0
+   Energy loss: 6.4915
+   PMF energy difference: -2.9981
+   NN energy difference: -0.4503
+   Regularization loss: 0.0
+   Energy loss: 0.1783
+   PMF energy difference: 5.7393
+   NN energy difference: 6.1615
+   Regularization loss: 0.0
+
+Step 5300...
+
+   Energy loss: 0.2259
+   PMF energy difference: -1.956
+   NN energy difference: -2.4313
+   Regularization loss: 0.0
+   Energy loss: 0.7979
+   PMF energy difference: 2.3085
+   NN energy difference: 3.2018
+   Regularization loss: 0.0
+   Energy loss: 1.5691
+   PMF energy difference: 0.2154
+   NN energy difference: -1.0373
+   Regularization loss: 0.0
+   Energy loss: 6.0845
+   PMF energy difference: 1.4574
+   NN energy difference: -1.0093
+   Regularization loss: 0.0
+
+Step 5400...
+
+   Energy loss: 0.0038
+   PMF energy difference: 14.6847
+   NN energy difference: 14.6233
+   Regularization loss: 0.0
+   Energy loss: 0.6706
+   PMF energy difference: -1.829
+   NN energy difference: -2.6479
+   Regularization loss: 0.0
+   Energy loss: 0.9501
+   PMF energy difference: 2.2387
+   NN energy difference: 1.2639
+   Regularization loss: 0.0
+   Energy loss: 2.1462
+   PMF energy difference: 1.3647
+   NN energy difference: -0.1003
+   Regularization loss: 0.0
+
+Step 5500...
+
+   Energy loss: 0.3209
+   PMF energy difference: 1.3013
+   NN energy difference: 0.7349
+   Regularization loss: 0.0
+   Energy loss: 3.1562
+   PMF energy difference: 0.6936
+   NN energy difference: 2.4701
+   Regularization loss: 0.0
+   Energy loss: 2.5222
+   PMF energy difference: 1.7945
+   NN energy difference: 0.2063
+   Regularization loss: 0.0
+   Energy loss: 1.3067
+   PMF energy difference: -3.8734
+   NN energy difference: -2.7304
+   Regularization loss: 0.0
+
+Step 5600...
+
+   Energy loss: 0.6839
+   PMF energy difference: 2.9136
+   NN energy difference: 3.7406
+   Regularization loss: 0.0
+   Energy loss: 5.3422
+   PMF energy difference: -1.1754
+   NN energy difference: 1.1359
+   Regularization loss: 0.0
+   Energy loss: 1.6465
+   PMF energy difference: 2.2637
+   NN energy difference: 3.5469
+   Regularization loss: 0.0
+   Energy loss: 0.2939
+   PMF energy difference: 5.2356
+   NN energy difference: 4.6934
+   Regularization loss: 0.0
+
+Step 5700...
+
+   Energy loss: 12.3206
+   PMF energy difference: 4.1543
+   NN energy difference: 0.6442
+   Regularization loss: 0.0
+   Energy loss: 1.5431
+   PMF energy difference: 4.2666
+   NN energy difference: 5.5088
+   Regularization loss: 0.0
+   Energy loss: 2.4792
+   PMF energy difference: 71.5409
+   NN energy difference: 69.9664
+   Regularization loss: 0.0
+   Energy loss: 1.0785
+   PMF energy difference: 4.8997
+   NN energy difference: 3.8612
+   Regularization loss: 0.0
+
+Step 5800...
+
+   Energy loss: 0.3639
+   PMF energy difference: 1.2755
+   NN energy difference: 0.6723
+   Regularization loss: 0.0
+   Energy loss: 2.2245
+   PMF energy difference: 1.2194
+   NN energy difference: -0.2721
+   Regularization loss: 0.0
+   Energy loss: 6.027
+   PMF energy difference: 14.861
+   NN energy difference: 17.316
+   Regularization loss: 0.0
+   Energy loss: 0.0941
+   PMF energy difference: 1.0649
+   NN energy difference: 1.3717
+   Regularization loss: 0.0
+
+Step 5900...
+
+   Energy loss: 2.5217
+   PMF energy difference: 16.6874
+   NN energy difference: 15.0994
+   Regularization loss: 0.0
+   Energy loss: 2.8177
+   PMF energy difference: 14.3763
+   NN energy difference: 12.6977
+   Regularization loss: 0.0
+   Energy loss: 0.1062
+   PMF energy difference: -0.1328
+   NN energy difference: -0.4586
+   Regularization loss: 0.0
+   Energy loss: 0.3167
+   PMF energy difference: 0.7959
+   NN energy difference: 0.2331
+   Regularization loss: 0.0
+
+Step 6000...
+
+   Energy loss: 2.6868
+   PMF energy difference: 7.5746
+   NN energy difference: 9.2137
+   Regularization loss: 0.0
+   Energy loss: 3.0205
+   PMF energy difference: 9.9694
+   NN energy difference: 11.7074
+   Regularization loss: 0.0
+   Energy loss: 0.0019
+   PMF energy difference: -3.4449
+   NN energy difference: -3.4891
+   Regularization loss: 0.0
+   Energy loss: 2.9769
+   PMF energy difference: -2.9327
+   NN energy difference: -1.2073
+   Regularization loss: 0.0
+
+Step 6100...
+
+   Energy loss: 0.0003
+   PMF energy difference: 6.2408
+   NN energy difference: 6.2223
+   Regularization loss: 0.0
+   Energy loss: 0.4646
+   PMF energy difference: 5.1145
+   NN energy difference: 5.7961
+   Regularization loss: 0.0
+   Energy loss: 1.7042
+   PMF energy difference: 2.7498
+   NN energy difference: 1.4443
+   Regularization loss: 0.0
+   Energy loss: 0.2076
+   PMF energy difference: 1.4843
+   NN energy difference: 1.94
+   Regularization loss: 0.0
+
+Step 6200...
+
+   Energy loss: 5.6253
+   PMF energy difference: 55.3676
+   NN energy difference: 57.7394
+   Regularization loss: 0.0
+   Energy loss: 29.4618
+   PMF energy difference: 34.8718
+   NN energy difference: 29.4439
+   Regularization loss: 0.0
+   Energy loss: 0.1702
+   PMF energy difference: -0.5116
+   NN energy difference: -0.0991
+   Regularization loss: 0.0
+   Energy loss: 2.7856
+   PMF energy difference: 1.2048
+   NN energy difference: -0.4642
+   Regularization loss: 0.0
+
+Step 6300...
+
+   Energy loss: 0.4142
+   PMF energy difference: 5.2842
+   NN energy difference: 5.9278
+   Regularization loss: 0.0
+   Energy loss: 5.1448
+   PMF energy difference: -1.7641
+   NN energy difference: 0.5042
+   Regularization loss: 0.0
+   Energy loss: 0.041
+   PMF energy difference: 1.1929
+   NN energy difference: 1.3954
+   Regularization loss: 0.0
+   Energy loss: 0.0825
+   PMF energy difference: 10.4698
+   NN energy difference: 10.1826
+   Regularization loss: 0.0
+
+Step 6400...
+
+   Energy loss: 0.0132
+   PMF energy difference: 1.4112
+   NN energy difference: 1.5259
+   Regularization loss: 0.0
+   Energy loss: 2.5009
+   PMF energy difference: -0.4811
+   NN energy difference: 1.1004
+   Regularization loss: 0.0
+   Energy loss: 3.4579
+   PMF energy difference: 0.926
+   NN energy difference: -0.9335
+   Regularization loss: 0.0
+   Energy loss: 0.3018
+   PMF energy difference: 0.7031
+   NN energy difference: 0.1538
+   Regularization loss: 0.0
+
+Step 6500...
+
+   Energy loss: 0.0675
+   PMF energy difference: 1.5748
+   NN energy difference: 1.315
+   Regularization loss: 0.0
+   Energy loss: 0.3527
+   PMF energy difference: 14.1316
+   NN energy difference: 13.5376
+   Regularization loss: 0.0
+   Energy loss: 0.1036
+   PMF energy difference: 40.6458
+   NN energy difference: 40.3239
+   Regularization loss: 0.0
+   Energy loss: 1.3737
+   PMF energy difference: 2.5441
+   NN energy difference: 1.3721
+   Regularization loss: 0.0
+
+Step 6600...
+
+   Energy loss: 0.0612
+   PMF energy difference: 0.6649
+   NN energy difference: 0.9124
+   Regularization loss: 0.0
+   Energy loss: 1.8629
+   PMF energy difference: -1.1001
+   NN energy difference: 0.2648
+   Regularization loss: 0.0
+   Energy loss: 2.3318
+   PMF energy difference: -0.6555
+   NN energy difference: 0.8715
+   Regularization loss: 0.0
+   Energy loss: 2.8085
+   PMF energy difference: 1.0185
+   NN energy difference: -0.6574
+   Regularization loss: 0.0
+
+Step 6700...
+
+   Energy loss: 2.0735
+   PMF energy difference: 1.8376
+   NN energy difference: 0.3976
+   Regularization loss: 0.0
+   Energy loss: 2.2086
+   PMF energy difference: 3.8334
+   NN energy difference: 2.3473
+   Regularization loss: 0.0
+   Energy loss: 0.5967
+   PMF energy difference: 11.7275
+   NN energy difference: 12.5
+   Regularization loss: 0.0
+   Energy loss: 0.2015
+   PMF energy difference: -2.9034
+   NN energy difference: -2.4545
+   Regularization loss: 0.0
+
+Step 6800...
+
+   Energy loss: 4.0382
+   PMF energy difference: 2.455
+   NN energy difference: 0.4455
+   Regularization loss: 0.0
+   Energy loss: 1.8939
+   PMF energy difference: -3.6246
+   NN energy difference: -5.0008
+   Regularization loss: 0.0
+   Energy loss: 0.1254
+   PMF energy difference: 4.3164
+   NN energy difference: 4.6706
+   Regularization loss: 0.0
+   Energy loss: 0.0824
+   PMF energy difference: 1.5288
+   NN energy difference: 1.2419
+   Regularization loss: 0.0
+
+Step 6900...
+
+   Energy loss: 0.303
+   PMF energy difference: 13.7626
+   NN energy difference: 13.2122
+   Regularization loss: 0.0
+   Energy loss: 18.1911
+   PMF energy difference: 0.5431
+   NN energy difference: -3.722
+   Regularization loss: 0.0
+   Energy loss: 0.4354
+   PMF energy difference: -5.2433
+   NN energy difference: -4.5835
+   Regularization loss: 0.0
+   Energy loss: 1.4611
+   PMF energy difference: 0.1393
+   NN energy difference: -1.0694
+   Regularization loss: 0.0
+
+Step 7000...
+
+   Energy loss: 7.0128
+   PMF energy difference: 28.0736
+   NN energy difference: 25.4254
+   Regularization loss: 0.0
+   Energy loss: 2.1405
+   PMF energy difference: 25.5915
+   NN energy difference: 24.1285
+   Regularization loss: 0.0
+   Energy loss: 18.6217
+   PMF energy difference: 22.7043
+   NN energy difference: 18.3891
+   Regularization loss: 0.0
+   Energy loss: 0.5515
+   PMF energy difference: -0.3012
+   NN energy difference: 0.4415
+   Regularization loss: 0.0
+
+Step 7100...
+
+   Energy loss: 0.0419
+   PMF energy difference: 2.9142
+   NN energy difference: 2.7096
+   Regularization loss: 0.0
+   Energy loss: 1.1765
+   PMF energy difference: -4.7811
+   NN energy difference: -3.6965
+   Regularization loss: 0.0
+   Energy loss: 0.0363
+   PMF energy difference: 0.4285
+   NN energy difference: 0.6189
+   Regularization loss: 0.0
+   Energy loss: 0.5143
+   PMF energy difference: 1.1488
+   NN energy difference: 0.4317
+   Regularization loss: 0.0
+
+Step 7200...
+
+   Energy loss: 0.0954
+   PMF energy difference: -1.5308
+   NN energy difference: -1.8397
+   Regularization loss: 0.0
+   Energy loss: 0.1141
+   PMF energy difference: 2.751
+   NN energy difference: 2.4132
+   Regularization loss: 0.0
+   Energy loss: 0.4213
+   PMF energy difference: 3.2657
+   NN energy difference: 2.6167
+   Regularization loss: 0.0
+   Energy loss: 0.0175
+   PMF energy difference: -1.0674
+   NN energy difference: -0.935
+   Regularization loss: 0.0
+
+Step 7300...
+
+   Energy loss: 10.1849
+   PMF energy difference: -2.4278
+   NN energy difference: 0.7636
+   Regularization loss: 0.0
+   Energy loss: 9.5384
+   PMF energy difference: -0.0116
+   NN energy difference: -3.1001
+   Regularization loss: 0.0
+   Energy loss: 5.9508
+   PMF energy difference: 3.7201
+   NN energy difference: 1.2807
+   Regularization loss: 0.0
+   Energy loss: 0.3464
+   PMF energy difference: 0.6879
+   NN energy difference: 0.0994
+   Regularization loss: 0.0
+
+Step 7400...
+
+   Energy loss: 0.3076
+   PMF energy difference: 2.3083
+   NN energy difference: 2.8629
+   Regularization loss: 0.0
+   Energy loss: 0.0588
+   PMF energy difference: 2.0305
+   NN energy difference: 2.273
+   Regularization loss: 0.0
+   Energy loss: 0.2005
+   PMF energy difference: 2.5341
+   NN energy difference: 2.0863
+   Regularization loss: 0.0
+   Energy loss: 3.5266
+   PMF energy difference: 5.8068
+   NN energy difference: 3.9288
+   Regularization loss: 0.0
+
+Step 7500...
+
+   Energy loss: 3.8768
+   PMF energy difference: 12.8799
+   NN energy difference: 14.8488
+   Regularization loss: 0.0
+   Energy loss: 12.7894
+   PMF energy difference: 28.1654
+   NN energy difference: 24.5892
+   Regularization loss: 0.0
+   Energy loss: 0.354
+   PMF energy difference: 0.9025
+   NN energy difference: 0.3075
+   Regularization loss: 0.0
+   Energy loss: 0.1008
+   PMF energy difference: 1.5525
+   NN energy difference: 1.8699
+   Regularization loss: 0.0
+
+Step 7600...
+
+   Energy loss: 0.2846
+   PMF energy difference: 3.2369
+   NN energy difference: 2.7035
+   Regularization loss: 0.0
+   Energy loss: 0.0391
+   PMF energy difference: 4.4254
+   NN energy difference: 4.2276
+   Regularization loss: 0.0
+   Energy loss: 0.3372
+   PMF energy difference: -3.1508
+   NN energy difference: -3.7315
+   Regularization loss: 0.0
+   Energy loss: 4.2506
+   PMF energy difference: -2.3249
+   NN energy difference: -0.2632
+   Regularization loss: 0.0
+
+Step 7700...
+
+   Energy loss: 0.0157
+   PMF energy difference: 6.589
+   NN energy difference: 6.4638
+   Regularization loss: 0.0
+   Energy loss: 0.4123
+   PMF energy difference: -0.3743
+   NN energy difference: -1.0164
+   Regularization loss: 0.0
+   Energy loss: 0.4187
+   PMF energy difference: 2.1033
+   NN energy difference: 2.7503
+   Regularization loss: 0.0
+   Energy loss: 15.8017
+   PMF energy difference: 37.3266
+   NN energy difference: 41.3017
+   Regularization loss: 0.0
+
+Step 7800...
+
+   Energy loss: 42.2972
+   PMF energy difference: 47.7459
+   NN energy difference: 54.2495
+   Regularization loss: 0.0
+   Energy loss: 0.6914
+   PMF energy difference: 0.1285
+   NN energy difference: -0.703
+   Regularization loss: 0.0
+   Energy loss: 0.0759
+   PMF energy difference: -0.8473
+   NN energy difference: -1.1227
+   Regularization loss: 0.0
+   Energy loss: 0.1121
+   PMF energy difference: -0.1488
+   NN energy difference: -0.4837
+   Regularization loss: 0.0
+
+Step 7900...
+
+   Energy loss: 0.0008
+   PMF energy difference: 0.918
+   NN energy difference: 0.9459
+   Regularization loss: 0.0
+   Energy loss: 0.0535
+   PMF energy difference: 3.0234
+   NN energy difference: 2.7921
+   Regularization loss: 0.0
+   Energy loss: 3.9161
+   PMF energy difference: 57.3253
+   NN energy difference: 59.3042
+   Regularization loss: 0.0
+   Energy loss: 11.4791
+   PMF energy difference: 13.7857
+   NN energy difference: 10.3976
+   Regularization loss: 0.0
+
+Step 8000...
+
+   Energy loss: 0.7759
+   PMF energy difference: 17.0632
+   NN energy difference: 17.944
+   Regularization loss: 0.0
+   Energy loss: 50.5038
+   PMF energy difference: 38.3082
+   NN energy difference: 31.2016
+   Regularization loss: 0.0
+   Energy loss: 2.9242
+   PMF energy difference: 45.7976
+   NN energy difference: 44.0875
+   Regularization loss: 0.0
+   Energy loss: 1.7235
+   PMF energy difference: 2.2292
+   NN energy difference: 0.9163
+   Regularization loss: 0.0
+
+Step 8100...
+
+   Energy loss: 5.8695
+   PMF energy difference: 8.7651
+   NN energy difference: 11.1878
+   Regularization loss: 0.0
+   Energy loss: 0.2653
+   PMF energy difference: 1.1785
+   NN energy difference: 1.6935
+   Regularization loss: 0.0
+   Energy loss: 1.6455
+   PMF energy difference: 24.1251
+   NN energy difference: 25.4079
+   Regularization loss: 0.0
+   Energy loss: 3.9704
+   PMF energy difference: 3.0662
+   NN energy difference: 1.0736
+   Regularization loss: 0.0
+
+Step 8200...
+
+   Energy loss: 0.0599
+   PMF energy difference: 0.4396
+   NN energy difference: 0.6843
+   Regularization loss: 0.0
+   Energy loss: 0.0071
+   PMF energy difference: -1.2259
+   NN energy difference: -1.3099
+   Regularization loss: 0.0
+   Energy loss: 1.1706
+   PMF energy difference: 41.1088
+   NN energy difference: 42.1907
+   Regularization loss: 0.0
+   Energy loss: 0.6008
+   PMF energy difference: 10.8813
+   NN energy difference: 10.1062
+   Regularization loss: 0.0
+
+Step 8300...
+
+   Energy loss: 0.555
+   PMF energy difference: -1.4506
+   NN energy difference: -2.1955
+   Regularization loss: 0.0
+   Energy loss: 0.0042
+   PMF energy difference: -1.5285
+   NN energy difference: -1.593
+   Regularization loss: 0.0
+   Energy loss: 19.2725
+   PMF energy difference: 57.247
+   NN energy difference: 52.857
+   Regularization loss: 0.0
+   Energy loss: 1.1668
+   PMF energy difference: 4.2845
+   NN energy difference: 5.3647
+   Regularization loss: 0.0
+
+Step 8400...
+
+   Energy loss: 0.163
+   PMF energy difference: -0.6752
+   NN energy difference: -0.2715
+   Regularization loss: 0.0
+   Energy loss: 13.5788
+   PMF energy difference: 43.4161
+   NN energy difference: 39.7312
+   Regularization loss: 0.0
+   Energy loss: 1.617
+   PMF energy difference: 2.9102
+   NN energy difference: 1.6386
+   Regularization loss: 0.0
+   Energy loss: 2.3671
+   PMF energy difference: 1.1557
+   NN energy difference: -0.3828
+   Regularization loss: 0.0
+
+Step 8500...
+
+   Energy loss: 0.3203
+   PMF energy difference: 12.2482
+   NN energy difference: 12.8142
+   Regularization loss: 0.0
+   Energy loss: 0.8176
+   PMF energy difference: 4.6702
+   NN energy difference: 3.766
+   Regularization loss: 0.0
+   Energy loss: 2.3342
+   PMF energy difference: 3.09
+   NN energy difference: 4.6178
+   Regularization loss: 0.0
+   Energy loss: 43.1654
+   PMF energy difference: 69.5407
+   NN energy difference: 76.1108
+   Regularization loss: 0.0
+
+Step 8600...
+
+   Energy loss: 0.9693
+   PMF energy difference: -0.216
+   NN energy difference: 0.7685
+   Regularization loss: 0.0
+   Energy loss: 0.0085
+   PMF energy difference: 8.7265
+   NN energy difference: 8.8187
+   Regularization loss: 0.0
+   Energy loss: 0.0693
+   PMF energy difference: 1.3624
+   NN energy difference: 1.6256
+   Regularization loss: 0.0
+   Energy loss: 2.8329
+   PMF energy difference: 4.5794
+   NN energy difference: 2.8963
+   Regularization loss: 0.0
+
+Step 8700...
+
+   Energy loss: 0.6667
+   PMF energy difference: 0.6028
+   NN energy difference: -0.2138
+   Regularization loss: 0.0
+   Energy loss: 0.1328
+   PMF energy difference: -1.0894
+   NN energy difference: -0.7249
+   Regularization loss: 0.0
+   Energy loss: 17.5265
+   PMF energy difference: 52.5305
+   NN energy difference: 56.7169
+   Regularization loss: 0.0
+   Energy loss: 0.207
+   PMF energy difference: 0.0198
+   NN energy difference: -0.4352
+   Regularization loss: 0.0
+
+Step 8800...
+
+   Energy loss: 0.0001
+   PMF energy difference: 0.8794
+   NN energy difference: 0.8711
+   Regularization loss: 0.0
+   Energy loss: 3.42
+   PMF energy difference: 63.7222
+   NN energy difference: 61.8729
+   Regularization loss: 0.0
+   Energy loss: 0.0016
+   PMF energy difference: 0.0647
+   NN energy difference: 0.0242
+   Regularization loss: 0.0
+   Energy loss: 0.8802
+   PMF energy difference: -0.1324
+   NN energy difference: 0.8058
+   Regularization loss: 0.0
+
+Step 8900...
+
+   Energy loss: 3.6895
+   PMF energy difference: -2.7623
+   NN energy difference: -4.6831
+   Regularization loss: 0.0
+   Energy loss: 2.3144
+   PMF energy difference: 26.3434
+   NN energy difference: 24.8221
+   Regularization loss: 0.0
+   Energy loss: 1.2291
+   PMF energy difference: -1.281
+   NN energy difference: -0.1724
+   Regularization loss: 0.0
+   Energy loss: 1.2557
+   PMF energy difference: 4.7869
+   NN energy difference: 3.6664
+   Regularization loss: 0.0
+
+Step 9000...
+
+   Energy loss: 0.12
+   PMF energy difference: 0.0863
+   NN energy difference: 0.4327
+   Regularization loss: 0.0
+   Energy loss: 0.256
+   PMF energy difference: 2.574
+   NN energy difference: 2.068
+   Regularization loss: 0.0
+   Energy loss: 0.19
+   PMF energy difference: 8.0322
+   NN energy difference: 7.5964
+   Regularization loss: 0.0
+   Energy loss: 0.7856
+   PMF energy difference: -1.554
+   NN energy difference: -0.6677
+   Regularization loss: 0.0
+
+Step 9100...
+
+   Energy loss: 0.0314
+   PMF energy difference: 1.6233
+   NN energy difference: 1.8005
+   Regularization loss: 0.0
+   Energy loss: 2.1721
+   PMF energy difference: 0.8669
+   NN energy difference: 2.3407
+   Regularization loss: 0.0
+   Energy loss: 0.8839
+   PMF energy difference: 1.006
+   NN energy difference: 1.9462
+   Regularization loss: 0.0
+   Energy loss: 2.5307
+   PMF energy difference: 11.7737
+   NN energy difference: 10.1829
+   Regularization loss: 0.0
+
+Step 9200...
+
+   Energy loss: 5.4815
+   PMF energy difference: 12.6282
+   NN energy difference: 10.287
+   Regularization loss: 0.0
+   Energy loss: 17.4268
+   PMF energy difference: 37.7132
+   NN energy difference: 33.5387
+   Regularization loss: 0.0
+   Energy loss: 0.1702
+   PMF energy difference: 0.0771
+   NN energy difference: -0.3355
+   Regularization loss: 0.0
+   Energy loss: 0.2209
+   PMF energy difference: 35.7569
+   NN energy difference: 35.2869
+   Regularization loss: 0.0
+
+Step 9300...
+
+   Energy loss: 5.5533
+   PMF energy difference: 15.3221
+   NN energy difference: 12.9656
+   Regularization loss: 0.0
+   Energy loss: 0.7887
+   PMF energy difference: 0.3033
+   NN energy difference: 1.1914
+   Regularization loss: 0.0
+   Energy loss: 0.0038
+   PMF energy difference: -0.6943
+   NN energy difference: -0.7557
+   Regularization loss: 0.0
+   Energy loss: 1.8937
+   PMF energy difference: 2.9932
+   NN energy difference: 1.6171
+   Regularization loss: 0.0
+
+Step 9400...
+
+   Energy loss: 0.1264
+   PMF energy difference: -3.367
+   NN energy difference: -3.7226
+   Regularization loss: 0.0
+   Energy loss: 0.0017
+   PMF energy difference: -1.0453
+   NN energy difference: -1.0859
+   Regularization loss: 0.0
+   Energy loss: 8.4255
+   PMF energy difference: -0.5356
+   NN energy difference: -3.4382
+   Regularization loss: 0.0
+   Energy loss: 0.2686
+   PMF energy difference: 2.558
+   NN energy difference: 2.0397
+   Regularization loss: 0.0
+
+Step 9500...
+
+   Energy loss: 0.2353
+   PMF energy difference: -1.8367
+   NN energy difference: -2.3218
+   Regularization loss: 0.0
+   Energy loss: 5.8269
+   PMF energy difference: 43.7731
+   NN energy difference: 41.3592
+   Regularization loss: 0.0
+   Energy loss: 6.7577
+   PMF energy difference: 6.252
+   NN energy difference: 3.6525
+   Regularization loss: 0.0
+   Energy loss: 2.7257
+   PMF energy difference: -3.2892
+   NN energy difference: -1.6382
+   Regularization loss: 0.0
+
+Step 9600...
+
+   Energy loss: 0.9699
+   PMF energy difference: -2.4678
+   NN energy difference: -1.483
+   Regularization loss: 0.0
+   Energy loss: 2.8722
+   PMF energy difference: -2.2434
+   NN energy difference: -3.9382
+   Regularization loss: 0.0
+   Energy loss: 0.0838
+   PMF energy difference: 42.6326
+   NN energy difference: 42.3432
+   Regularization loss: 0.0
+   Energy loss: 1.4633
+   PMF energy difference: 6.9741
+   NN energy difference: 5.7644
+   Regularization loss: 0.0
+
+Step 9700...
+
+   Energy loss: 8.5799
+   PMF energy difference: 30.132
+   NN energy difference: 27.2029
+   Regularization loss: 0.0
+   Energy loss: 3.0917
+   PMF energy difference: 64.7301
+   NN energy difference: 62.9718
+   Regularization loss: 0.0
+   Energy loss: 11.4328
+   PMF energy difference: 0.1503
+   NN energy difference: -3.2309
+   Regularization loss: 0.0
+   Energy loss: 0.0002
+   PMF energy difference: 0.0437
+   NN energy difference: 0.0298
+   Regularization loss: 0.0
+
+Step 9800...
+
+   Energy loss: 0.766
+   PMF energy difference: 21.4556
+   NN energy difference: 20.5804
+   Regularization loss: 0.0
+   Energy loss: 0.5529
+   PMF energy difference: -1.3156
+   NN energy difference: -2.0591
+   Regularization loss: 0.0
+   Energy loss: 0.1789
+   PMF energy difference: 3.7691
+   NN energy difference: 3.3461
+   Regularization loss: 0.0
+   Energy loss: 0.0475
+   PMF energy difference: 0.4656
+   NN energy difference: 0.6836
+   Regularization loss: 0.0
+
+Step 9900...
+
+   Energy loss: 1.5874
+   PMF energy difference: -0.5427
+   NN energy difference: 0.7172
+   Regularization loss: 0.0
+   Energy loss: 0.0662
+   PMF energy difference: 31.0921
+   NN energy difference: 31.3495
+   Regularization loss: 0.0
+   Energy loss: 0.0357
+   PMF energy difference: 2.3167
+   NN energy difference: 2.1277
+   Regularization loss: 0.0
+   Energy loss: 0.0044
+   PMF energy difference: 0.017
+   NN energy difference: 0.0833
+   Regularization loss: 0.0
+
+Step 10000...
+
+   Energy loss: 3.7277
+   PMF energy difference: 8.7412
+   NN energy difference: 10.6719
+   Regularization loss: 0.0
+   Energy loss: 7.0865
+   PMF energy difference: -0.1955
+   NN energy difference: -2.8575
+   Regularization loss: 0.0
+   Energy loss: 0.5235
+   PMF energy difference: 2.3551
+   NN energy difference: 1.6316
+   Regularization loss: 0.0
+   Energy loss: 16.9503
+   PMF energy difference: 40.0758
+   NN energy difference: 44.1929
+   Regularization loss: 0.0
+
+Step 10100...
+
+   Energy loss: 15.959
+   PMF energy difference: 1.5346
+   NN energy difference: 5.5294
+   Regularization loss: 0.0
+   Energy loss: 1.0945
+   PMF energy difference: 2.907
+   NN energy difference: 1.8608
+   Regularization loss: 0.0
+   Energy loss: 2.1401
+   PMF energy difference: 7.8919
+   NN energy difference: 9.3549
+   Regularization loss: 0.0
+   Energy loss: 0.0863
+   PMF energy difference: 0.8564
+   NN energy difference: 0.5626
+   Regularization loss: 0.0
+
+Step 10200...
+
+   Energy loss: 0.1145
+   PMF energy difference: 1.5663
+   NN energy difference: 1.9046
+   Regularization loss: 0.0
+   Energy loss: 2.3012
+   PMF energy difference: -1.1168
+   NN energy difference: -2.6337
+   Regularization loss: 0.0
+   Energy loss: 0.2065
+   PMF energy difference: -3.8138
+   NN energy difference: -3.3594
+   Regularization loss: 0.0
+   Energy loss: 0.0003
+   PMF energy difference: -0.0004
+   NN energy difference: -0.0179
+   Regularization loss: 0.0
+
+Step 10300...
+
+   Energy loss: 1.9212
+   PMF energy difference: -0.4795
+   NN energy difference: -1.8656
+   Regularization loss: 0.0
+   Energy loss: 4.7986
+   PMF energy difference: 6.2326
+   NN energy difference: 8.4232
+   Regularization loss: 0.0
+   Energy loss: 11.8439
+   PMF energy difference: 69.2912
+   NN energy difference: 65.8497
+   Regularization loss: 0.0
+   Energy loss: 0.0012
+   PMF energy difference: -2.3332
+   NN energy difference: -2.2984
+   Regularization loss: 0.0
+
+Step 10400...
+
+   Energy loss: 0.0019
+   PMF energy difference: 1.4681
+   NN energy difference: 1.5118
+   Regularization loss: 0.0
+   Energy loss: 8.3635
+   PMF energy difference: 1.1293
+   NN energy difference: 4.0213
+   Regularization loss: 0.0
+   Energy loss: 0.2907
+   PMF energy difference: 0.8918
+   NN energy difference: 1.431
+   Regularization loss: 0.0
+   Energy loss: 0.6756
+   PMF energy difference: 0.5367
+   NN energy difference: 1.3587
+   Regularization loss: 0.0
+
+Step 10500...
+
+   Energy loss: 0.5006
+   PMF energy difference: 4.1258
+   NN energy difference: 3.4182
+   Regularization loss: 0.0
+   Energy loss: 0.7439
+   PMF energy difference: 7.4672
+   NN energy difference: 8.3297
+   Regularization loss: 0.0
+   Energy loss: 1.3661
+   PMF energy difference: 0.1355
+   NN energy difference: -1.0333
+   Regularization loss: 0.0
+   Energy loss: 0.8443
+   PMF energy difference: -0.5927
+   NN energy difference: 0.3262
+   Regularization loss: 0.0
+
+Step 10600...
+
+   Energy loss: 2.0694
+   PMF energy difference: 2.9116
+   NN energy difference: 4.3501
+   Regularization loss: 0.0
+   Energy loss: 0.2777
+   PMF energy difference: 2.4937
+   NN energy difference: 1.9667
+   Regularization loss: 0.0
+   Energy loss: 0.9788
+   PMF energy difference: -4.2378
+   NN energy difference: -5.2271
+   Regularization loss: 0.0
+   Energy loss: 0.8397
+   PMF energy difference: 1.5959
+   NN energy difference: 2.5122
+   Regularization loss: 0.0
+
+Step 10700...
+
+   Energy loss: 0.6403
+   PMF energy difference: -0.4764
+   NN energy difference: -1.2766
+   Regularization loss: 0.0
+   Energy loss: 0.4603
+   PMF energy difference: -0.478
+   NN energy difference: -1.1565
+   Regularization loss: 0.0
+   Energy loss: 3.0407
+   PMF energy difference: -2.5684
+   NN energy difference: -0.8247
+   Regularization loss: 0.0
+   Energy loss: 0.0037
+   PMF energy difference: 1.7717
+   NN energy difference: 1.7111
+   Regularization loss: 0.0
+
+Step 10800...
+
+   Energy loss: 0.0084
+   PMF energy difference: 4.0866
+   NN energy difference: 3.9952
+   Regularization loss: 0.0
+   Energy loss: 0.5875
+   PMF energy difference: 1.2026
+   NN energy difference: 1.9691
+   Regularization loss: 0.0
+   Energy loss: 0.6189
+   PMF energy difference: 1.704
+   NN energy difference: 0.9174
+   Regularization loss: 0.0
+   Energy loss: 7.7531
+   PMF energy difference: -3.0359
+   NN energy difference: -0.2514
+   Regularization loss: 0.0
+
+Step 10900...
+
+   Energy loss: 0.0364
+   PMF energy difference: 14.6874
+   NN energy difference: 14.4965
+   Regularization loss: 0.0
+   Energy loss: 1.1225
+   PMF energy difference: -0.1188
+   NN energy difference: 0.9407
+   Regularization loss: 0.0
+   Energy loss: 0.6296
+   PMF energy difference: -2.1456
+   NN energy difference: -1.3521
+   Regularization loss: 0.0
+   Energy loss: 1.4145
+   PMF energy difference: 4.6308
+   NN energy difference: 3.4415
+   Regularization loss: 0.0
+
+Step 11000...
+
+   Energy loss: 0.5216
+   PMF energy difference: 0.9241
+   NN energy difference: 0.2019
+   Regularization loss: 0.0
+   Energy loss: 2.2945
+   PMF energy difference: 14.8453
+   NN energy difference: 16.3601
+   Regularization loss: 0.0
+   Energy loss: 0.0007
+   PMF energy difference: 1.3744
+   NN energy difference: 1.3485
+   Regularization loss: 0.0
+   Energy loss: 1.2874
+   PMF energy difference: 1.9404
+   NN energy difference: 0.8058
+   Regularization loss: 0.0
+
+Step 11100...
+
+   Energy loss: 0.1118
+   PMF energy difference: 7.6668
+   NN energy difference: 8.0011
+   Regularization loss: 0.0
+   Energy loss: 3.6633
+   PMF energy difference: -2.5598
+   NN energy difference: -4.4738
+   Regularization loss: 0.0
+   Energy loss: 0.4089
+   PMF energy difference: 0.1567
+   NN energy difference: -0.4828
+   Regularization loss: 0.0
+   Energy loss: 0.2426
+   PMF energy difference: 2.4861
+   NN energy difference: 2.9786
+   Regularization loss: 0.0
+
+Step 11200...
+
+   Energy loss: 0.0034
+   PMF energy difference: -0.8175
+   NN energy difference: -0.7594
+   Regularization loss: 0.0
+   Energy loss: 0.0244
+   PMF energy difference: 0.8836
+   NN energy difference: 1.0398
+   Regularization loss: 0.0
+   Energy loss: 7.0401
+   PMF energy difference: -1.2192
+   NN energy difference: 1.4341
+   Regularization loss: 0.0
+   Energy loss: 0.0022
+   PMF energy difference: 0.0855
+   NN energy difference: 0.1319
+   Regularization loss: 0.0
+
+Step 11300...
+
+   Energy loss: 7.3903
+   PMF energy difference: 2.9076
+   NN energy difference: 5.6261
+   Regularization loss: 0.0
+   Energy loss: 0.022
+   PMF energy difference: 1.4095
+   NN energy difference: 1.5577
+   Regularization loss: 0.0
+   Energy loss: 0.9358
+   PMF energy difference: 16.7577
+   NN energy difference: 17.725
+   Regularization loss: 0.0
+   Energy loss: 1.2144
+   PMF energy difference: 1.5882
+   NN energy difference: 0.4863
+   Regularization loss: 0.0
+
+Step 11400...
+
+   Energy loss: 3.8283
+   PMF energy difference: 10.3487
+   NN energy difference: 12.3053
+   Regularization loss: 0.0
+   Energy loss: 2.0268
+   PMF energy difference: 1.3894
+   NN energy difference: -0.0342
+   Regularization loss: 0.0
+   Energy loss: 1.2655
+   PMF energy difference: 40.3119
+   NN energy difference: 39.187
+   Regularization loss: 0.0
+   Energy loss: 0.0031
+   PMF energy difference: 0.9137
+   NN energy difference: 0.8577
+   Regularization loss: 0.0
+
+Step 11500...
+
+   Energy loss: 0.2611
+   PMF energy difference: 2.9828
+   NN energy difference: 3.4938
+   Regularization loss: 0.0
+   Energy loss: 0.8658
+   PMF energy difference: -0.8105
+   NN energy difference: -1.7409
+   Regularization loss: 0.0
+   Energy loss: 1.1682
+   PMF energy difference: -2.5644
+   NN energy difference: -1.4836
+   Regularization loss: 0.0
+   Energy loss: 0.0984
+   PMF energy difference: 2.186
+   NN energy difference: 2.4997
+   Regularization loss: 0.0
+
+Step 11600...
+
+   Energy loss: 1.0504
+   PMF energy difference: 54.6269
+   NN energy difference: 55.6518
+   Regularization loss: 0.0
+   Energy loss: 6.1779
+   PMF energy difference: 51.3294
+   NN energy difference: 48.8438
+   Regularization loss: 0.0
+   Energy loss: 0.3639
+   PMF energy difference: -2.1358
+   NN energy difference: -1.5325
+   Regularization loss: 0.0
+   Energy loss: 0.0165
+   PMF energy difference: 0.1993
+   NN energy difference: 0.0708
+   Regularization loss: 0.0
+
+Step 11700...
+
+   Energy loss: 0.1951
+   PMF energy difference: 0.5823
+   NN energy difference: 0.1406
+   Regularization loss: 0.0
+   Energy loss: 25.9946
+   PMF energy difference: 26.8033
+   NN energy difference: 21.7048
+   Regularization loss: 0.0
+   Energy loss: 3.2318
+   PMF energy difference: 1.4325
+   NN energy difference: -0.3652
+   Regularization loss: 0.0
+   Energy loss: 0.1752
+   PMF energy difference: -1.4305
+   NN energy difference: -1.012
+   Regularization loss: 0.0
+
+Step 11800...
+
+   Energy loss: 2.3527
+   PMF energy difference: 1.4902
+   NN energy difference: 3.024
+   Regularization loss: 0.0
+   Energy loss: 0.4577
+   PMF energy difference: 1.0521
+   NN energy difference: 0.3755
+   Regularization loss: 0.0
+   Energy loss: 0.7517
+   PMF energy difference: 0.3341
+   NN energy difference: 1.2011
+   Regularization loss: 0.0
+   Energy loss: 2.3835
+   PMF energy difference: 1.5398
+   NN energy difference: -0.004
+   Regularization loss: 0.0
+
+Step 11900...
+
+   Energy loss: 1.1652
+   PMF energy difference: 16.8029
+   NN energy difference: 15.7235
+   Regularization loss: 0.0
+   Energy loss: 2.1509
+   PMF energy difference: 57.6132
+   NN energy difference: 56.1466
+   Regularization loss: 0.0
+   Energy loss: 1.7161
+   PMF energy difference: 8.7627
+   NN energy difference: 10.0727
+   Regularization loss: 0.0
+   Energy loss: 1.4778
+   PMF energy difference: 26.4771
+   NN energy difference: 25.2614
+   Regularization loss: 0.0
+
+Step 12000...
+
+   Energy loss: 0.8108
+   PMF energy difference: 7.7577
+   NN energy difference: 8.6581
+   Regularization loss: 0.0
+   Energy loss: 0.0603
+   PMF energy difference: -2.8446
+   NN energy difference: -3.0901
+   Regularization loss: 0.0
+   Energy loss: 22.9177
+   PMF energy difference: 80.6436
+   NN energy difference: 85.4309
+   Regularization loss: 0.0
+   Energy loss: 1.1092
+   PMF energy difference: 1.4543
+   NN energy difference: 0.4011
+   Regularization loss: 0.0
+
+Step 12100...
+
+   Energy loss: 0.1382
+   PMF energy difference: 6.0934
+   NN energy difference: 6.4652
+   Regularization loss: 0.0
+   Energy loss: 4.0079
+   PMF energy difference: 62.9108
+   NN energy difference: 60.9088
+   Regularization loss: 0.0
+   Energy loss: 0.1429
+   PMF energy difference: 1.2382
+   NN energy difference: 0.8602
+   Regularization loss: 0.0
+   Energy loss: 0.1416
+   PMF energy difference: -0.0379
+   NN energy difference: 0.3384
+   Regularization loss: 0.0
+
+Step 12200...
+
+   Energy loss: 6.0078
+   PMF energy difference: 25.0116
+   NN energy difference: 22.5605
+   Regularization loss: 0.0
+   Energy loss: 20.9011
+   PMF energy difference: 25.7836
+   NN energy difference: 21.2118
+   Regularization loss: 0.0
+   Energy loss: 0.0691
+   PMF energy difference: 6.7776
+   NN energy difference: 6.5148
+   Regularization loss: 0.0
+   Energy loss: 1.18
+   PMF energy difference: -1.4701
+   NN energy difference: -0.3838
+   Regularization loss: 0.0
+
+Step 12300...
+
+   Energy loss: 1.856
+   PMF energy difference: 9.4736
+   NN energy difference: 10.836
+   Regularization loss: 0.0
+   Energy loss: 0.9256
+   PMF energy difference: 1.3323
+   NN energy difference: 2.2944
+   Regularization loss: 0.0
+   Energy loss: 7.6431
+   PMF energy difference: 2.4537
+   NN energy difference: 5.2183
+   Regularization loss: 0.0
+   Energy loss: 11.5028
+   PMF energy difference: 42.5467
+   NN energy difference: 45.9383
+   Regularization loss: 0.0
+
+Step 12400...
+
+   Energy loss: 0.6648
+   PMF energy difference: 3.4983
+   NN energy difference: 4.3136
+   Regularization loss: 0.0
+   Energy loss: 4.1467
+   PMF energy difference: 52.399
+   NN energy difference: 50.3627
+   Regularization loss: 0.0
+   Energy loss: 6.545
+   PMF energy difference: 5.2975
+   NN energy difference: 2.7392
+   Regularization loss: 0.0
+   Energy loss: 1.6992
+   PMF energy difference: 2.4043
+   NN energy difference: 1.1008
+   Regularization loss: 0.0
+
+Step 12500...
+
+   Energy loss: 7.6902
+   PMF energy difference: 29.2061
+   NN energy difference: 26.433
+   Regularization loss: 0.0
+   Energy loss: 0.9037
+   PMF energy difference: 2.9482
+   NN energy difference: 3.8989
+   Regularization loss: 0.0
+   Energy loss: 0.0063
+   PMF energy difference: -1.6486
+   NN energy difference: -1.5692
+   Regularization loss: 0.0
+   Energy loss: 15.2508
+   PMF energy difference: 64.7887
+   NN energy difference: 68.6939
+   Regularization loss: 0.0
+
+Step 12600...
+
+   Energy loss: 0.0839
+   PMF energy difference: 0.2948
+   NN energy difference: 0.5844
+   Regularization loss: 0.0
+   Energy loss: 1.0914
+   PMF energy difference: 10.7375
+   NN energy difference: 9.6928
+   Regularization loss: 0.0
+   Energy loss: 1.597
+   PMF energy difference: 0.4619
+   NN energy difference: -0.8018
+   Regularization loss: 0.0
+   Energy loss: 10.3971
+   PMF energy difference: 11.7091
+   NN energy difference: 14.9336
+   Regularization loss: 0.0
+
+Step 12700...
+
+   Energy loss: 0.0406
+   PMF energy difference: 6.4432
+   NN energy difference: 6.2416
+   Regularization loss: 0.0
+   Energy loss: 0.0996
+   PMF energy difference: 0.0839
+   NN energy difference: 0.3996
+   Regularization loss: 0.0
+   Energy loss: 2.5532
+   PMF energy difference: 7.2463
+   NN energy difference: 8.8442
+   Regularization loss: 0.0
+   Energy loss: 14.4442
+   PMF energy difference: 0.2768
+   NN energy difference: -3.5237
+   Regularization loss: 0.0
+
+Step 12800...
+
+   Energy loss: 0.5334
+   PMF energy difference: 8.6274
+   NN energy difference: 9.3577
+   Regularization loss: 0.0
+   Energy loss: 0.5655
+   PMF energy difference: 4.4855
+   NN energy difference: 3.7335
+   Regularization loss: 0.0
+   Energy loss: 1.8761
+   PMF energy difference: 2.487
+   NN energy difference: 3.8567
+   Regularization loss: 0.0
+   Energy loss: 17.8075
+   PMF energy difference: 47.6057
+   NN energy difference: 51.8256
+   Regularization loss: 0.0
+
+Step 12900...
+
+   Energy loss: 0.8052
+   PMF energy difference: 1.8812
+   NN energy difference: 2.7786
+   Regularization loss: 0.0
+   Energy loss: 0.7128
+   PMF energy difference: 6.7764
+   NN energy difference: 7.6207
+   Regularization loss: 0.0
+   Energy loss: 4.753
+   PMF energy difference: 1.0882
+   NN energy difference: -1.0919
+   Regularization loss: 0.0
+   Energy loss: 0.0202
+   PMF energy difference: 2.146
+   NN energy difference: 2.0038
+   Regularization loss: 0.0
+
+Step 13000...
+
+   Energy loss: 2.7662
+   PMF energy difference: 15.5756
+   NN energy difference: 13.9124
+   Regularization loss: 0.0
+   Energy loss: 0.0987
+   PMF energy difference: -1.2708
+   NN energy difference: -0.9566
+   Regularization loss: 0.0
+   Energy loss: 0.1785
+   PMF energy difference: 2.4409
+   NN energy difference: 2.8634
+   Regularization loss: 0.0
+   Energy loss: 0.8107
+   PMF energy difference: 1.5767
+   NN energy difference: 0.6763
+   Regularization loss: 0.0
+
+Step 13100...
+
+   Energy loss: 0.6734
+   PMF energy difference: 5.2445
+   NN energy difference: 4.4239
+   Regularization loss: 0.0
+   Energy loss: 0.1576
+   PMF energy difference: 2.3794
+   NN energy difference: 2.7764
+   Regularization loss: 0.0
+   Energy loss: 0.1158
+   PMF energy difference: 1.7381
+   NN energy difference: 2.0785
+   Regularization loss: 0.0
+   Energy loss: 0.0185
+   PMF energy difference: -1.3948
+   NN energy difference: -1.5308
+   Regularization loss: 0.0
+
+Step 13200...
+
+   Energy loss: 5.6497
+   PMF energy difference: 3.906
+   NN energy difference: 6.2829
+   Regularization loss: 0.0
+   Energy loss: 1.4258
+   PMF energy difference: 0.6381
+   NN energy difference: 1.8322
+   Regularization loss: 0.0
+   Energy loss: 0.279
+   PMF energy difference: 0.3247
+   NN energy difference: 0.8529
+   Regularization loss: 0.0
+   Energy loss: 0.3032
+   PMF energy difference: 2.269
+   NN energy difference: 2.8196
+   Regularization loss: 0.0
+
+Step 13300...
+
+   Energy loss: 2.3301
+   PMF energy difference: 2.6623
+   NN energy difference: 1.1358
+   Regularization loss: 0.0
+   Energy loss: 0.2999
+   PMF energy difference: 2.5286
+   NN energy difference: 1.9809
+   Regularization loss: 0.0
+   Energy loss: 9.3442
+   PMF energy difference: 8.8691
+   NN energy difference: 5.8123
+   Regularization loss: 0.0
+   Energy loss: 4.5688
+   PMF energy difference: -1.8297
+   NN energy difference: 0.3078
+   Regularization loss: 0.0
+
+Step 13400...
+
+   Energy loss: 0.6381
+   PMF energy difference: 1.7868
+   NN energy difference: 0.988
+   Regularization loss: 0.0
+   Energy loss: 1.1597
+   PMF energy difference: 5.2973
+   NN energy difference: 4.2204
+   Regularization loss: 0.0
+   Energy loss: 0.0901
+   PMF energy difference: -0.6582
+   NN energy difference: -0.9584
+   Regularization loss: 0.0
+   Energy loss: 0.1498
+   PMF energy difference: 5.144
+   NN energy difference: 5.531
+   Regularization loss: 0.0
+
+Step 13500...
+
+   Energy loss: 0.0964
+   PMF energy difference: 3.7024
+   NN energy difference: 3.3918
+   Regularization loss: 0.0
+   Energy loss: 0.6079
+   PMF energy difference: -1.0622
+   NN energy difference: -1.8418
+   Regularization loss: 0.0
+   Energy loss: 4.6246
+   PMF energy difference: 2.3192
+   NN energy difference: 4.4697
+   Regularization loss: 0.0
+   Energy loss: 0.1955
+   PMF energy difference: 3.8602
+   NN energy difference: 3.418
+   Regularization loss: 0.0
+
+Step 13600...
+
+   Energy loss: 0.1479
+   PMF energy difference: 6.6265
+   NN energy difference: 6.2419
+   Regularization loss: 0.0
+   Energy loss: 0.8429
+   PMF energy difference: 1.4088
+   NN energy difference: 0.4907
+   Regularization loss: 0.0
+   Energy loss: 1.8977
+   PMF energy difference: 3.0726
+   NN energy difference: 1.695
+   Regularization loss: 0.0
+   Energy loss: 7.9148
+   PMF energy difference: 7.6327
+   NN energy difference: 4.8193
+   Regularization loss: 0.0
+
+Step 13700...
+
+   Energy loss: 1.054
+   PMF energy difference: 15.5264
+   NN energy difference: 14.4997
+   Regularization loss: 0.0
+   Energy loss: 0.5061
+   PMF energy difference: 45.9496
+   NN energy difference: 45.2382
+   Regularization loss: 0.0
+   Energy loss: 1.1381
+   PMF energy difference: -1.1107
+   NN energy difference: -2.1775
+   Regularization loss: 0.0
+   Energy loss: 0.0637
+   PMF energy difference: -1.8524
+   NN energy difference: -2.1047
+   Regularization loss: 0.0
+
+Step 13800...
+
+   Energy loss: 0.3059
+   PMF energy difference: -1.2335
+   NN energy difference: -1.7866
+   Regularization loss: 0.0
+   Energy loss: 0.0239
+   PMF energy difference: 0.2833
+   NN energy difference: 0.1288
+   Regularization loss: 0.0
+   Energy loss: 4.3687
+   PMF energy difference: 1.935
+   NN energy difference: 4.0251
+   Regularization loss: 0.0
+   Energy loss: 0.0088
+   PMF energy difference: 0.8705
+   NN energy difference: 0.9641
+   Regularization loss: 0.0
+
+Step 13900...
+
+   Energy loss: 2.1108
+   PMF energy difference: 5.3282
+   NN energy difference: 6.7811
+   Regularization loss: 0.0
+   Energy loss: 0.2535
+   PMF energy difference: 2.9568
+   NN energy difference: 3.4603
+   Regularization loss: 0.0
+   Energy loss: 8.9515
+   PMF energy difference: 6.6456
+   NN energy difference: 9.6375
+   Regularization loss: 0.0
+   Energy loss: 0.4292
+   PMF energy difference: 2.3295
+   NN energy difference: 2.9846
+   Regularization loss: 0.0
+
+Step 14000...
+
+   Energy loss: 0.4278
+   PMF energy difference: -2.8753
+   NN energy difference: -2.2212
+   Regularization loss: 0.0
+   Energy loss: 1.8957
+   PMF energy difference: 0.1018
+   NN energy difference: -1.275
+   Regularization loss: 0.0
+   Energy loss: 0.2993
+   PMF energy difference: 2.9089
+   NN energy difference: 3.456
+   Regularization loss: 0.0
+   Energy loss: 0.0931
+   PMF energy difference: 2.0201
+   NN energy difference: 2.3253
+   Regularization loss: 0.0
+
+Step 14100...
+
+   Energy loss: 0.9868
+   PMF energy difference: -2.4881
+   NN energy difference: -1.4947
+   Regularization loss: 0.0
+   Energy loss: 0.313
+   PMF energy difference: -0.4042
+   NN energy difference: -0.9636
+   Regularization loss: 0.0
+   Energy loss: 3.6666
+   PMF energy difference: 1.9492
+   NN energy difference: 0.0344
+   Regularization loss: 0.0
+   Energy loss: 0.3614
+   PMF energy difference: 1.8998
+   NN energy difference: 1.2987
+   Regularization loss: 0.0
+
+Step 14200...
+
+   Energy loss: 0.17
+   PMF energy difference: -1.575
+   NN energy difference: -1.9872
+   Regularization loss: 0.0
+   Energy loss: 0.4028
+   PMF energy difference: -0.2098
+   NN energy difference: 0.4249
+   Regularization loss: 0.0
+   Energy loss: 0.0986
+   PMF energy difference: 22.3042
+   NN energy difference: 21.9902
+   Regularization loss: 0.0
+   Energy loss: 7.9802
+   PMF energy difference: 33.1614
+   NN energy difference: 30.3365
+   Regularization loss: 0.0
+
+Step 14300...
+
+   Energy loss: 8.7158
+   PMF energy difference: 25.5528
+   NN energy difference: 22.6005
+   Regularization loss: 0.0
+   Energy loss: 12.6791
+   PMF energy difference: 9.3092
+   NN energy difference: 12.87
+   Regularization loss: 0.0
+   Energy loss: 2.2605
+   PMF energy difference: -0.4432
+   NN energy difference: 1.0603
+   Regularization loss: 0.0
+   Energy loss: 0.7805
+   PMF energy difference: 2.1324
+   NN energy difference: 3.0159
+   Regularization loss: 0.0
+
+Step 14400...
+
+   Energy loss: 0.0946
+   PMF energy difference: 10.4942
+   NN energy difference: 10.1866
+   Regularization loss: 0.0
+   Energy loss: 1.0096
+   PMF energy difference: 1.1797
+   NN energy difference: 0.1749
+   Regularization loss: 0.0
+   Energy loss: 1.8707
+   PMF energy difference: 2.5093
+   NN energy difference: 1.1415
+   Regularization loss: 0.0
+   Energy loss: 0.4652
+   PMF energy difference: 0.918
+   NN energy difference: 0.236
+   Regularization loss: 0.0
+
+Step 14500...
+
+   Energy loss: 0.0002
+   PMF energy difference: 12.9993
+   NN energy difference: 13.0136
+   Regularization loss: 0.0
+   Energy loss: 3.0089
+   PMF energy difference: 6.2903
+   NN energy difference: 8.0249
+   Regularization loss: 0.0
+   Energy loss: 0.5012
+   PMF energy difference: 13.4615
+   NN energy difference: 14.1695
+   Regularization loss: 0.0
+   Energy loss: 0.6937
+   PMF energy difference: -1.1602
+   NN energy difference: -0.3273
+   Regularization loss: 0.0
+
+Step 14600...
+
+   Energy loss: 3.4966
+   PMF energy difference: 8.4878
+   NN energy difference: 10.3577
+   Regularization loss: 0.0
+   Energy loss: 34.1981
+   PMF energy difference: 56.8406
+   NN energy difference: 50.9927
+   Regularization loss: 0.0
+   Energy loss: 0.0111
+   PMF energy difference: 0.2908
+   NN energy difference: 0.1853
+   Regularization loss: 0.0
+   Energy loss: 5.9442
+   PMF energy difference: 2.8569
+   NN energy difference: 0.4188
+   Regularization loss: 0.0
+
+Step 14700...
+
+   Energy loss: 2.2542
+   PMF energy difference: 13.0772
+   NN energy difference: 11.5758
+   Regularization loss: 0.0
+   Energy loss: 3.6472
+   PMF energy difference: 2.9205
+   NN energy difference: 4.8303
+   Regularization loss: 0.0
+   Energy loss: 1.5182
+   PMF energy difference: 1.3004
+   NN energy difference: 0.0682
+   Regularization loss: 0.0
+   Energy loss: 0.5345
+   PMF energy difference: -0.4386
+   NN energy difference: -1.1696
+   Regularization loss: 0.0
+
+Step 14800...
+
+   Energy loss: 0.4194
+   PMF energy difference: 7.0084
+   NN energy difference: 7.656
+   Regularization loss: 0.0
+   Energy loss: 18.6723
+   PMF energy difference: 80.575
+   NN energy difference: 76.2538
+   Regularization loss: 0.0
+   Energy loss: 0.4552
+   PMF energy difference: -0.04
+   NN energy difference: -0.7147
+   Regularization loss: 0.0
+   Energy loss: 0.3628
+   PMF energy difference: -0.9244
+   NN energy difference: -1.5267
+   Regularization loss: 0.0
+
+Step 14900...
+
+   Energy loss: 2.4268
+   PMF energy difference: 36.0376
+   NN energy difference: 37.5954
+   Regularization loss: 0.0
+   Energy loss: 1.5046
+   PMF energy difference: 4.0686
+   NN energy difference: 5.2952
+   Regularization loss: 0.0
+   Energy loss: 0.3265
+   PMF energy difference: -0.5736
+   NN energy difference: -0.0022
+   Regularization loss: 0.0
+   Energy loss: 0.2909
+   PMF energy difference: -1.1689
+   NN energy difference: -1.7083
+   Regularization loss: 0.0
+
+Step 15000...
+
+   Energy loss: 4.9635
+   PMF energy difference: 29.0624
+   NN energy difference: 26.8345
+   Regularization loss: 0.0
+   Energy loss: 2.6945
+   PMF energy difference: 2.9843
+   NN energy difference: 1.3428
+   Regularization loss: 0.0
+   Energy loss: 49.8803
+   PMF energy difference: 81.9413
+   NN energy difference: 89.0039
+   Regularization loss: 0.0
+   Energy loss: 0.0006
+   PMF energy difference: -0.9791
+   NN energy difference: -0.9556
+   Regularization loss: 0.0
+
+Step 15100...
+
+   Energy loss: 0.3579
+   PMF energy difference: 2.716
+   NN energy difference: 2.1178
+   Regularization loss: 0.0
+   Energy loss: 11.1846
+   PMF energy difference: 2.7196
+   NN energy difference: -0.6248
+   Regularization loss: 0.0
+   Energy loss: 0.5603
+   PMF energy difference: 5.1113
+   NN energy difference: 5.8598
+   Regularization loss: 0.0
+   Energy loss: 0.702
+   PMF energy difference: -1.919
+   NN energy difference: -1.0812
+   Regularization loss: 0.0
+
+Step 15200...
+
+   Energy loss: 0.0006
+   PMF energy difference: 14.3846
+   NN energy difference: 14.4096
+   Regularization loss: 0.0
+   Energy loss: 2.2934
+   PMF energy difference: 1.6968
+   NN energy difference: 0.1824
+   Regularization loss: 0.0
+   Energy loss: 0.0046
+   PMF energy difference: -3.2283
+   NN energy difference: -3.1607
+   Regularization loss: 0.0
+   Energy loss: 0.3769
+   PMF energy difference: 0.7632
+   NN energy difference: 1.3771
+   Regularization loss: 0.0
+
+Step 15300...
+
+   Energy loss: 0.3706
+   PMF energy difference: 12.7261
+   NN energy difference: 12.1173
+   Regularization loss: 0.0
+   Energy loss: 5.4665
+   PMF energy difference: 0.2499
+   NN energy difference: -2.0881
+   Regularization loss: 0.0
+   Energy loss: 1.2223
+   PMF energy difference: 4.8377
+   NN energy difference: 3.7322
+   Regularization loss: 0.0
+   Energy loss: 0.8887
+   PMF energy difference: 3.9771
+   NN energy difference: 3.0344
+   Regularization loss: 0.0
+
+Step 15400...
+
+   Energy loss: 0.0955
+   PMF energy difference: 5.7182
+   NN energy difference: 6.0272
+   Regularization loss: 0.0
+   Energy loss: 19.1819
+   PMF energy difference: 12.4578
+   NN energy difference: 16.8375
+   Regularization loss: 0.0
+   Energy loss: 1.9613
+   PMF energy difference: -1.2002
+   NN energy difference: 0.2003
+   Regularization loss: 0.0
+   Energy loss: 0.0054
+   PMF energy difference: -0.6139
+   NN energy difference: -0.6871
+   Regularization loss: 0.0
+
+Step 15500...
+
+   Energy loss: 3.1198
+   PMF energy difference: 5.9828
+   NN energy difference: 7.7491
+   Regularization loss: 0.0
+   Energy loss: 5.3771
+   PMF energy difference: 46.2685
+   NN energy difference: 43.9496
+   Regularization loss: 0.0
+   Energy loss: 0.5534
+   PMF energy difference: 0.8828
+   NN energy difference: 0.139
+   Regularization loss: 0.0
+   Energy loss: 3.9534
+   PMF energy difference: 3.7237
+   NN energy difference: 1.7354
+   Regularization loss: 0.0
+
+Step 15600...
+
+   Energy loss: 0.6181
+   PMF energy difference: 3.3434
+   NN energy difference: 4.1296
+   Regularization loss: 0.0
+   Energy loss: 2.234
+   PMF energy difference: 62.377
+   NN energy difference: 60.8823
+   Regularization loss: 0.0
+   Energy loss: 0.3825
+   PMF energy difference: -1.2495
+   NN energy difference: -0.631
+   Regularization loss: 0.0
+   Energy loss: 2.6026
+   PMF energy difference: 1.9742
+   NN energy difference: 0.3609
+   Regularization loss: 0.0
+
+Step 15700...
+
+   Energy loss: 0.3722
+   PMF energy difference: 8.1726
+   NN energy difference: 7.5626
+   Regularization loss: 0.0
+   Energy loss: 0.0002
+   PMF energy difference: 1.6441
+   NN energy difference: 1.631
+   Regularization loss: 0.0
+   Energy loss: 0.0293
+   PMF energy difference: -1.6403
+   NN energy difference: -1.8116
+   Regularization loss: 0.0
+   Energy loss: 1.479
+   PMF energy difference: -0.0312
+   NN energy difference: -1.2474
+   Regularization loss: 0.0
+
+Step 15800...
+
+   Energy loss: 2.6608
+   PMF energy difference: 1.2895
+   NN energy difference: 2.9206
+   Regularization loss: 0.0
+   Energy loss: 5.8827
+   PMF energy difference: -1.0739
+   NN energy difference: -3.4994
+   Regularization loss: 0.0
+   Energy loss: 7.3847
+   PMF energy difference: -1.3889
+   NN energy difference: -4.1064
+   Regularization loss: 0.0
+   Energy loss: 1.4165
+   PMF energy difference: 1.6674
+   NN energy difference: 0.4773
+   Regularization loss: 0.0
+
+Step 15900...
+
+   Energy loss: 0.0018
+   PMF energy difference: 4.3132
+   NN energy difference: 4.3552
+   Regularization loss: 0.0
+   Energy loss: 0.5635
+   PMF energy difference: -0.0679
+   NN energy difference: 0.6827
+   Regularization loss: 0.0
+   Energy loss: 1.5907
+   PMF energy difference: 4.5054
+   NN energy difference: 3.2442
+   Regularization loss: 0.0
+   Energy loss: 0.1037
+   PMF energy difference: 0.8487
+   NN energy difference: 0.5266
+   Regularization loss: 0.0
+
+Step 16000...
+
+   Energy loss: 0.0364
+   PMF energy difference: 14.6029
+   NN energy difference: 14.4122
+   Regularization loss: 0.0
+   Energy loss: 1.7565
+   PMF energy difference: 2.8826
+   NN energy difference: 1.5573
+   Regularization loss: 0.0
+   Energy loss: 0.8746
+   PMF energy difference: 0.6012
+   NN energy difference: 1.5364
+   Regularization loss: 0.0
+   Energy loss: 0.1066
+   PMF energy difference: 8.1509
+   NN energy difference: 8.4774
+   Regularization loss: 0.0
+
+Step 16100...
+
+   Energy loss: 4.401
+   PMF energy difference: 0.3659
+   NN energy difference: 2.4638
+   Regularization loss: 0.0
+   Energy loss: 0.4228
+   PMF energy difference: 0.5946
+   NN energy difference: 1.2448
+   Regularization loss: 0.0
+   Energy loss: 0.0042
+   PMF energy difference: 3.8015
+   NN energy difference: 3.8662
+   Regularization loss: 0.0
+   Energy loss: 0.1336
+   PMF energy difference: 3.0668
+   NN energy difference: 3.4323
+   Regularization loss: 0.0
+
+Step 16200...
+
+   Energy loss: 6.4506
+   PMF energy difference: 19.8004
+   NN energy difference: 17.2606
+   Regularization loss: 0.0
+   Energy loss: 0.1732
+   PMF energy difference: 2.8372
+   NN energy difference: 3.2534
+   Regularization loss: 0.0
+   Energy loss: 3.9514
+   PMF energy difference: 1.5347
+   NN energy difference: -0.4531
+   Regularization loss: 0.0
+   Energy loss: 0.0001
+   PMF energy difference: -0.748
+   NN energy difference: -0.7377
+   Regularization loss: 0.0
+
+Step 16300...
+
+   Energy loss: 0.032
+   PMF energy difference: -0.1771
+   NN energy difference: 0.0016
+   Regularization loss: 0.0
+   Energy loss: 0.2845
+   PMF energy difference: -2.7567
+   NN energy difference: -3.29
+   Regularization loss: 0.0
+   Energy loss: 2.3247
+   PMF energy difference: 2.4322
+   NN energy difference: 0.9075
+   Regularization loss: 0.0
+   Energy loss: 6.0125
+   PMF energy difference: 1.9167
+   NN energy difference: -0.5354
+   Regularization loss: 0.0
+
+Step 16400...
+
+   Energy loss: 27.037
+   PMF energy difference: 42.7855
+   NN energy difference: 47.9852
+   Regularization loss: 0.0
+   Energy loss: 0.0075
+   PMF energy difference: 1.2991
+   NN energy difference: 1.3858
+   Regularization loss: 0.0
+   Energy loss: 0.0063
+   PMF energy difference: 1.2882
+   NN energy difference: 1.2088
+   Regularization loss: 0.0
+   Energy loss: 3.0613
+   PMF energy difference: 34.784
+   NN energy difference: 33.0343
+   Regularization loss: 0.0
+
+Step 16500...
+
+   Energy loss: 11.0393
+   PMF energy difference: -1.6807
+   NN energy difference: -5.0033
+   Regularization loss: 0.0
+   Energy loss: 1.1469
+   PMF energy difference: 21.1609
+   NN energy difference: 20.09
+   Regularization loss: 0.0
+   Energy loss: 1.274
+   PMF energy difference: 2.0023
+   NN energy difference: 0.8736
+   Regularization loss: 0.0
+   Energy loss: 0.873
+   PMF energy difference: 2.0124
+   NN energy difference: 1.078
+   Regularization loss: 0.0
+
+Step 16600...
+
+   Energy loss: 0.2483
+   PMF energy difference: 2.4584
+   NN energy difference: 2.9567
+   Regularization loss: 0.0
+   Energy loss: 0.2636
+   PMF energy difference: -2.8402
+   NN energy difference: -3.3537
+   Regularization loss: 0.0
+   Energy loss: 5.5682
+   PMF energy difference: 8.0746
+   NN energy difference: 10.4343
+   Regularization loss: 0.0
+   Energy loss: 0.2773
+   PMF energy difference: 0.1151
+   NN energy difference: 0.6417
+   Regularization loss: 0.0
+
+Step 16700...
+
+   Energy loss: 0.4679
+   PMF energy difference: 1.3986
+   NN energy difference: 0.7146
+   Regularization loss: 0.0
+   Energy loss: 0.0402
+   PMF energy difference: -0.0586
+   NN energy difference: -0.2591
+   Regularization loss: 0.0
+   Energy loss: 7.2447
+   PMF energy difference: 59.8055
+   NN energy difference: 57.1139
+   Regularization loss: 0.0
+   Energy loss: 0.231
+   PMF energy difference: 1.7078
+   NN energy difference: 2.1884
+   Regularization loss: 0.0
+
+Step 16800...
+
+   Energy loss: 1.4948
+   PMF energy difference: 3.9005
+   NN energy difference: 5.1231
+   Regularization loss: 0.0
+   Energy loss: 1.4948
+   PMF energy difference: 1.5087
+   NN energy difference: 0.2861
+   Regularization loss: 0.0
+   Energy loss: 0.1965
+   PMF energy difference: -1.199
+   NN energy difference: -1.6422
+   Regularization loss: 0.0
+   Energy loss: 0.202
+   PMF energy difference: -0.2016
+   NN energy difference: -0.6511
+   Regularization loss: 0.0
+
+Step 16900...
+
+   Energy loss: 0.2693
+   PMF energy difference: -2.1225
+   NN energy difference: -1.6035
+   Regularization loss: 0.0
+   Energy loss: 0.0105
+   PMF energy difference: 4.2689
+   NN energy difference: 4.1663
+   Regularization loss: 0.0
+   Energy loss: 0.0002
+   PMF energy difference: 4.6033
+   NN energy difference: 4.5909
+   Regularization loss: 0.0
+   Energy loss: 0.0561
+   PMF energy difference: -0.2908
+   NN energy difference: -0.0541
+   Regularization loss: 0.0
+
+Step 17000...
+
+   Energy loss: 0.3975
+   PMF energy difference: 1.9197
+   NN energy difference: 2.5502
+   Regularization loss: 0.0
+   Energy loss: 9.7629
+   PMF energy difference: 34.3185
+   NN energy difference: 31.1939
+   Regularization loss: 0.0
+   Energy loss: 0.2681
+   PMF energy difference: 0.4021
+   NN energy difference: 0.9199
+   Regularization loss: 0.0
+   Energy loss: 0.1125
+   PMF energy difference: -1.8014
+   NN energy difference: -2.1369
+   Regularization loss: 0.0
+
+Step 17100...
+
+   Energy loss: 0.311
+   PMF energy difference: -1.9023
+   NN energy difference: -2.46
+   Regularization loss: 0.0
+   Energy loss: 0.4075
+   PMF energy difference: 0.5997
+   NN energy difference: 1.2381
+   Regularization loss: 0.0
+   Energy loss: 8.1331
+   PMF energy difference: 42.9044
+   NN energy difference: 40.0526
+   Regularization loss: 0.0
+   Energy loss: 2.4659
+   PMF energy difference: 3.1481
+   NN energy difference: 1.5778
+   Regularization loss: 0.0
+
+Step 17200...
+
+   Energy loss: 0.6526
+   PMF energy difference: 11.0658
+   NN energy difference: 10.258
+   Regularization loss: 0.0
+   Energy loss: 1.0393
+   PMF energy difference: 3.7423
+   NN energy difference: 4.7617
+   Regularization loss: 0.0
+   Energy loss: 4.254
+   PMF energy difference: 1.0898
+   NN energy difference: -0.9727
+   Regularization loss: 0.0
+   Energy loss: 0.2573
+   PMF energy difference: -0.947
+   NN energy difference: -0.4397
+   Regularization loss: 0.0
+
+Step 17300...
+
+   Energy loss: 18.3323
+   PMF energy difference: 23.5818
+   NN energy difference: 19.3002
+   Regularization loss: 0.0
+   Energy loss: 0.4622
+   PMF energy difference: -1.8267
+   NN energy difference: -1.1469
+   Regularization loss: 0.0
+   Energy loss: 21.8582
+   PMF energy difference: 33.8483
+   NN energy difference: 29.173
+   Regularization loss: 0.0
+   Energy loss: 0.0272
+   PMF energy difference: 0.6356
+   NN energy difference: 0.4708
+   Regularization loss: 0.0
+
+Step 17400...
+
+   Energy loss: 11.5696
+   PMF energy difference: 32.4987
+   NN energy difference: 35.9001
+   Regularization loss: 0.0
+   Energy loss: 0.0113
+   PMF energy difference: 0.3403
+   NN energy difference: 0.4468
+   Regularization loss: 0.0
+   Energy loss: 2.0518
+   PMF energy difference: 0.3545
+   NN energy difference: 1.7869
+   Regularization loss: 0.0
+   Energy loss: 0.2565
+   PMF energy difference: -0.3525
+   NN energy difference: 0.154
+   Regularization loss: 0.0
+
+Step 17500...
+
+   Energy loss: 1.1597
+   PMF energy difference: 2.5547
+   NN energy difference: 3.6316
+   Regularization loss: 0.0
+   Energy loss: 20.0265
+   PMF energy difference: 51.6123
+   NN energy difference: 47.1372
+   Regularization loss: 0.0
+   Energy loss: 0.453
+   PMF energy difference: 0.3067
+   NN energy difference: 0.9797
+   Regularization loss: 0.0
+   Energy loss: 0.3128
+   PMF energy difference: 1.5803
+   NN energy difference: 2.1396
+   Regularization loss: 0.0
+
+Step 17600...
+
+   Energy loss: 0.4275
+   PMF energy difference: 9.3608
+   NN energy difference: 8.7069
+   Regularization loss: 0.0
+   Energy loss: 0.4843
+   PMF energy difference: -0.1297
+   NN energy difference: 0.5662
+   Regularization loss: 0.0
+   Energy loss: 0.8921
+   PMF energy difference: -2.0892
+   NN energy difference: -3.0337
+   Regularization loss: 0.0
+   Energy loss: 0.1809
+   PMF energy difference: 0.9199
+   NN energy difference: 0.4946
+   Regularization loss: 0.0
+
+Step 17700...
+
+   Energy loss: 1.502
+   PMF energy difference: 2.6264
+   NN energy difference: 1.4008
+   Regularization loss: 0.0
+   Energy loss: 13.7219
+   PMF energy difference: 3.5463
+   NN energy difference: 7.2506
+   Regularization loss: 0.0
+   Energy loss: 0.4819
+   PMF energy difference: 5.8549
+   NN energy difference: 6.549
+   Regularization loss: 0.0
+   Energy loss: 1.6802
+   PMF energy difference: 1.5951
+   NN energy difference: 0.2988
+   Regularization loss: 0.0
+
+Step 17800...
+
+   Energy loss: 2.9091
+   PMF energy difference: 1.6526
+   NN energy difference: 3.3582
+   Regularization loss: 0.0
+   Energy loss: 0.4372
+   PMF energy difference: 0.785
+   NN energy difference: 1.4462
+   Regularization loss: 0.0
+   Energy loss: 0.0628
+   PMF energy difference: -3.4966
+   NN energy difference: -3.246
+   Regularization loss: 0.0
+   Energy loss: 0.3686
+   PMF energy difference: 0.6274
+   NN energy difference: 0.0203
+   Regularization loss: 0.0
+
+Step 17900...
+
+   Energy loss: 1.2612
+   PMF energy difference: 7.3303
+   NN energy difference: 8.4533
+   Regularization loss: 0.0
+   Energy loss: 0.219
+   PMF energy difference: 0.9947
+   NN energy difference: 0.5268
+   Regularization loss: 0.0
+   Energy loss: 2.258
+   PMF energy difference: 23.6546
+   NN energy difference: 22.1519
+   Regularization loss: 0.0
+   Energy loss: 3.9886
+   PMF energy difference: -1.2058
+   NN energy difference: 0.7914
+   Regularization loss: 0.0
+
+Step 18000...
+
+   Energy loss: 0.1793
+   PMF energy difference: 1.9035
+   NN energy difference: 1.4801
+   Regularization loss: 0.0
+   Energy loss: 1.3874
+   PMF energy difference: 0.1804
+   NN energy difference: -0.9975
+   Regularization loss: 0.0
+   Energy loss: 4.4779
+   PMF energy difference: 6.7003
+   NN energy difference: 8.8164
+   Regularization loss: 0.0
+   Energy loss: 0.0291
+   PMF energy difference: 0.0799
+   NN energy difference: -0.0906
+   Regularization loss: 0.0
+
+Step 18100...
+
+   Energy loss: 0.9471
+   PMF energy difference: 0.8331
+   NN energy difference: 1.8063
+   Regularization loss: 0.0
+   Energy loss: 0.3748
+   PMF energy difference: 0.5709
+   NN energy difference: -0.0413
+   Regularization loss: 0.0
+   Energy loss: 1.7319
+   PMF energy difference: 5.4243
+   NN energy difference: 6.7404
+   Regularization loss: 0.0
+   Energy loss: 0.8967
+   PMF energy difference: 7.651
+   NN energy difference: 8.598
+   Regularization loss: 0.0
+
+Step 18200...
+
+   Energy loss: 0.0126
+   PMF energy difference: 26.1095
+   NN energy difference: 25.9974
+   Regularization loss: 0.0
+   Energy loss: 0.1486
+   PMF energy difference: 3.1329
+   NN energy difference: 2.7474
+   Regularization loss: 0.0
+   Energy loss: 0.1525
+   PMF energy difference: -1.4526
+   NN energy difference: -1.0622
+   Regularization loss: 0.0
+   Energy loss: 0.8986
+   PMF energy difference: 1.3299
+   NN energy difference: 0.382
+   Regularization loss: 0.0
+
+Step 18300...
+
+   Energy loss: 2.6252
+   PMF energy difference: 0.1085
+   NN energy difference: 1.7288
+   Regularization loss: 0.0
+   Energy loss: 0.2683
+   PMF energy difference: 11.9058
+   NN energy difference: 11.3878
+   Regularization loss: 0.0
+   Energy loss: 9.1615
+   PMF energy difference: 31.8562
+   NN energy difference: 28.8294
+   Regularization loss: 0.0
+   Energy loss: 0.9077
+   PMF energy difference: 1.3775
+   NN energy difference: 2.3303
+   Regularization loss: 0.0
+
+Step 18400...
+
+   Energy loss: 2.2564
+   PMF energy difference: -2.5959
+   NN energy difference: -1.0938
+   Regularization loss: 0.0
+   Energy loss: 0.0632
+   PMF energy difference: -0.6138
+   NN energy difference: -0.8652
+   Regularization loss: 0.0
+   Energy loss: 0.5485
+   PMF energy difference: -1.5626
+   NN energy difference: -2.3033
+   Regularization loss: 0.0
+   Energy loss: 4.6232
+   PMF energy difference: 1.8247
+   NN energy difference: -0.3255
+   Regularization loss: 0.0
+
+Step 18500...
+
+   Energy loss: 1.013
+   PMF energy difference: 0.2211
+   NN energy difference: 1.2276
+   Regularization loss: 0.0
+   Energy loss: 0.7086
+   PMF energy difference: -3.6831
+   NN energy difference: -4.5249
+   Regularization loss: 0.0
+   Energy loss: 3.2805
+   PMF energy difference: 101.2074
+   NN energy difference: 99.3962
+   Regularization loss: 0.0
+   Energy loss: 0.0317
+   PMF energy difference: 0.8384
+   NN energy difference: 1.0163
+   Regularization loss: 0.0
+
+Step 18600...
+
+   Energy loss: 5.6855
+   PMF energy difference: 0.5168
+   NN energy difference: 2.9012
+   Regularization loss: 0.0
+   Energy loss: 0.195
+   PMF energy difference: 3.3092
+   NN energy difference: 2.8676
+   Regularization loss: 0.0
+   Energy loss: 1.0507
+   PMF energy difference: 1.0174
+   NN energy difference: -0.0076
+   Regularization loss: 0.0
+   Energy loss: 3.0132
+   PMF energy difference: 1.6281
+   NN energy difference: -0.1078
+   Regularization loss: 0.0
+
+Step 18700...
+
+   Energy loss: 0.0699
+   PMF energy difference: -3.0524
+   NN energy difference: -2.788
+   Regularization loss: 0.0
+   Energy loss: 0.1045
+   PMF energy difference: 7.9761
+   NN energy difference: 8.2993
+   Regularization loss: 0.0
+   Energy loss: 3.0408
+   PMF energy difference: 7.6343
+   NN energy difference: 5.8905
+   Regularization loss: 0.0
+   Energy loss: 2.6264
+   PMF energy difference: 0.0469
+   NN energy difference: 1.6675
+   Regularization loss: 0.0
+
+Step 18800...
+
+   Energy loss: 0.5077
+   PMF energy difference: -1.9031
+   NN energy difference: -2.6157
+   Regularization loss: 0.0
+   Energy loss: 8.7212
+   PMF energy difference: 27.6853
+   NN energy difference: 24.7321
+   Regularization loss: 0.0
+   Energy loss: 0.0676
+   PMF energy difference: -0.0179
+   NN energy difference: -0.2779
+   Regularization loss: 0.0
+   Energy loss: 2.81
+   PMF energy difference: -1.2921
+   NN energy difference: 0.3842
+   Regularization loss: 0.0
+
+Step 18900...
+
+   Energy loss: 0.0911
+   PMF energy difference: 0.698
+   NN energy difference: 0.3962
+   Regularization loss: 0.0
+   Energy loss: 4.8731
+   PMF energy difference: 3.4097
+   NN energy difference: 1.2022
+   Regularization loss: 0.0
+   Energy loss: 6.5384
+   PMF energy difference: -5.4181
+   NN energy difference: -2.8611
+   Regularization loss: 0.0
+   Energy loss: 0.3256
+   PMF energy difference: 0.7636
+   NN energy difference: 1.3342
+   Regularization loss: 0.0
+
+Step 19000...
+
+   Energy loss: 2.6596
+   PMF energy difference: 5.3736
+   NN energy difference: 7.0044
+   Regularization loss: 0.0
+   Energy loss: 4.6123
+   PMF energy difference: -1.6886
+   NN energy difference: 0.459
+   Regularization loss: 0.0
+   Energy loss: 0.0069
+   PMF energy difference: 5.3638
+   NN energy difference: 5.4471
+   Regularization loss: 0.0
+   Energy loss: 0.0104
+   PMF energy difference: -1.0473
+   NN energy difference: -0.9452
+   Regularization loss: 0.0
+
+Step 19100...
+
+   Energy loss: 0.0448
+   PMF energy difference: 7.6932
+   NN energy difference: 7.9049
+   Regularization loss: 0.0
+   Energy loss: 0.9041
+   PMF energy difference: -1.4261
+   NN energy difference: -0.4753
+   Regularization loss: 0.0
+   Energy loss: 0.0088
+   PMF energy difference: 11.7807
+   NN energy difference: 11.8743
+   Regularization loss: 0.0
+   Energy loss: 0.2348
+   PMF energy difference: -0.4952
+   NN energy difference: -0.0107
+   Regularization loss: 0.0
+
+Step 19200...
+
+   Energy loss: 0.0988
+   PMF energy difference: -2.5863
+   NN energy difference: -2.272
+   Regularization loss: 0.0
+   Energy loss: 0.2066
+   PMF energy difference: -0.9695
+   NN energy difference: -1.424
+   Regularization loss: 0.0
+   Energy loss: 2.7684
+   PMF energy difference: 9.2087
+   NN energy difference: 10.8726
+   Regularization loss: 0.0
+   Energy loss: 1.8252
+   PMF energy difference: 9.6566
+   NN energy difference: 11.0076
+   Regularization loss: 0.0
+
+Step 19300...
+
+   Energy loss: 1.7996
+   PMF energy difference: 0.3603
+   NN energy difference: -0.9811
+   Regularization loss: 0.0
+   Energy loss: 0.8405
+   PMF energy difference: 3.3623
+   NN energy difference: 2.4455
+   Regularization loss: 0.0
+   Energy loss: 0.2128
+   PMF energy difference: 2.8232
+   NN energy difference: 2.3619
+   Regularization loss: 0.0
+   Energy loss: 0.0371
+   PMF energy difference: -1.2715
+   NN energy difference: -1.464
+   Regularization loss: 0.0
+
+Step 19400...
+
+   Energy loss: 10.4283
+   PMF energy difference: 1.4252
+   NN energy difference: 4.6545
+   Regularization loss: 0.0
+   Energy loss: 14.8026
+   PMF energy difference: 34.5304
+   NN energy difference: 30.6829
+   Regularization loss: 0.0
+   Energy loss: 5.6606
+   PMF energy difference: 80.448
+   NN energy difference: 78.0688
+   Regularization loss: 0.0
+   Energy loss: 0.0252
+   PMF energy difference: 0.7295
+   NN energy difference: 0.5706
+   Regularization loss: 0.0
+
+Step 19500...
+
+   Energy loss: 13.5874
+   PMF energy difference: 23.8062
+   NN energy difference: 20.1201
+   Regularization loss: 0.0
+   Energy loss: 0.7803
+   PMF energy difference: 3.6013
+   NN energy difference: 4.4847
+   Regularization loss: 0.0
+   Energy loss: 1.1134
+   PMF energy difference: -1.2055
+   NN energy difference: -0.1503
+   Regularization loss: 0.0
+   Energy loss: 0.9457
+   PMF energy difference: 3.6469
+   NN energy difference: 2.6745
+   Regularization loss: 0.0
+
+Step 19600...
+
+   Energy loss: 0.0022
+   PMF energy difference: 25.5265
+   NN energy difference: 25.4793
+   Regularization loss: 0.0
+   Energy loss: 0.6344
+   PMF energy difference: -1.9001
+   NN energy difference: -2.6966
+   Regularization loss: 0.0
+   Energy loss: 0.0433
+   PMF energy difference: -0.6626
+   NN energy difference: -0.4544
+   Regularization loss: 0.0
+   Energy loss: 3.3568
+   PMF energy difference: 2.1359
+   NN energy difference: 0.3038
+   Regularization loss: 0.0
+
+Step 19700...
+
+   Energy loss: 3.0117
+   PMF energy difference: -1.1646
+   NN energy difference: 0.5708
+   Regularization loss: 0.0
+   Energy loss: 0.0616
+   PMF energy difference: -0.0854
+   NN energy difference: 0.1629
+   Regularization loss: 0.0
+   Energy loss: 6.1182
+   PMF energy difference: 15.1013
+   NN energy difference: 12.6278
+   Regularization loss: 0.0
+   Energy loss: 2.284
+   PMF energy difference: 1.5948
+   NN energy difference: 3.1061
+   Regularization loss: 0.0
+
+Step 19800...
+
+   Energy loss: 0.25
+   PMF energy difference: -0.52
+   NN energy difference: -0.02
+   Regularization loss: 0.0
+   Energy loss: 0.0558
+   PMF energy difference: 2.4259
+   NN energy difference: 2.1897
+   Regularization loss: 0.0
+   Energy loss: 0.6844
+   PMF energy difference: 0.8021
+   NN energy difference: 1.6294
+   Regularization loss: 0.0
+   Energy loss: 0.0163
+   PMF energy difference: 0.681
+   NN energy difference: 0.8086
+   Regularization loss: 0.0
+
+Step 19900...
+
+   Energy loss: 1.4301
+   PMF energy difference: 6.4593
+   NN energy difference: 5.2634
+   Regularization loss: 0.0
+   Energy loss: 0.2536
+   PMF energy difference: 0.9662
+   NN energy difference: 0.4626
+   Regularization loss: 0.0
+   Energy loss: 0.5989
+   PMF energy difference: 32.9105
+   NN energy difference: 33.6843
+   Regularization loss: 0.0
+   Energy loss: 0.286
+   PMF energy difference: -0.5054
+   NN energy difference: -1.0401
+   Regularization loss: 0.0
+
+Step 20000...
+
+   Energy loss: 0.0376
+   PMF energy difference: 4.8009
+   NN energy difference: 4.9949
+   Regularization loss: 0.0
+   Energy loss: 0.0127
+   PMF energy difference: -0.6749
+   NN energy difference: -0.7877
+   Regularization loss: 0.0
+   Energy loss: 2.5938
+   PMF energy difference: 1.526
+   NN energy difference: -0.0846
+   Regularization loss: 0.0
+   Energy loss: 0.0906
+   PMF energy difference: 2.1943
+   NN energy difference: 2.4953
+   Regularization loss: 0.0
+
+Step 20100...
+
+   Energy loss: 1.0016
+   PMF energy difference: 14.9311
+   NN energy difference: 13.9303
+   Regularization loss: 0.0
+   Energy loss: 0.638
+   PMF energy difference: 0.228
+   NN energy difference: 1.0268
+   Regularization loss: 0.0
+   Energy loss: 0.6816
+   PMF energy difference: 0.4056
+   NN energy difference: -0.42
+   Regularization loss: 0.0
+   Energy loss: 1.1733
+   PMF energy difference: 13.4883
+   NN energy difference: 14.5715
+   Regularization loss: 0.0
+
+Step 20200...
+
+   Energy loss: 1.4615
+   PMF energy difference: 2.9849
+   NN energy difference: 4.1938
+   Regularization loss: 0.0
+   Energy loss: 1.4436
+   PMF energy difference: -2.2373
+   NN energy difference: -3.4388
+   Regularization loss: 0.0
+   Energy loss: 1.1119
+   PMF energy difference: 7.2938
+   NN energy difference: 6.2393
+   Regularization loss: 0.0
+   Energy loss: 1.7954
+   PMF energy difference: -0.1718
+   NN energy difference: -1.5118
+   Regularization loss: 0.0
+
+Step 20300...
+
+   Energy loss: 0.8755
+   PMF energy difference: -1.0192
+   NN energy difference: -0.0835
+   Regularization loss: 0.0
+   Energy loss: 0.6004
+   PMF energy difference: -1.0232
+   NN energy difference: -1.7981
+   Regularization loss: 0.0
+   Energy loss: 0.3206
+   PMF energy difference: 1.3063
+   NN energy difference: 0.7401
+   Regularization loss: 0.0
+   Energy loss: 0.9859
+   PMF energy difference: 0.3545
+   NN energy difference: 1.3474
+   Regularization loss: 0.0
+
+Step 20400...
+
+   Energy loss: 4.0578
+   PMF energy difference: 1.4402
+   NN energy difference: -0.5742
+   Regularization loss: 0.0
+   Energy loss: 0.4872
+   PMF energy difference: 1.7325
+   NN energy difference: 1.0346
+   Regularization loss: 0.0
+   Energy loss: 7.3342
+   PMF energy difference: 70.5471
+   NN energy difference: 73.2553
+   Regularization loss: 0.0
+   Energy loss: 0.7647
+   PMF energy difference: 33.0001
+   NN energy difference: 32.1257
+   Regularization loss: 0.0
+
+Step 20500...
+
+   Energy loss: 0.2503
+   PMF energy difference: 4.1319
+   NN energy difference: 3.6316
+   Regularization loss: 0.0
+   Energy loss: 1.5207
+   PMF energy difference: 10.7941
+   NN energy difference: 12.0273
+   Regularization loss: 0.0
+   Energy loss: 0.8486
+   PMF energy difference: -0.5539
+   NN energy difference: 0.3673
+   Regularization loss: 0.0
+   Energy loss: 13.6613
+   PMF energy difference: 48.4072
+   NN energy difference: 52.1034
+   Regularization loss: 0.0
+
+Step 20600...
+
+   Energy loss: 1.2299
+   PMF energy difference: 1.5082
+   NN energy difference: 2.6172
+   Regularization loss: 0.0
+   Energy loss: 1.8653
+   PMF energy difference: 5.0477
+   NN energy difference: 6.4134
+   Regularization loss: 0.0
+   Energy loss: 4.5857
+   PMF energy difference: 3.1257
+   NN energy difference: 0.9843
+   Regularization loss: 0.0
+   Energy loss: 5.0023
+   PMF energy difference: 22.5681
+   NN energy difference: 20.3315
+   Regularization loss: 0.0
+
+Step 20700...
+
+   Energy loss: 0.2515
+   PMF energy difference: 36.4186
+   NN energy difference: 35.917
+   Regularization loss: 0.0
+   Energy loss: 1.6816
+   PMF energy difference: 5.1333
+   NN energy difference: 6.4301
+   Regularization loss: 0.0
+   Energy loss: 0.8934
+   PMF energy difference: 6.0571
+   NN energy difference: 7.0023
+   Regularization loss: 0.0
+   Energy loss: 0.3527
+   PMF energy difference: -1.2332
+   NN energy difference: -0.6393
+   Regularization loss: 0.0
+
+Step 20800...
+
+   Energy loss: 2.5417
+   PMF energy difference: 6.7808
+   NN energy difference: 8.3751
+   Regularization loss: 0.0
+   Energy loss: 0.2379
+   PMF energy difference: 9.2715
+   NN energy difference: 8.7837
+   Regularization loss: 0.0
+   Energy loss: 4.0367
+   PMF energy difference: 0.5989
+   NN energy difference: 2.608
+   Regularization loss: 0.0
+   Energy loss: 0.5425
+   PMF energy difference: 0.3356
+   NN energy difference: -0.4009
+   Regularization loss: 0.0
+
+Step 20900...
+
+   Energy loss: 1.5308
+   PMF energy difference: -1.8481
+   NN energy difference: -0.6108
+   Regularization loss: 0.0
+   Energy loss: 2.2419
+   PMF energy difference: -2.0754
+   NN energy difference: -3.5727
+   Regularization loss: 0.0
+   Energy loss: 0.0927
+   PMF energy difference: 0.8769
+   NN energy difference: 0.5724
+   Regularization loss: 0.0
+   Energy loss: 1.9184
+   PMF energy difference: 1.3086
+   NN energy difference: -0.0765
+   Regularization loss: 0.0
+
+Step 21000...
+
+   Energy loss: 0.6754
+   PMF energy difference: 6.4406
+   NN energy difference: 5.6188
+   Regularization loss: 0.0
+   Energy loss: 0.0109
+   PMF energy difference: 3.1129
+   NN energy difference: 3.0088
+   Regularization loss: 0.0
+   Energy loss: 0.3081
+   PMF energy difference: 1.8033
+   NN energy difference: 2.3583
+   Regularization loss: 0.0
+   Energy loss: 0.2391
+   PMF energy difference: 3.9101
+   NN energy difference: 3.4211
+   Regularization loss: 0.0
+
+Step 21100...
+
+   Energy loss: 0.0935
+   PMF energy difference: 8.9112
+   NN energy difference: 8.6054
+   Regularization loss: 0.0
+   Energy loss: 5.8555
+   PMF energy difference: 2.0002
+   NN energy difference: 4.42
+   Regularization loss: 0.0
+   Energy loss: 3.7377
+   PMF energy difference: -1.2624
+   NN energy difference: -3.1957
+   Regularization loss: 0.0
+   Energy loss: 2.6065
+   PMF energy difference: -4.4033
+   NN energy difference: -2.7888
+   Regularization loss: 0.0
+
+Step 21200...
+
+   Energy loss: 0.7073
+   PMF energy difference: -1.5013
+   NN energy difference: -0.6603
+   Regularization loss: 0.0
+   Energy loss: 0.0927
+   PMF energy difference: -1.1115
+   NN energy difference: -1.4161
+   Regularization loss: 0.0
+   Energy loss: 1.2587
+   PMF energy difference: 0.8321
+   NN energy difference: -0.2898
+   Regularization loss: 0.0
+   Energy loss: 0.109
+   PMF energy difference: 0.4195
+   NN energy difference: 0.0893
+   Regularization loss: 0.0
+
+Step 21300...
+
+   Energy loss: 0.362
+   PMF energy difference: 2.1733
+   NN energy difference: 2.775
+   Regularization loss: 0.0
+   Energy loss: 12.3978
+   PMF energy difference: 26.3962
+   NN energy difference: 22.8752
+   Regularization loss: 0.0
+   Energy loss: 0.0223
+   PMF energy difference: 5.7573
+   NN energy difference: 5.9066
+   Regularization loss: 0.0
+   Energy loss: 0.022
+   PMF energy difference: -2.2711
+   NN energy difference: -2.4194
+   Regularization loss: 0.0
+
+Step 21400...
+
+   Energy loss: 0.5832
+   PMF energy difference: 17.0246
+   NN energy difference: 16.2609
+   Regularization loss: 0.0
+   Energy loss: 0.0023
+   PMF energy difference: 5.5737
+   NN energy difference: 5.5259
+   Regularization loss: 0.0
+   Energy loss: 1.3193
+   PMF energy difference: 4.2413
+   NN energy difference: 3.0927
+   Regularization loss: 0.0
+   Energy loss: 0.4941
+   PMF energy difference: -0.7583
+   NN energy difference: -0.0554
+   Regularization loss: 0.0
+
+Step 21500...
+
+   Energy loss: 2.1794
+   PMF energy difference: -0.2183
+   NN energy difference: 1.2579
+   Regularization loss: 0.0
+   Energy loss: 0.3429
+   PMF energy difference: 2.6497
+   NN energy difference: 2.0641
+   Regularization loss: 0.0
+   Energy loss: 1.9558
+   PMF energy difference: 0.9991
+   NN energy difference: -0.3994
+   Regularization loss: 0.0
+   Energy loss: 0.317
+   PMF energy difference: -0.8251
+   NN energy difference: -0.262
+   Regularization loss: 0.0
+
+Step 21600...
+
+   Energy loss: 0.0573
+   PMF energy difference: -0.1679
+   NN energy difference: -0.4072
+   Regularization loss: 0.0
+   Energy loss: 0.6444
+   PMF energy difference: -0.9689
+   NN energy difference: -1.7716
+   Regularization loss: 0.0
+   Energy loss: 0.0951
+   PMF energy difference: 1.0441
+   NN energy difference: 0.7358
+   Regularization loss: 0.0
+   Energy loss: 2.8243
+   PMF energy difference: 23.1387
+   NN energy difference: 21.4582
+   Regularization loss: 0.0
+
+Step 21700...
+
+   Energy loss: 4.3722
+   PMF energy difference: 5.0329
+   NN energy difference: 7.1239
+   Regularization loss: 0.0
+   Energy loss: 2.9707
+   PMF energy difference: -2.4522
+   NN energy difference: -4.1758
+   Regularization loss: 0.0
+   Energy loss: 0.1584
+   PMF energy difference: -0.5454
+   NN energy difference: -0.9434
+   Regularization loss: 0.0
+   Energy loss: 3.3013
+   PMF energy difference: 34.6466
+   NN energy difference: 32.8296
+   Regularization loss: 0.0
+
+Step 21800...
+
+   Energy loss: 1.7859
+   PMF energy difference: 25.639
+   NN energy difference: 24.3026
+   Regularization loss: 0.0
+   Energy loss: 0.3152
+   PMF energy difference: -0.3159
+   NN energy difference: 0.2455
+   Regularization loss: 0.0
+   Energy loss: 0.1922
+   PMF energy difference: -0.9877
+   NN energy difference: -0.5493
+   Regularization loss: 0.0
+   Energy loss: 0.8827
+   PMF energy difference: 0.7163
+   NN energy difference: -0.2233
+   Regularization loss: 0.0
+
+Step 21900...
+
+   Energy loss: 1.1218
+   PMF energy difference: -1.4787
+   NN energy difference: -0.4196
+   Regularization loss: 0.0
+   Energy loss: 0.2575
+   PMF energy difference: -1.5157
+   NN energy difference: -1.0082
+   Regularization loss: 0.0
+   Energy loss: 0.2333
+   PMF energy difference: -0.5653
+   NN energy difference: -0.0823
+   Regularization loss: 0.0
+   Energy loss: 0.5631
+   PMF energy difference: 1.8968
+   NN energy difference: 1.1464
+   Regularization loss: 0.0
+
+Step 22000...
+
+   Energy loss: 0.0327
+   PMF energy difference: -2.2589
+   NN energy difference: -2.0781
+   Regularization loss: 0.0
+   Energy loss: 0.4677
+   PMF energy difference: 15.3379
+   NN energy difference: 14.654
+   Regularization loss: 0.0
+   Energy loss: 5.157
+   PMF energy difference: 2.6449
+   NN energy difference: 0.374
+   Regularization loss: 0.0
+   Energy loss: 0.3615
+   PMF energy difference: 0.9611
+   NN energy difference: 0.3599
+   Regularization loss: 0.0
+
+Step 22100...
+
+   Energy loss: 0.5241
+   PMF energy difference: 2.1511
+   NN energy difference: 1.4271
+   Regularization loss: 0.0
+   Energy loss: 6.5245
+   PMF energy difference: 1.7208
+   NN energy difference: -0.8335
+   Regularization loss: 0.0
+   Energy loss: 8.1512
+   PMF energy difference: 30.6494
+   NN energy difference: 27.7944
+   Regularization loss: 0.0
+   Energy loss: 0.0255
+   PMF energy difference: 3.7906
+   NN energy difference: 3.631
+   Regularization loss: 0.0
+
+Step 22200...
+
+   Energy loss: 1.5076
+   PMF energy difference: 9.8927
+   NN energy difference: 11.1205
+   Regularization loss: 0.0
+   Energy loss: 0.0001
+   PMF energy difference: 3.0881
+   NN energy difference: 3.0763
+   Regularization loss: 0.0
+   Energy loss: 2.1612
+   PMF energy difference: 3.0531
+   NN energy difference: 1.583
+   Regularization loss: 0.0
+   Energy loss: 13.4034
+   PMF energy difference: 24.4284
+   NN energy difference: 20.7673
+   Regularization loss: 0.0
+
+Step 22300...
+
+   Energy loss: 0.0176
+   PMF energy difference: 1.2185
+   NN energy difference: 1.0859
+   Regularization loss: 0.0
+   Energy loss: 5.3845
+   PMF energy difference: 17.9954
+   NN energy difference: 15.6749
+   Regularization loss: 0.0
+   Energy loss: 0.0104
+   PMF energy difference: -0.5207
+   NN energy difference: -0.4189
+   Regularization loss: 0.0
+   Energy loss: 1.9615
+   PMF energy difference: 1.9172
+   NN energy difference: 0.5167
+   Regularization loss: 0.0
+
+Step 22400...
+
+   Energy loss: 1.9017
+   PMF energy difference: 7.2883
+   NN energy difference: 5.9093
+   Regularization loss: 0.0
+   Energy loss: 1.205
+   PMF energy difference: 1.3852
+   NN energy difference: 0.2875
+   Regularization loss: 0.0
+   Energy loss: 1.9201
+   PMF energy difference: 29.5569
+   NN energy difference: 28.1712
+   Regularization loss: 0.0
+   Energy loss: 1.1176
+   PMF energy difference: 2.3222
+   NN energy difference: 1.2651
+   Regularization loss: 0.0
+
+Step 22500...
+
+   Energy loss: 10.5422
+   PMF energy difference: 11.4399
+   NN energy difference: 8.193
+   Regularization loss: 0.0
+   Energy loss: 2.0127
+   PMF energy difference: 2.3566
+   NN energy difference: 3.7753
+   Regularization loss: 0.0
+   Energy loss: 1.6183
+   PMF energy difference: 5.9946
+   NN energy difference: 4.7225
+   Regularization loss: 0.0
+   Energy loss: 0.0106
+   PMF energy difference: 2.6822
+   NN energy difference: 2.5792
+   Regularization loss: 0.0
+
+Step 22600...
+
+   Energy loss: 0.0002
+   PMF energy difference: 0.2951
+   NN energy difference: 0.3092
+   Regularization loss: 0.0
+   Energy loss: 2.4035
+   PMF energy difference: 1.5798
+   NN energy difference: 3.1302
+   Regularization loss: 0.0
+   Energy loss: 3.6987
+   PMF energy difference: 14.1449
+   NN energy difference: 12.2217
+   Regularization loss: 0.0
+   Energy loss: 0.3404
+   PMF energy difference: 7.6978
+   NN energy difference: 7.1143
+   Regularization loss: 0.0
+
+Step 22700...
+
+   Energy loss: 2.2802
+   PMF energy difference: 12.5316
+   NN energy difference: 11.0215
+   Regularization loss: 0.0
+   Energy loss: 2.0786
+   PMF energy difference: -1.4412
+   NN energy difference: -2.883
+   Regularization loss: 0.0
+   Energy loss: 5.085
+   PMF energy difference: 0.0045
+   NN energy difference: 2.2595
+   Regularization loss: 0.0
+   Energy loss: 0.2378
+   PMF energy difference: 1.4081
+   NN energy difference: 0.9205
+   Regularization loss: 0.0
+
+Step 22800...
+
+   Energy loss: 5.9572
+   PMF energy difference: 11.2759
+   NN energy difference: 13.7167
+   Regularization loss: 0.0
+   Energy loss: 0.2964
+   PMF energy difference: 2.5751
+   NN energy difference: 2.0307
+   Regularization loss: 0.0
+   Energy loss: 0.0915
+   PMF energy difference: 0.5014
+   NN energy difference: 0.1989
+   Regularization loss: 0.0
+   Energy loss: 10.7019
+   PMF energy difference: -1.9711
+   NN energy difference: -5.2424
+   Regularization loss: 0.0
+
+Step 22900...
+
+   Energy loss: 0.0133
+   PMF energy difference: 6.6981
+   NN energy difference: 6.8135
+   Regularization loss: 0.0
+   Energy loss: 5.9834
+   PMF energy difference: 2.1224
+   NN energy difference: 4.5685
+   Regularization loss: 0.0
+   Energy loss: 3.3402
+   PMF energy difference: 0.5226
+   NN energy difference: 2.3503
+   Regularization loss: 0.0
+   Energy loss: 1.9782
+   PMF energy difference: 7.8607
+   NN energy difference: 9.2672
+   Regularization loss: 0.0
+
+Step 23000...
+
+   Energy loss: 0.4001
+   PMF energy difference: -1.2609
+   NN energy difference: -0.6284
+   Regularization loss: 0.0
+   Energy loss: 0.5685
+   PMF energy difference: 6.3749
+   NN energy difference: 5.6208
+   Regularization loss: 0.0
+   Energy loss: 1.3726
+   PMF energy difference: -1.1322
+   NN energy difference: 0.0394
+   Regularization loss: 0.0
+   Energy loss: 0.0073
+   PMF energy difference: 3.1902
+   NN energy difference: 3.1047
+   Regularization loss: 0.0
+
+Step 23100...
+
+   Energy loss: 13.3696
+   PMF energy difference: 17.5494
+   NN energy difference: 13.893
+   Regularization loss: 0.0
+   Energy loss: 13.2186
+   PMF energy difference: 66.9606
+   NN energy difference: 63.3249
+   Regularization loss: 0.0
+   Energy loss: 0.1336
+   PMF energy difference: -0.9058
+   NN energy difference: -0.5403
+   Regularization loss: 0.0
+   Energy loss: 0.0309
+   PMF energy difference: 2.8791
+   NN energy difference: 2.7033
+   Regularization loss: 0.0
+
+Step 23200...
+
+   Energy loss: 1.8559
+   PMF energy difference: 1.5472
+   NN energy difference: 0.1849
+   Regularization loss: 0.0
+   Energy loss: 0.0104
+   PMF energy difference: 0.9918
+   NN energy difference: 1.0939
+   Regularization loss: 0.0
+   Energy loss: 0.0397
+   PMF energy difference: 0.3244
+   NN energy difference: 0.1251
+   Regularization loss: 0.0
+   Energy loss: 3.3054
+   PMF energy difference: 0.9155
+   NN energy difference: -0.9026
+   Regularization loss: 0.0
+
+Step 23300...
+
+   Energy loss: 1.3233
+   PMF energy difference: 4.8894
+   NN energy difference: 6.0398
+   Regularization loss: 0.0
+   Energy loss: 0.0713
+   PMF energy difference: 1.7119
+   NN energy difference: 1.4449
+   Regularization loss: 0.0
+   Energy loss: 6.9664
+   PMF energy difference: 4.4929
+   NN energy difference: 1.8535
+   Regularization loss: 0.0
+   Energy loss: 1.0612
+   PMF energy difference: 1.4418
+   NN energy difference: 0.4117
+   Regularization loss: 0.0
+
+Step 23400...
+
+   Energy loss: 0.2649
+   PMF energy difference: -0.7121
+   NN energy difference: -0.1974
+   Regularization loss: 0.0
+   Energy loss: 0.0049
+   PMF energy difference: -1.8361
+   NN energy difference: -1.7658
+   Regularization loss: 0.0
+   Energy loss: 2.8554
+   PMF energy difference: 27.031
+   NN energy difference: 25.3412
+   Regularization loss: 0.0
+   Energy loss: 20.6123
+   PMF energy difference: 20.8002
+   NN energy difference: 16.2601
+   Regularization loss: 0.0
+
+Step 23500...
+
+   Energy loss: 15.2516
+   PMF energy difference: 17.412
+   NN energy difference: 13.5066
+   Regularization loss: 0.0
+   Energy loss: 1.0366
+   PMF energy difference: -1.2309
+   NN energy difference: -2.249
+   Regularization loss: 0.0
+   Energy loss: 1.882
+   PMF energy difference: 5.1294
+   NN energy difference: 3.7576
+   Regularization loss: 0.0
+   Energy loss: 0.2213
+   PMF energy difference: 5.6861
+   NN energy difference: 5.2158
+   Regularization loss: 0.0
+
+Step 23600...
+
+   Energy loss: 5.2586
+   PMF energy difference: -1.0361
+   NN energy difference: 1.2571
+   Regularization loss: 0.0
+   Energy loss: 2.0341
+   PMF energy difference: 0.4839
+   NN energy difference: 1.9101
+   Regularization loss: 0.0
+   Energy loss: 0.7663
+   PMF energy difference: 8.5478
+   NN energy difference: 9.4231
+   Regularization loss: 0.0
+   Energy loss: 2.1178
+   PMF energy difference: 3.5659
+   NN energy difference: 2.1106
+   Regularization loss: 0.0
+
+Step 23700...
+
+   Energy loss: 1.7428
+   PMF energy difference: 7.087
+   NN energy difference: 8.4072
+   Regularization loss: 0.0
+   Energy loss: 1.8441
+   PMF energy difference: 0.9542
+   NN energy difference: 2.3121
+   Regularization loss: 0.0
+   Energy loss: 0.2561
+   PMF energy difference: -1.0889
+   NN energy difference: -1.5949
+   Regularization loss: 0.0
+   Energy loss: 0.2506
+   PMF energy difference: -0.9814
+   NN energy difference: -0.4808
+   Regularization loss: 0.0
+
+Step 23800...
+
+   Energy loss: 12.2021
+   PMF energy difference: 20.9186
+   NN energy difference: 17.4254
+   Regularization loss: 0.0
+   Energy loss: 1.5552
+   PMF energy difference: 8.103
+   NN energy difference: 6.8559
+   Regularization loss: 0.0
+   Energy loss: 0.0343
+   PMF energy difference: -1.8444
+   NN energy difference: -1.6591
+   Regularization loss: 0.0
+   Energy loss: 0.1062
+   PMF energy difference: 0.7507
+   NN energy difference: 0.4249
+   Regularization loss: 0.0
+
+Step 23900...
+
+   Energy loss: 0.0012
+   PMF energy difference: -0.2602
+   NN energy difference: -0.2258
+   Regularization loss: 0.0
+   Energy loss: 2.4417
+   PMF energy difference: 55.3652
+   NN energy difference: 53.8026
+   Regularization loss: 0.0
+   Energy loss: 0.0872
+   PMF energy difference: -0.9504
+   NN energy difference: -0.655
+   Regularization loss: 0.0
+   Energy loss: 5.8932
+   PMF energy difference: 13.8868
+   NN energy difference: 11.4592
+   Regularization loss: 0.0
+
+Step 24000...
+
+   Energy loss: 4.6018
+   PMF energy difference: -1.0847
+   NN energy difference: 1.0605
+   Regularization loss: 0.0
+   Energy loss: 9.9032
+   PMF energy difference: 0.5422
+   NN energy difference: 3.6891
+   Regularization loss: 0.0
+   Energy loss: 0.3631
+   PMF energy difference: 2.3177
+   NN energy difference: 1.7151
+   Regularization loss: 0.0
+   Energy loss: 0.0032
+   PMF energy difference: -0.173
+   NN energy difference: -0.116
+   Regularization loss: 0.0
+
+Step 24100...
+
+   Energy loss: 0.8854
+   PMF energy difference: 8.7622
+   NN energy difference: 7.8213
+   Regularization loss: 0.0
+   Energy loss: 9.066
+   PMF energy difference: 3.4051
+   NN energy difference: 6.4161
+   Regularization loss: 0.0
+   Energy loss: 1.791
+   PMF energy difference: 1.782
+   NN energy difference: 0.4437
+   Regularization loss: 0.0
+   Energy loss: 0.9611
+   PMF energy difference: 0.4585
+   NN energy difference: 1.4389
+   Regularization loss: 0.0
+
+Step 24200...
+
+   Energy loss: 10.7057
+   PMF energy difference: 2.4498
+   NN energy difference: 5.7217
+   Regularization loss: 0.0
+   Energy loss: 0.8096
+   PMF energy difference: 1.0374
+   NN energy difference: 1.9372
+   Regularization loss: 0.0
+   Energy loss: 4.9886
+   PMF energy difference: 2.7597
+   NN energy difference: 4.9932
+   Regularization loss: 0.0
+   Energy loss: 2.5746
+   PMF energy difference: -2.0539
+   NN energy difference: -0.4493
+   Regularization loss: 0.0
+
+Step 24300...
+
+   Energy loss: 0.6753
+   PMF energy difference: 36.7168
+   NN energy difference: 35.8951
+   Regularization loss: 0.0
+   Energy loss: 5.1473
+   PMF energy difference: -0.6438
+   NN energy difference: -2.9126
+   Regularization loss: 0.0
+   Energy loss: 0.7689
+   PMF energy difference: 2.7604
+   NN energy difference: 3.6373
+   Regularization loss: 0.0
+   Energy loss: 0.6387
+   PMF energy difference: 44.2909
+   NN energy difference: 45.09
+   Regularization loss: 0.0
+
+Step 24400...
+
+   Energy loss: 1.018
+   PMF energy difference: 0.0016
+   NN energy difference: 1.0105
+   Regularization loss: 0.0
+   Energy loss: 0.7965
+   PMF energy difference: 1.2153
+   NN energy difference: 0.3229
+   Regularization loss: 0.0
+   Energy loss: 0.5664
+   PMF energy difference: 2.5634
+   NN energy difference: 1.8108
+   Regularization loss: 0.0
+   Energy loss: 1.7852
+   PMF energy difference: 5.1532
+   NN energy difference: 3.8171
+   Regularization loss: 0.0
+
+Step 24500...
+
+   Energy loss: 0.6861
+   PMF energy difference: 25.2712
+   NN energy difference: 26.0995
+   Regularization loss: 0.0
+   Energy loss: 0.0157
+   PMF energy difference: 0.5429
+   NN energy difference: 0.6681
+   Regularization loss: 0.0
+   Energy loss: 2.9026
+   PMF energy difference: 5.6122
+   NN energy difference: 7.3159
+   Regularization loss: 0.0
+   Energy loss: 7.1845
+   PMF energy difference: 39.9621
+   NN energy difference: 42.6425
+   Regularization loss: 0.0
+
+Step 24600...
+
+   Energy loss: 0.9159
+   PMF energy difference: -0.916
+   NN energy difference: 0.041
+   Regularization loss: 0.0
+   Energy loss: 1.5491
+   PMF energy difference: 9.2917
+   NN energy difference: 10.5363
+   Regularization loss: 0.0
+   Energy loss: 0.0541
+   PMF energy difference: -0.2357
+   NN energy difference: -0.0032
+   Regularization loss: 0.0
+   Energy loss: 0.0412
+   PMF energy difference: 0.5016
+   NN energy difference: 0.7046
+   Regularization loss: 0.0
+
+Step 24700...
+
+   Energy loss: 1.2086
+   PMF energy difference: 1.9364
+   NN energy difference: 3.0357
+   Regularization loss: 0.0
+   Energy loss: 0.2202
+   PMF energy difference: 0.2566
+   NN energy difference: -0.2127
+   Regularization loss: 0.0
+   Energy loss: 0.0112
+   PMF energy difference: 1.5498
+   NN energy difference: 1.4439
+   Regularization loss: 0.0
+   Energy loss: 1.6008
+   PMF energy difference: 28.08
+   NN energy difference: 29.3452
+   Regularization loss: 0.0
+
+Step 24800...
+
+   Energy loss: 1.4616
+   PMF energy difference: -3.762
+   NN energy difference: -2.553
+   Regularization loss: 0.0
+   Energy loss: 5.7586
+   PMF energy difference: 78.0286
+   NN energy difference: 80.4283
+   Regularization loss: 0.0
+   Energy loss: 0.2183
+   PMF energy difference: 5.804
+   NN energy difference: 5.3368
+   Regularization loss: 0.0
+   Energy loss: 0.3915
+   PMF energy difference: 1.7629
+   NN energy difference: 1.1373
+   Regularization loss: 0.0
+
+Step 24900...
+
+   Energy loss: 1.317
+   PMF energy difference: 3.4009
+   NN energy difference: 4.5485
+   Regularization loss: 0.0
+   Energy loss: 1.95
+   PMF energy difference: 22.8709
+   NN energy difference: 21.4744
+   Regularization loss: 0.0
+   Energy loss: 7.2286
+   PMF energy difference: 55.8073
+   NN energy difference: 58.4959
+   Regularization loss: 0.0
+   Energy loss: 0.0682
+   PMF energy difference: -1.7935
+   NN energy difference: -1.5324
+   Regularization loss: 0.0
+
+Step 25000...
+
+   Energy loss: 0.3152
+   PMF energy difference: 0.4574
+   NN energy difference: 1.0188
+   Regularization loss: 0.0
+   Energy loss: 0.5765
+   PMF energy difference: 1.6435
+   NN energy difference: 2.4028
+   Regularization loss: 0.0
+   Energy loss: 0.3778
+   PMF energy difference: 14.3715
+   NN energy difference: 13.7568
+   Regularization loss: 0.0
+   Energy loss: 0.3293
+   PMF energy difference: 3.87
+   NN energy difference: 3.2962
+   Regularization loss: 0.0
+
+Re-initializing the optimizer for the training...
+
+Optimizer type: AMSGrad
+   Parameters:
+       Learning rate: 0.0005
+       Decays: (0.9, 0.999)
+Neural network regularization parameter: 0.0
+
+Starting the main part of the training...
+
+Number of iterations: 25
+Running MC simulation on 16 rank(s)...
+
+Total number of steps: 32.0M
+Number of equilibration steps per rank: 0.5M
+
+Iteration 1...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4931
+       Max displacement = 1.0973
+Regularization Loss = 0
+Descriptor Loss = 1.49137405
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4767
+       Max displacement = 1.352
+Regularization Loss = 0
+Descriptor Loss = 12.00068059
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4865
+       Max displacement = 1.5248
+Regularization Loss = 0
+Descriptor Loss = 27.23394161
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4827
+       Max displacement = 2.7405
+Regularization Loss = 0
+Descriptor Loss = 52.3194072
+   
+Total Average Loss = 23.26135086
+
+Iteration 2...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4969
+       Max displacement = 1.1792
+Regularization Loss = 0
+Descriptor Loss = 0.60448594
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5009
+       Max displacement = 1.4962
+Regularization Loss = 0
+Descriptor Loss = 1.62029132
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.8075
+Regularization Loss = 0
+Descriptor Loss = 5.26418116
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5026
+       Max displacement = 3.2424
+Regularization Loss = 0
+Descriptor Loss = 1.92856867
+   
+Total Average Loss = 2.35438177
+
+Iteration 3...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5014
+       Max displacement = 1.1566
+Regularization Loss = 0
+Descriptor Loss = 0.72362901
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4969
+       Max displacement = 1.6295
+Regularization Loss = 0
+Descriptor Loss = 0.53780099
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5024
+       Max displacement = 1.9872
+Regularization Loss = 0
+Descriptor Loss = 0.78916534
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4966
+       Max displacement = 3.6016
+Regularization Loss = 0
+Descriptor Loss = 0.82535049
+   
+Total Average Loss = 0.71898646
+
+Iteration 4...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5041
+       Max displacement = 1.1162
+Regularization Loss = 0
+Descriptor Loss = 0.96144226
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5031
+       Max displacement = 1.5851
+Regularization Loss = 0
+Descriptor Loss = 0.7526558
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5019
+       Max displacement = 2.0318
+Regularization Loss = 0
+Descriptor Loss = 0.85532503
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 3.5931
+Regularization Loss = 0
+Descriptor Loss = 1.34826701
+   
+Total Average Loss = 0.97942253
+
+Iteration 5...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4958
+       Max displacement = 1.1692
+Regularization Loss = 0
+Descriptor Loss = 1.47404188
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4969
+       Max displacement = 1.6213
+Regularization Loss = 0
+Descriptor Loss = 1.1442502
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5007
+       Max displacement = 2.0219
+Regularization Loss = 0
+Descriptor Loss = 1.21845092
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 3.5933
+Regularization Loss = 0
+Descriptor Loss = 1.91932001
+   
+Total Average Loss = 1.43901575
+
+Iteration 6...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 1.1477
+Regularization Loss = 0
+Descriptor Loss = 1.82620561
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5003
+       Max displacement = 1.591
+Regularization Loss = 0
+Descriptor Loss = 1.53007977
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 2.0465
+Regularization Loss = 0
+Descriptor Loss = 1.61895043
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 3.6386
+Regularization Loss = 0
+Descriptor Loss = 2.42570957
+   
+Total Average Loss = 1.85023635
+
+Iteration 7...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 1.1368
+Regularization Loss = 0
+Descriptor Loss = 2.22908488
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 1.5552
+Regularization Loss = 0
+Descriptor Loss = 1.74052196
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 2.0324
+Regularization Loss = 0
+Descriptor Loss = 1.97020386
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5023
+       Max displacement = 3.5189
+Regularization Loss = 0
+Descriptor Loss = 2.83271922
+   
+Total Average Loss = 2.19313248
+
+Iteration 8...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4984
+       Max displacement = 1.1076
+Regularization Loss = 0
+Descriptor Loss = 2.33537487
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 1.5501
+Regularization Loss = 0
+Descriptor Loss = 2.03122271
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 2.0409
+Regularization Loss = 0
+Descriptor Loss = 2.26394297
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4991
+       Max displacement = 3.5811
+Regularization Loss = 0
+Descriptor Loss = 3.2382183
+   
+Total Average Loss = 2.46718971
+
+Iteration 9...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5021
+       Max displacement = 1.0718
+Regularization Loss = 0
+Descriptor Loss = 2.46059019
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5036
+       Max displacement = 1.5021
+Regularization Loss = 0
+Descriptor Loss = 2.1888167
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 2.0046
+Regularization Loss = 0
+Descriptor Loss = 2.48953611
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5049
+       Max displacement = 3.4792
+Regularization Loss = 0
+Descriptor Loss = 3.54933441
+   
+Total Average Loss = 2.67206935
+
+Iteration 10...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5026
+       Max displacement = 1.0703
+Regularization Loss = 0
+Descriptor Loss = 2.66728418
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 1.5307
+Regularization Loss = 0
+Descriptor Loss = 2.37469082
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.494
+       Max displacement = 2.04
+Regularization Loss = 0
+Descriptor Loss = 2.66562069
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 3.5692
+Regularization Loss = 0
+Descriptor Loss = 3.81695262
+   
+Total Average Loss = 2.88113708
+
+Iteration 11...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5042
+       Max displacement = 1.0687
+Regularization Loss = 0
+Descriptor Loss = 2.91315954
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4976
+       Max displacement = 1.5187
+Regularization Loss = 0
+Descriptor Loss = 2.41171832
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5005
+       Max displacement = 1.9718
+Regularization Loss = 0
+Descriptor Loss = 2.79183681
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 3.5973
+Regularization Loss = 0
+Descriptor Loss = 4.04743468
+   
+Total Average Loss = 3.04103734
+
+Iteration 12...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 1.0665
+Regularization Loss = 0
+Descriptor Loss = 2.95987678
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4964
+       Max displacement = 1.537
+Regularization Loss = 0
+Descriptor Loss = 2.59315195
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.501
+       Max displacement = 1.9666
+Regularization Loss = 0
+Descriptor Loss = 2.87280173
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5032
+       Max displacement = 3.5329
+Regularization Loss = 0
+Descriptor Loss = 4.20598977
+   
+Total Average Loss = 3.15795506
+
+Iteration 13...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 1.0931
+Regularization Loss = 0
+Descriptor Loss = 3.05030495
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.497
+       Max displacement = 1.537
+Regularization Loss = 0
+Descriptor Loss = 2.60039157
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 1.9941
+Regularization Loss = 0
+Descriptor Loss = 2.95005993
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.501
+       Max displacement = 3.6235
+Regularization Loss = 0
+Descriptor Loss = 4.44409108
+   
+Total Average Loss = 3.26121188
+
+Iteration 14...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4967
+       Max displacement = 1.0845
+Regularization Loss = 0
+Descriptor Loss = 2.98652648
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 1.4933
+Regularization Loss = 0
+Descriptor Loss = 2.5709377
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5013
+       Max displacement = 1.9945
+Regularization Loss = 0
+Descriptor Loss = 2.93633174
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5033
+       Max displacement = 3.6025
+Regularization Loss = 0
+Descriptor Loss = 4.57109769
+   
+Total Average Loss = 3.2662234
+
+Iteration 15...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4987
+       Max displacement = 1.0912
+Regularization Loss = 0
+Descriptor Loss = 3.01020423
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4974
+       Max displacement = 1.5461
+Regularization Loss = 0
+Descriptor Loss = 2.56443823
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.497
+       Max displacement = 2.0344
+Regularization Loss = 0
+Descriptor Loss = 2.9200122
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4981
+       Max displacement = 3.7521
+Regularization Loss = 0
+Descriptor Loss = 4.57068337
+   
+Total Average Loss = 3.26633451
+
+Iteration 16...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4981
+       Max displacement = 1.0911
+Regularization Loss = 0
+Descriptor Loss = 2.99883549
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5
+       Max displacement = 1.5434
+Regularization Loss = 0
+Descriptor Loss = 2.49644693
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4975
+       Max displacement = 2.0655
+Regularization Loss = 0
+Descriptor Loss = 2.96843263
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5018
+       Max displacement = 3.6748
+Regularization Loss = 0
+Descriptor Loss = 4.48926958
+   
+Total Average Loss = 3.23824616
+
+Iteration 17...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4994
+       Max displacement = 1.0966
+Regularization Loss = 0
+Descriptor Loss = 2.93795429
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 1.5411
+Regularization Loss = 0
+Descriptor Loss = 2.36595202
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5003
+       Max displacement = 2.0424
+Regularization Loss = 0
+Descriptor Loss = 2.79837719
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4993
+       Max displacement = 3.7709
+Regularization Loss = 0
+Descriptor Loss = 4.45631429
+   
+Total Average Loss = 3.13964945
+
+Iteration 18...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.502
+       Max displacement = 1.0924
+Regularization Loss = 0
+Descriptor Loss = 2.88859254
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5004
+       Max displacement = 1.5443
+Regularization Loss = 0
+Descriptor Loss = 2.20671924
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 2.0549
+Regularization Loss = 0
+Descriptor Loss = 2.70192627
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 3.8023
+Regularization Loss = 0
+Descriptor Loss = 4.37446504
+   
+Total Average Loss = 3.04292577
+
+Iteration 19...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4991
+       Max displacement = 1.1194
+Regularization Loss = 0
+Descriptor Loss = 2.80608527
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4954
+       Max displacement = 1.6059
+Regularization Loss = 0
+Descriptor Loss = 2.10975691
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4998
+       Max displacement = 2.1201
+Regularization Loss = 0
+Descriptor Loss = 2.69900721
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 3.866
+Regularization Loss = 0
+Descriptor Loss = 4.37188909
+   
+Total Average Loss = 2.99668462
+
+Iteration 20...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4995
+       Max displacement = 1.0958
+Regularization Loss = 0
+Descriptor Loss = 2.47922129
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.496
+       Max displacement = 1.5959
+Regularization Loss = 0
+Descriptor Loss = 1.94800235
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5009
+       Max displacement = 2.1057
+Regularization Loss = 0
+Descriptor Loss = 2.54106982
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 3.8881
+Regularization Loss = 0
+Descriptor Loss = 4.42824101
+   
+Total Average Loss = 2.84913362
+
+Iteration 21...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 1.1443
+Regularization Loss = 0
+Descriptor Loss = 2.64766756
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4985
+       Max displacement = 1.6317
+Regularization Loss = 0
+Descriptor Loss = 1.90253484
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4987
+       Max displacement = 2.1454
+Regularization Loss = 0
+Descriptor Loss = 2.43749952
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5006
+       Max displacement = 3.9522
+Regularization Loss = 0
+Descriptor Loss = 4.5477612
+   
+Total Average Loss = 2.88386578
+
+Iteration 22...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5017
+       Max displacement = 1.1312
+Regularization Loss = 0
+Descriptor Loss = 2.40399579
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4991
+       Max displacement = 1.616
+Regularization Loss = 0
+Descriptor Loss = 1.65843112
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4964
+       Max displacement = 2.209
+Regularization Loss = 0
+Descriptor Loss = 2.35194033
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4999
+       Max displacement = 3.9835
+Regularization Loss = 0
+Descriptor Loss = 4.69409444
+   
+Total Average Loss = 2.77711542
+
+Iteration 23...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5027
+       Max displacement = 1.1313
+Regularization Loss = 0
+Descriptor Loss = 2.21522057
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4997
+       Max displacement = 1.6313
+Regularization Loss = 0
+Descriptor Loss = 1.5275842
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.495
+       Max displacement = 2.2523
+Regularization Loss = 0
+Descriptor Loss = 2.26367641
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.5005
+       Max displacement = 4.0509
+Regularization Loss = 0
+Descriptor Loss = 4.96406981
+   
+Total Average Loss = 2.74263775
+
+Iteration 24...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.5023
+       Max displacement = 1.1274
+Regularization Loss = 0
+Descriptor Loss = 1.96727304
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4992
+       Max displacement = 1.6572
+Regularization Loss = 0
+Descriptor Loss = 1.36064697
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4977
+       Max displacement = 2.2261
+Regularization Loss = 0
+Descriptor Loss = 2.12995394
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.498
+       Max displacement = 4.1409
+Regularization Loss = 0
+Descriptor Loss = 5.02432734
+   
+Total Average Loss = 2.62055032
+
+Iteration 25...
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4996
+       Max displacement = 1.1362
+Regularization Loss = 0
+Descriptor Loss = 1.77539341
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.4979
+       Max displacement = 1.6963
+Regularization Loss = 0
+Descriptor Loss = 1.24425244
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 2.2699
+Regularization Loss = 0
+Descriptor Loss = 2.09874884
+   System 20CH3OH-CG:
+       Acceptance ratio = 0.4988
+       Max displacement = 4.1742
+Regularization Loss = 0
+Descriptor Loss = 4.98670359
+   
+Total Average Loss = 2.52627457
+The training is finished!
+Stopping at: 2023-02-10T01:31:30.190
+
+Walltime: 3 hours, 36 minutes, 42 seconds, 928 milliseconds

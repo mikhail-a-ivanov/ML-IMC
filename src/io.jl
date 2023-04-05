@@ -1,5 +1,6 @@
 using Printf
 using Chemfiles
+using BSON: @save, @load
 
 """
 struct globalParameters
@@ -7,19 +8,30 @@ struct globalParameters
 Fields:
 systemFiles: 
     list of input filenames for each system
+symmetryFunctionFile:
+    name of file containing symmetry function information
 mode: 
     ML-IMC mode - training with reference data or simulation using a trained model
-inputmodel: 
-    "random" keyword for random initialization,
-    "zero" for zeros in the first layer or a filename of a trained model
 outputMode:
-    default (rdf, energy, model); verbose (+gradients, +trajectories)            
+    default (rdf, energy, model, opt, gradients); verbose (+trajectories)     
+modelFile: 
+    "none" keyword for random initialization
+    name of model file to do a restart
+gradientsFile:
+    "none" keyword for default initialization
+    name of gradients file to do a restart (couple with a corresponding model/opt filenames)
+optimizerFile:
+    "none" keyword for default initialization
+    name of optimizer file to do a restart (couple with a corresponding model/gradients filenames)
 """
-struct globalParameters
+struct GlobalParameters
     systemFiles::Vector{String}
+    symmetryFunctionFile::String
     mode::String
-    inputmodel::String
     outputMode::String
+    modelFile::String
+    gradientsFile::String
+    optimizerFile::String
 end
 
 """
@@ -41,24 +53,117 @@ struct MCparameters
 end
 
 """
+struct G2
+
+Radial symmetry function:
+G2 = ∑ exp(-eta * (Rij - rshift))^2 * fc(Rij, rcutoff)
+where fc is the smooth cutoff function  
+
+Fields:
+eta (Å^-2): 
+    parameter controlling the width of G2
+    eta = 1 / sqrt(2 * sigma)
+rcutoff (Å):
+    Cutoff radius
+rshift (Å):
+    distance shifting parameter
+"""
+struct G2
+    eta::Float64
+    rcutoff::Float64
+    rshift::Float64
+end
+
+"""
+struct G3
+
+Narrow angular symmetry function
+G3 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta * 
+    exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2 + (Rkj - rshift)^2) * 
+    fc(Rij, rcutoff) * fc(Rik, rcutoff) * fc(Rkj, rcutoff)
+
+where fc is the smooth cutoff function  
+
+Fields:
+eta (Å^-2): 
+    parameter controlling the width of the radial part of G9
+    eta = 1 / sqrt(2 * sigma)
+lambda: 
+    parameter controlling the phase of cosine function
+    either +1 or -1
+zeta:
+    parameter controlling angular resolution
+rcutoff (Å):
+    Cutoff radius
+rshift (Å):
+    distance shifting parameter
+"""
+struct G3
+    eta::Float64
+    lambda::Float64
+    zeta::Float64
+    rcutoff::Float64
+    rshift::Float64
+end
+
+
+"""
+struct G9
+
+Wide angular symmetry function
+G9 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta * 
+    exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2) * 
+    fc(Rij, rcutoff) * fc(Rik, rcutoff)
+
+where fc is the smooth cutoff function  
+
+Fields:
+eta (Å^-2): 
+    parameter controlling the width of the radial part of G9
+    eta = 1 / sqrt(2 * sigma)
+lambda: 
+    parameter controlling the phase of cosine function
+    either +1 or -1
+zeta:
+    parameter controlling angular resolution
+rcutoff (Å):
+    Cutoff radius
+rshift (Å):
+    distance shifting parameter
+"""
+struct G9
+    eta::Float64
+    lambda::Float64
+    zeta::Float64
+    rcutoff::Float64
+    rshift::Float64
+end
+
+"""
 struct NNparameters
 
 Fields:
-neurons: number of neurons in the network
+G2Functions: list of G2 symmetry function parameters
+G3Functions: list of G3 symmetry function parameters  
+G9Functions: list of G9 symmetry function parameters
+maxDistanceCutoff: max distance cutoff
+symmFunctionScaling: scaling factor for the symmetry functions
+neurons: number of hidden neurons in the network
 iters: number of learning iterations
-activation: list of activation functions
+activations: list of activation functions
 REGP: regularization parameter
 optimizer: type of optimizer
 rate: learning rate
-μ: momentum coefficient
-minR: min distance for G2 symmetry function, Å
-maxR: max distance for G2 symmetry function (cutoff), Å 
-η: η parameter in G2 symmetry function (gaussian width), Å
+momentum: momentum coefficient
+decay1: decay of the optimizer (1)
+decay2: decay of the optimizer (2)
 """
 struct NNparameters
-    minR::Float64
-    maxR::Float64
-    sigma::Float64
+    G2Functions::Vector{G2}
+    G3Functions::Vector{G3}
+    G9Functions::Vector{G9}
+    maxDistanceCutoff::Float64
+    symmFunctionScaling::Float64
     neurons::Vector{Int}
     iters::Int
     activations::Vector{String}
@@ -71,6 +176,25 @@ struct NNparameters
 end
 
 """
+struct preTrainParameters
+
+Fields:
+PTsteps: number of pre-training steps
+PToutfreq: frequency of pre-training reporting
+The rest as in NNparameters but with PT prefix
+"""
+struct PreTrainParameters
+    PTsteps::Int64
+    PToutfreq::Int64
+    PTREGP::Float64
+    PToptimizer::String
+    PTrate::Float64
+    PTmomentum::Float64
+    PTdecay1::Float64
+    PTdecay2::Float64
+end
+
+"""
 struct systemParameters
 
 Fields:
@@ -79,29 +203,23 @@ topname: name of the topology file
 trajfile: name of the trajectory file
 N: number of particles
 atomname: atomic symbol
-box: box vector, Å
-V: volume, Å^3
 rdfname: reference RDF file
 Nbins: number of histogram bins
 binWidth: histogram bin width, Å
-repulsionLimit: minimum allowed pair distance, Å
 T: temperature, K
 β: 1/(kB*T), reciprocal kJ/mol
 Δ: max displacement, Å
 targetAR: target acceptance ratio
 """
-struct systemParameters
+struct SystemParameters
     systemName::String
     trajfile::String
     topname::String
     N::Int
     atomname::String
-    box::Vector{Float64}
-    V::Float64
     rdfname::String
     Nbins::Int
     binWidth::Float64
-    repulsionLimit::Float64
     T::Float64
     β::Float64
     Δ::Float64
@@ -117,31 +235,46 @@ parameter structs
 """
 function parametersInit()
     # Read the input name from the command line argument
-    #inputname = ARGS[1]
-    inputname = "ML-IMC-init.in"
-
+    if length(ARGS) > 0 
+        inputname = ARGS[1]
+    # Check if no input file is provided
+    # or if ML-IMC is started from jupyter
+    # in the latter case the first argument has "json" extension
+    end
+    if length(ARGS) == 0 || occursin("json", ARGS[1])
+        println("No input file was provided!")
+        println("Trying to read input data from ML-IMC-init.in")
+        inputname = "ML-IMC-init.in"
+    end
+        
     # Constants
     NA::Float64 = 6.02214076 # [mol-1] * 10^-23
     kB::Float64 = 1.38064852 * NA / 1000 # [kJ/(mol*K)]
 
     # Read the input file
+    checkfile(inputname)
     file = open(inputname, "r")
     lines = readlines(file)
     splittedLines = [split(line) for line in lines]
 
     # Make a list of field names
-    globalFields = [String(field) for field in fieldnames(globalParameters)]
+    globalFields = [String(field) for field in fieldnames(GlobalParameters)]
     MCFields = [String(field) for field in fieldnames(MCparameters)]
     NNFields = [String(field) for field in fieldnames(NNparameters)]
+    preTrainFields = [String(field) for field in fieldnames(PreTrainParameters)]
 
     # Input variable arrays
     globalVars = []
     MCVars = []
     NNVars = []
+    preTrainVars = []
+    G2s = []
+    G3s = []
+    G9s = []
 
     # Loop over fieldnames and fieldtypes and over splitted lines
     # Global parameters
-    for (field, fieldtype) in zip(globalFields, fieldtypes(globalParameters))
+    for (field, fieldtype) in zip(globalFields, fieldtypes(GlobalParameters))
         for line in splittedLines
             if length(line) != 0 && field == line[1]
                 if field == "systemFiles"
@@ -164,7 +297,57 @@ function parametersInit()
             end
         end
     end
-    globalParms = globalParameters(globalVars...)
+    globalParms = GlobalParameters(globalVars...)
+
+    # Symmetry functions
+    maxDistanceCutoff = 0.0
+    scalingFactor = 1.0
+    checkfile(globalParms.symmetryFunctionFile)
+    symmetryFunctionFile = open(globalParms.symmetryFunctionFile, "r")
+    symmetryFunctionLines = readlines(symmetryFunctionFile)
+    splittedSymmetryFunctionLines = [split(line) for line in symmetryFunctionLines]
+    for line in splittedSymmetryFunctionLines
+        if length(line) != 0 && line[1] == "G2"
+            G2Parameters = []
+            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G2))
+                append!(G2Parameters, parse(fieldtype, line[fieldIndex+1]))
+            end
+            append!(G2s, [G2(G2Parameters...)])
+        end
+        if length(line) != 0 && line[1] == "G3"
+            G3Parameters = []
+            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G3))
+                append!(G3Parameters, parse(fieldtype, line[fieldIndex+1]))
+            end
+            append!(G3s, [G3(G3Parameters...)])
+        end
+        if length(line) != 0 && line[1] == "G9"
+            G9Parameters = []
+            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G9))
+                append!(G9Parameters, parse(fieldtype, line[fieldIndex+1]))
+            end
+            append!(G9s, [G9(G9Parameters...)])
+        end
+        if length(line) != 0 && line[1] == "scaling"
+            scalingFactor = parse(Float64, line[3])
+        end
+    end
+    # Set maximum distance cutoff
+    for G2Function in G2s
+        if maxDistanceCutoff < G2Function.rcutoff
+            maxDistanceCutoff = G2Function.rcutoff
+        end
+    end
+    for G3Function in G3s
+        if maxDistanceCutoff < G3Function.rcutoff
+            maxDistanceCutoff = G3Function.rcutoff
+        end
+    end
+    for G9Function in G9s
+        if maxDistanceCutoff < G9Function.rcutoff
+            maxDistanceCutoff = G9Function.rcutoff
+        end
+    end
 
     # MC parameters
     for (field, fieldtype) in zip(MCFields, fieldtypes(MCparameters))
@@ -185,7 +368,8 @@ function parametersInit()
         for line in splittedLines
             if length(line) != 0 && field == line[1]
                 if field == "neurons"
-                    neurons = []
+                    inputNeurons = length(G2s) + length(G3s) + length(G9s)
+                    neurons = [inputNeurons]
                     for (elementId, element) in enumerate(line)
                         if elementId > 2 && element != "#"
                             append!(neurons, parse(Int, strip(element, ',')))
@@ -214,17 +398,32 @@ function parametersInit()
             end
         end
     end
-    NNParms = NNparameters(NNVars...)
+    NNParms = NNparameters(G2s, G3s, G9s, maxDistanceCutoff, scalingFactor, NNVars...)
+
+    # Pre-training parameters
+    for (field, fieldtype) in zip(preTrainFields, fieldtypes(PreTrainParameters))
+        for line in splittedLines
+            if length(line) != 0 && field == line[1]
+                if fieldtype != String
+                    append!(preTrainVars, parse(fieldtype, line[3]))
+                else
+                    append!(preTrainVars, [line[3]])
+                end
+            end
+        end
+    end
+    preTrainParms = PreTrainParameters(preTrainVars...)
 
     # Read system input files
     systemParmsList = [] # list of systemParameters structs
-    systemFields = [String(field) for field in fieldnames(systemParameters)]
+    systemFields = [String(field) for field in fieldnames(SystemParameters)]
     for inputname in globalParms.systemFiles
         systemVars = []
+        checkfile(inputname)
         file = open(inputname, "r")
         lines = readlines(file)
         splittedLines = [split(line) for line in lines]
-        for (field, fieldtype) in zip(systemFields, fieldtypes(systemParameters))
+        for (field, fieldtype) in zip(systemFields, fieldtypes(SystemParameters))
             for line in splittedLines
                 if length(line) != 0 && field == line[1]
                     if field == "T"
@@ -234,17 +433,14 @@ function parametersInit()
                         append!(systemVars, β)
                     elseif field == "topname"
                         topname = [line[3]]
+                        checkfile(topname[1])
                         pdb = Trajectory("$(topname[1])")
                         pdbFrame = read(pdb)
                         N = length(pdbFrame)
                         atomname = name(Atom(pdbFrame, 1))
-                        box = lengths(UnitCell(pdbFrame))
-                        V = box[1] * box[2] * box[3]
                         append!(systemVars, topname)
                         append!(systemVars, N)
                         append!(systemVars, [atomname])
-                        append!(systemVars, [box])
-                        append!(systemVars, V)
                     elseif field == "rdfname"
                         rdfname = [line[3]]
                         bins, rdf = readRDF("$(rdfname[1])")
@@ -263,7 +459,7 @@ function parametersInit()
                 end
             end
         end
-        systemParms = systemParameters(systemVars...)
+        systemParms = SystemParameters(systemVars...)
         append!(systemParmsList, [systemParms])
     end
 
@@ -273,7 +469,7 @@ function parametersInit()
         println("Running ML-IMC in the simulation mode.")
     end
 
-    return (globalParms, MCParms, NNParms, systemParmsList)
+    return (globalParms, MCParms, NNParms, preTrainParms, systemParmsList)
 end
 
 """
@@ -282,16 +478,28 @@ function readXTC(systemParms)
 Reads input configurations from XTC file
 """
 function readXTC(systemParms)
+    checkfile(systemParms.trajfile)
     traj = Trajectory(systemParms.trajfile)
     return (traj)
 end
 
 """
-function inputInit(globalParms, NNParms, systemParmsList)
+function readPDB(systemParms)
+
+Reads input configuration from PDB file
+"""
+function readPDB(systemParms)
+    checkfile(systemParms.topname)
+    pdb = Trajectory(systemParms.topname)
+    return (pdb)
+end
+
+"""
+function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
 
 Initializes input data
 """
-function inputInit(globalParms, NNParms, systemParmsList)
+function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
     # Read reference data
     refRDFs = []
     for systemParms in systemParmsList
@@ -299,16 +507,59 @@ function inputInit(globalParms, NNParms, systemParmsList)
         append!(refRDFs, [refRDF])
     end
 
-    # Set up a model and an optimizer for training
-    # or load a model from a file for MC sampling
-
-    # Initialize the optimizer
-    opt = optInit(NNParms)
-    if globalParms.inputmodel == "random" || globalParms.inputmodel == "zero"
+    # Initialize the model and the optimizer
+    if globalParms.modelFile == "none"
         # Initialize the model
-        model = modelInit(NNParms, globalParms)
+        println("Initializing a new neural network with random weigths")
+        model = modelInit(NNParms)
+        if globalParms.optimizerFile != "none"
+            println("Ignoring given optimizer filename...")
+        end
+        if globalParms.gradientsFile != "none"
+            println("Ignoring given gradients filename...")
+        end
+        # Run pre-training if no initial model is given
+        opt = optInit(preTrainParms)
+        # Restart the training
     else
-        @load globalParms.inputmodel model
+        # Loading the model
+        checkfile(globalParms.modelFile)
+        println("Reading model from $(globalParms.modelFile)")
+        @load globalParms.modelFile model
+        if globalParms.mode == "training"
+            # Either initialize the optimizer or read from a file
+            if globalParms.optimizerFile != "none"
+                checkfile(globalParms.optimizerFile)
+                println("Reading optimizer state from $(globalParms.optimizerFile)")
+                @load globalParms.optimizerFile opt
+            else
+                opt = optInit(NNParms)
+            end
+            # Optionally read gradients from a file
+            if globalParms.gradientsFile != "none"
+                checkfile(globalParms.gradientsFile)
+                println("Reading gradients from $(globalParms.gradientsFile)")
+                @load globalParms.gradientsFile meanLossGradients
+            end
+            # Update the model if both opt and gradients are restored
+            if globalParms.optimizerFile != "none" && globalParms.gradientsFile != "none"
+                println("\nUsing the restored gradients and optimizer to update the current model...\n")
+                updatemodel!(model, opt, meanLossGradients)
+
+                # Skip updating if no gradients are provided
+            elseif globalParms.optimizerFile != "none" && globalParms.gradientsFile == "none"
+                println("\nNo gradients were provided, rerunning the training iteration with the current model and restored optimizer...\n")
+
+                # Update the model if gradients are provided without the optimizer:
+                # valid for optimizer that do not save their state, e.g. Descent,
+                # otherwise might produce unexpected results
+            elseif globalParms.optimizerFile == "none" && globalParms.gradientsFile != "none"
+                println("\nUsing the restored gradients with reinitialized optimizer to update the current model...\n")
+                updatemodel!(model, opt, meanLossGradients)
+            else
+                println("\nNeither gradients nor optimizer were provided, rerunning the training iteration with the current model...\n")
+            end
+        end
     end
 
     if globalParms.mode == "training"
@@ -330,10 +581,11 @@ function writeRDF(outname, rdf, systemParms)
     print(io, "# System: $(systemParms.systemName)\n")
     print(io, "# RDF data ($(systemParms.atomname) - $(systemParms.atomname)) \n")
     print(io, "# r, Å; g(r); \n")
-    for i = 1:length(rdf)
+    for i in eachindex(rdf)
         print(io, @sprintf("%6.3f %12.3f", bins[i], rdf[i]), "\n")
     end
     close(io)
+    checkfile(outname)
 end
 
 """
@@ -351,19 +603,20 @@ function writeEnergies(outname, energies, MCParms, systemParms, slicing=1)
         print(io, @sprintf("%9d %10.3f", steps[i], energies[1:slicing:end][i]), "\n")
     end
     close(io)
+    checkfile(outname)
 end
 
 """
-function writetraj(conf, parameters, outname, mode='w')
+function writeTraj(conf, box, parameters, outname, mode='w')
 
 Writes a wrapped configuration into a trajectory file (Depends on Chemfiles)
 """
-function writeTraj(conf, systemParms, outname, mode='w')
+function writeTraj(conf, box, systemParms, outname, mode='w')
     # Create an empty Frame object
     frame = Frame()
     # Set PBC vectors
-    boxCenter = systemParms.box ./ 2
-    set_cell!(frame, UnitCell(systemParms.box))
+    boxCenter = box ./ 2
+    set_cell!(frame, UnitCell(box))
     # Add wrapped atomic coordinates to the frame
     for i = 1:systemParms.N
         wrappedAtomCoords = wrap!(UnitCell(frame), conf[:, i]) .+ boxCenter
@@ -373,6 +626,7 @@ function writeTraj(conf, systemParms, outname, mode='w')
     Trajectory(outname, mode) do traj
         write(traj, frame)
     end
+    checkfile(outname)
     return
 end
 
@@ -381,6 +635,7 @@ function readRDF(rdfname)
 Reads RDF produced by mcLJ.jl
 """
 function readRDF(rdfname)
+    checkfile(rdfname)
     file = open(rdfname, "r")
     lines = readlines(file)
     ncomments = 2
@@ -396,4 +651,8 @@ function readRDF(rdfname)
     end
     return (bins, rdf)
     close(file)
+end
+
+function checkfile(filename)
+    @assert isfile(filename) "Could not locate $(filename)!"
 end

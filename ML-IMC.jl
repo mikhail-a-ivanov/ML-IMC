@@ -5,10 +5,13 @@ using Dates
 BLAS.set_num_threads(1)
 
 @everywhere begin
-    include("src/distances.jl")
-    include("src/network.jl")
-    include("src/base.jl")
     include("src/io.jl")
+    include("src/distances.jl")
+    include("src/optimizer.jl")
+    include("src/network.jl")
+    include("src/symmfunctions.jl")
+    include("src/base.jl")
+    include("src/pretraining.jl")
 end
 
 function main()
@@ -17,116 +20,70 @@ function main()
     println("Starting at: ", startTime)
 
     # Initialize the parameters
-    globalParms, MCParms, NNParms, systemParmsList = parametersInit()
+    globalParms, MCParms, NNParms, preTrainParms, systemParmsList = parametersInit()
 
     # Check if the number of workers is divisble by the number of ref systems
-    @assert nworkers() % length(systemParmsList) == 0
+    @assert(nworkers() % length(systemParmsList) == 0,
+        "Number of requested CPU cores ($(nworkers())) " * 
+        "must be divisible by the number of systems ($(length(systemParmsList)))!")
 
     # Initialize the input data
-    inputs = inputInit(globalParms, NNParms, systemParmsList)
+    inputs = inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
     if globalParms.mode == "training"
         model, opt, refRDFs = inputs
     else
         model = inputs
     end
 
-    println("Using $(NNParms.neurons[1]) G2 values as the neural input for each atom")
-    η = 1 / (2 * NNParms.sigma^2)
-    println(
-        "G2 sigma parameter: $(NNParms.sigma) Å; the corresponding eta parameter: $(round(η, digits=2)) Å^-2",
-    )
-    Rss = Array{Float64}(LinRange(NNParms.minR, NNParms.maxR, NNParms.neurons[1]))
-    println("G2 Rs values: $(round.(Rss, digits=2)) Å")
-    println("G2 cutoff radius: $(NNParms.maxR) Å")
-
-    println("Running MC simulation on $(nworkers()) rank(s)...\n")
-    println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
-    println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
+    println("Using the following symmetry functions as the neural input for each atom:")
+    if NNParms.G2Functions != []
+        println("    G2 symmetry functions:")
+        println("    eta, Å^-2; rcutoff, Å; rshift, Å")
+        for G2Function in NNParms.G2Functions
+            println("       ", G2Function)
+        end
+    end
+    if NNParms.G3Functions != []
+        println("    G3 symmetry functions:")
+        println("    eta, Å^-2; lambda; zeta; rcutoff, Å; rshift, Å")
+        for G3Function in NNParms.G3Functions
+            println("       ", G3Function)
+        end
+    end
+    if NNParms.G9Functions != []
+        println("    G9 symmetry functions:")
+        println("    eta, Å^-2; lambda; zeta; rcutoff, Å; rshift, Å")
+        for G9Function in NNParms.G9Functions
+            println("       ", G9Function)
+        end
+    end
+    println("Maximum cutoff distance: $(NNParms.maxDistanceCutoff) Å")
+    println("Symmetry function scaling parameter: $(NNParms.symmFunctionScaling)")
 
     if globalParms.mode == "training"
         nsystems = length(systemParmsList)
         println("Training a model using $(nsystems) reference system(s)")
-        if globalParms.inputmodel == "random"
-            println("Initializing a new neural network with random weigths")
-        elseif globalParms.inputmodel == "zero"
-            println(
-                "Initializing a new neural network with zero weigths in the first layer",
-            )
-        else
-            println("Starting training from $(globalParms.inputmodel)")
-        end
         println("Using the following activation functions: $(NNParms.activations)")
-        println("Neural network regularization parameter: $(NNParms.REGP)")
-        println("Number of iterations: $(NNParms.iters)")
-        println("Optimizer type: $(NNParms.optimizer)")
-        println("Parameters of optimizer:")
-        if NNParms.optimizer == "Momentum"
-            println("Learning rate: $(NNParms.rate)")
-            println("Momentum coefficient: $(NNParms.momentum)")
-
-        elseif NNParms.optimizer == "Descent"
-            println("Learning rate: $(NNParms.rate)")
-
-        elseif NNParms.optimizer == "Nesterov"
-            println("Learning rate: $(NNParms.rate)")
-            println("Momentum coefficient: $(NNParms.momentum)")
-
-        elseif NNParms.optimizer == "RMSProp"
-            println("Learning rate: $(NNParms.rate)")
-            println("Momentum coefficient: $(NNParms.momentum)")
-
-        elseif NNParms.optimizer == "Adam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "RAdam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdaMax"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdaGrad"
-            println("Learning rate: $(NNParms.rate)")
-
-        elseif NNParms.optimizer == "AdaDelta"
-            println("Learning rate: $(NNParms.rate)")
-
-        elseif NNParms.optimizer == "AMSGrad"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "NAdam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdamW"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "OAdam"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
-
-        elseif NNParms.optimizer == "AdaBelief"
-            println("Learning rate: $(NNParms.rate)")
-            println("Decay 1: $(NNParms.decay1)")
-            println("Decay 2: $(NNParms.decay2)")
+        if globalParms.modelFile == "none"
+            # Run pretraining
+            model = preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
+            # Restore optimizer state to default
+            println("\nRe-initializing the optimizer for the training...\n")
+            opt = optInit(NNParms)
+            reportOpt(opt)
+            println("Neural network regularization parameter: $(NNParms.REGP)")
         end
-
         # Run the training
+        println("\nStarting the main part of the training...\n")
+        println("Number of iterations: $(NNParms.iters)")
+        println("Running MC simulation on $(nworkers()) rank(s)...\n")
+        println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
+        println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
         train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
     else
-        @assert length(systemParmsList) == 1
-        println("Running simulation with $(globalParms.inputmodel)")
+        @assert(length(systemParmsList) == 1, 
+            "Only one system at a time can be simulated!")
+        println("Running simulation with $(globalParms.modelFile)")
         # Run the simulation
         simulate!(model, globalParms, MCParms, NNParms, systemParmsList[1])
     end

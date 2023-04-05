@@ -1,0 +1,38 @@
+methanol-CG-NN.bson
+
+Model outline:
+- G2 symmetry functions: 8
+- Distance cutoff: 10 Å
+- Neural network architecture:
+8 G2 -> linear -> 20 -> ReLU -> 20 -> ReLU -> 20 -> linear -> 1 
+
+Training procedure:
+1. Trained according to "ML-IMC-init-training.in".
+2. Post-training starts from "methanol-NN-2/random-model-1/model-iter-10.bson" (iteration 10 of the main training)
+according to "ML-IMC-init-posttraining.in".
+3. The final model is taken after 15th iteration of the "model-4-posttraining"
+
+Model performance:
+   System 100CH3OH-CG:
+       Acceptance ratio = 0.4989
+       Max displacement = 1.3382
+Regularization Loss = 0
+Descriptor Loss = 0.59506862
+   System 60CH3OH-CG:
+       Acceptance ratio = 0.5023
+       Max displacement = 1.8492
+Regularization Loss = 0
+Descriptor Loss = 0.13341682
+   System 40CH3OH-CG:
+       Acceptance ratio = 0.5
+       Max displacement = 2.373
+Regularization Loss = 0
+Descriptor Loss = 0.12784873
+   System 10CH3OH-CG:
+       Acceptance ratio = 0.5002
+       Max displacement = 8.7161
+Regularization Loss = 0
+Descriptor Loss = 0.65209803
+   
+Total Average Loss = 0.37710805
+

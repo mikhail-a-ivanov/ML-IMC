@@ -8,11 +8,11 @@ struct MCSampleInput
 Used for packaging mcsample! inputs
 """
 struct MCSampleInput
-    globalParms::Any
-    MCParms::Any
-    NNParms::Any
-    systemParms::Any
-    model::Any
+    globalParms::GlobalParameters
+    MCParms::MCparameters
+    NNParms::NNparameters
+    systemParms::SystemParameters
+    model::Chain
 end
 
 """
@@ -21,13 +21,13 @@ struct MCAverages
 Used for packaging mcsample! outputs
 """
 struct MCAverages
-    descriptor::Any
-    energies::Any
-    crossAccumulators::Any
-    G2MatrixAccumulator::Any
-    acceptanceRatio::Any
-    systemParms::Any
-    mutatedStepAdjust::Any
+    descriptor::Vector{Float64}
+    energies::Vector{Float64}
+    crossAccumulators::Union{Nothing,Vector{Matrix{Float64}}}
+    symmFuncMatrixAccumulator::Union{Nothing,Matrix{Float64}}
+    acceptanceRatio::Float64
+    systemParms::SystemParameters
+    mutatedStepAdjust::Float64
 end
 
 """
@@ -37,7 +37,7 @@ Computes all gradients of energy with respect
 to all parameters in the given network
 """
 function computeEnergyGradients(symmFuncMatrix, model)
-    energyGradients = []
+    energyGradients = Vector{Matrix{Float64}}([])
     # Compute energy gradients
     gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
@@ -69,7 +69,7 @@ function crossAccumulatorsInit(NNParms, systemParms)
 Initialize cross correlation accumulator arrays
 """
 function crossAccumulatorsInit(NNParms, systemParms)
-    crossAccumulators = []
+    crossAccumulators = Vector{Matrix{Float64}}([])
     nlayers = length(NNParms.neurons)
     for layerId = 2:nlayers
         append!(
@@ -183,31 +183,33 @@ function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
 Compute the error function
 """
 function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
-    io = open("loss.out", "a")
+    outname = "loss.out"
+    io = open(outname, "a")
     strLoss = sum((descriptorNN - descriptorref) .^ 2)
     if NNParms.REGP > 0
         regLoss = 0.0
         for parameters in Flux.params(model)
             regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
         end
-        println("Regularization Loss = ", round(regLoss, digits = 8))
-        println(io, "Regularization Loss = ", round(regLoss, digits = 8))
+        println("Regularization Loss = ", round(regLoss, digits=8))
+        println(io, "Regularization Loss = ", round(regLoss, digits=8))
         totalLoss = strLoss + regLoss
     else
         totalLoss = strLoss
         println("Regularization Loss = ", 0)
         println(io, "Regularization Loss = ", 0)
     end
-    println("Descriptor Loss = ", round(strLoss, digits = 8))
-    println(io, "Descriptor Loss = ", round(strLoss, digits = 8))
-    println(io, "Total Loss = ", round(totalLoss, digits = 8))
+    println("Descriptor Loss = ", round(strLoss, digits=8))
+    println(io, "Descriptor Loss = ", round(strLoss, digits=8))
+    println(io, "Total Loss = ", round(totalLoss, digits=8))
     # Abnormal max displacement is an indication
     # of a poor model, even if the total loss is low!
     # Low max displacement results in a severely
     # undersampled configuration - it becomes "stuck"
     # at the initial configuration
-    println(io, "Max displacement = ", round(meanMaxDisplacement, digits = 8))
+    println(io, "Max displacement = ", round(meanMaxDisplacement, digits=8))
     close(io)
+    checkfile(outname)
     return (totalLoss)
 end
 
@@ -239,7 +241,7 @@ function buildchain(args...)
     nlayers = length(args)
     layers = []
     for (layerId, arg) in enumerate(args)
-        layer = Dense(arg..., bias = false)
+        layer = Dense(arg..., bias=false)
         append!(layers, [layer])
     end
     model = Chain(layers...)
@@ -247,91 +249,19 @@ function buildchain(args...)
 end
 
 """
-function modelInit(NNParms, globalParms)
-Generates a neural network with zero weigths
-in the first layer and random values in other layers
+function modelInit(NNParms)
 """
-function modelInit(NNParms, globalParms)
+function modelInit(NNParms)
     # Build initial model
     network = buildNetwork!(NNParms)
     println("Building a model...")
     model = buildchain(network...)
     model = fmap(f64, model)
     println(model)
-    println(typeof(model))
+    #println(typeof(model))
     println("   Number of layers: $(length(NNParms.neurons)) ")
     println("   Number of neurons in each layer: $(NNParms.neurons)")
-    nlayers = length(model.layers)
-    # Initialize weights
-    if globalParms.inputmodel == "zero"
-        for (layerId, layer) in enumerate(model.layers)
-            for column in eachrow(layer.weight)
-                if layerId == 1
-                    Flux.Optimise.update!(column, column)
-                end
-            end
-        end
-    end
     return (model)
-end
-
-"""
-function optInit(NNParms)
-
-Initializes the optimizer
-"""
-function optInit(NNParms)
-    if NNParms.optimizer == "Momentum"
-        opt = Momentum(NNParms.rate, NNParms.momentum)
-
-    elseif NNParms.optimizer == "Descent"
-        opt = Descent(NNParms.rate)
-
-    elseif NNParms.optimizer == "Nesterov"
-        opt = Nesterov(NNParms.rate, NNParms.momentum)
-
-    elseif NNParms.optimizer == "RMSProp"
-        opt = RMSProp(NNParms.rate, NNParms.momentum)
-
-    elseif NNParms.optimizer == "Adam"
-        opt = Adam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "RAdam"
-        opt = RAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdaMax"
-        opt = AdaMax(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdaGrad"
-        opt = AdaGrad(NNParms.rate)
-
-    elseif NNParms.optimizer == "AdaDelta"
-        opt = AdaDelta(NNParms.rate)
-
-    elseif NNParms.optimizer == "AMSGrad"
-        opt = AMSGrad(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "NAdam"
-        opt = NAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdamW"
-        opt = AdamW(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "OAdam"
-        opt = OAdam(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    elseif NNParms.optimizer == "AdaBelief"
-        opt = AdaBelief(NNParms.rate, (NNParms.decay1, NNParms.decay2))
-
-    else
-        opt = Descent(NNParms.rate)
-        println(
-            "Unsupported type of optimizer! \n
-            Default optimizer is 'Descent' \n
-            For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n",
-        )
-    end
-    return (opt)
 end
 
 """
@@ -374,7 +304,7 @@ function collectSystemAverages(
         meanEnergies = []
         if globalParms.mode == "training"
             meanCrossAccumulators = []
-            meanG2MatrixAccumulator = []
+            meansymmFuncMatrixAccumulator = []
         end
         meanAcceptanceRatio = []
         meanMaxDisplacement = []
@@ -387,8 +317,8 @@ function collectSystemAverages(
                 if globalParms.mode == "training"
                     append!(meanCrossAccumulators, [outputs[outputID].crossAccumulators])
                     append!(
-                        meanG2MatrixAccumulator,
-                        [outputs[outputID].G2MatrixAccumulator],
+                        meansymmFuncMatrixAccumulator,
+                        [outputs[outputID].symmFuncMatrixAccumulator],
                     )
                 end
                 append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
@@ -400,7 +330,7 @@ function collectSystemAverages(
         meanEnergies = mean(meanEnergies)
         if globalParms.mode == "training"
             meanCrossAccumulators = mean(meanCrossAccumulators)
-            meanG2MatrixAccumulator = mean(meanG2MatrixAccumulator)
+            meansymmFuncMatrixAccumulator = mean(meansymmFuncMatrixAccumulator)
         end
         meanAcceptanceRatio = mean(meanAcceptanceRatio)
         meanMaxDisplacement = mean(meanMaxDisplacement)
@@ -409,7 +339,7 @@ function collectSystemAverages(
                 meanDescriptor,
                 meanEnergies,
                 meanCrossAccumulators,
-                meanG2MatrixAccumulator,
+                meansymmFuncMatrixAccumulator,
                 meanAcceptanceRatio,
                 systemParms,
                 meanMaxDisplacement,
@@ -426,17 +356,23 @@ function collectSystemAverages(
             )
         end
         # Compute loss and print some output info
-        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits = 4))
-        println("       Max displacement = ", round(meanMaxDisplacement, digits = 4))
+        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
+        println("       Max displacement = ", round(meanMaxDisplacement, digits=4))
         if globalParms.mode == "training"
-            meanLoss += loss(systemOutput.descriptor, refRDFs[systemId], model, NNParms, meanMaxDisplacement)
+            meanLoss += loss(
+                systemOutput.descriptor,
+                refRDFs[systemId],
+                model,
+                NNParms,
+                meanMaxDisplacement,
+            )
         end
 
         append!(systemOutputs, [systemOutput])
     end
     if globalParms.mode == "training"
         meanLoss /= length(systemParmsList)
-        println("   \nTotal Average Loss = ", round(meanLoss, digits = 8))
+        println("   \nTotal Average Loss = ", round(meanLoss, digits=8))
     end
     return (systemOutputs)
 end
@@ -476,7 +412,7 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
             systemParms = systemParmsList[systemId]
             lossGradient = computeLossGradients(
                 systemOutput.crossAccumulators,
-                systemOutput.G2MatrixAccumulator,
+                systemOutput.symmFuncMatrixAccumulator,
                 systemOutput.descriptor,
                 refRDFs[systemId],
                 model,
@@ -502,19 +438,19 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         # Average the gradients
         meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
 
-        # Write the model (before training!) and the gradients
+        # Write the model and opt (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
-        if globalParms.outputMode == "verbose"
-            @save "gradients-iter-$(iterString).bson" meanLossGradients
-        end
+        checkfile("model-iter-$(iterString).bson")
+        
+        @save "opt-iter-$(iterString).bson" opt
+        checkfile("opt-iter-$(iterString).bson")
 
-        # Update the model if the loss decreased
+        @save "gradients-iter-$(iterString).bson" meanLossGradients
+        checkfile("gradients-iter-$(iterString).bson")
+
+        # Update the model
         updatemodel!(model, opt, meanLossGradients)
 
-        # Save gradients that are mutated by opt
-        if globalParms.outputMode == "verbose"
-            @save "gradients-mutated-iter-$(iterString).bson" meanLossGradients
-        end
         # Move on to the next iteration
         iteration += 1
     end

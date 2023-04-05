@@ -1,0 +1,22 @@
+LJ-LCG2.bson
+
+Model outline:
+- G2 symmetry functions: 9
+- Distance cutoff: 7 Å
+- Linear combination of G2 values:
+9 G2 -> linear -> 1 
+
+Training procedure:
+- Trained according to the attached init files
+- Each subsequent training starts from the final model
+of the previous training 
+
+Model performance:
+   System Ar_95K:
+       Acceptance ratio = 0.5029
+       Max displacement = 0.6148
+Regularization Loss = 0
+Descriptor Loss = 0.31311532
+
+Total Average Loss = 0.31311532
+
