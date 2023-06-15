@@ -6,6 +6,7 @@ outputMode            = default                     # default (rdf, energy, mode
 modelFile             = none                        # Specify a model filename, "none" for random initialization 
 gradientsFile         = none                        # Specify a gradients filename, "none" for default initialization
 optimizerFile         = none                        # Specify an opt filename, "none" for default initialization
+adaptiveScaling       = false                       # Scales gradients based on system loss (true) or uniform averaging (false)
                                   
 # Monte Carlo parameters
 steps          = 2000000                # Total number of MC steps

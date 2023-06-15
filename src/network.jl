@@ -298,8 +298,13 @@ function collectSystemAverages(
 )
     meanLoss = 0.0
     systemOutputs = []
+
+    systemLosses = []
+
     for (systemId, systemParms) in enumerate(systemParmsList)
         println("   System $(systemParms.systemName):")
+        systemLoss = 0.0
+         
         meanDescriptor = []
         meanEnergies = []
         if globalParms.mode == "training"
@@ -359,13 +364,15 @@ function collectSystemAverages(
         println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
         println("       Max displacement = ", round(meanMaxDisplacement, digits=4))
         if globalParms.mode == "training"
-            meanLoss += loss(
+            systemLoss = loss(
                 systemOutput.descriptor,
                 refRDFs[systemId],
                 model,
                 NNParms,
                 meanMaxDisplacement,
             )
+            meanLoss += systemLoss
+            append!(systemLosses, systemLoss)
         end
 
         append!(systemOutputs, [systemOutput])
@@ -374,7 +381,17 @@ function collectSystemAverages(
         meanLoss /= length(systemParmsList)
         println("   \nTotal Average Loss = ", round(meanLoss, digits=8))
     end
-    return (systemOutputs)
+    return (systemOutputs, systemLosses)
+end
+
+"""
+function adaptiveGradientCoeffs(systemLosses)
+Computes coefficients for gradient scaling based on loss information
+"""
+function adaptiveGradientCoeffs(systemLosses)
+    gradientCoeffs = systemLosses ./ maximum(systemLosses)
+    normCoeff = 1.0 / sum(gradientCoeffs)
+    return (gradientCoeffs .* normCoeff)
 end
 
 """
@@ -397,7 +414,7 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         outputs = pmap(mcsample!, inputs)
 
         # Collect averages corresponding to each reference system
-        systemOutputs = collectSystemAverages(
+        systemOutputs, systemLosses = collectSystemAverages(
             outputs,
             refRDFs,
             systemParmsList,
@@ -436,8 +453,18 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
             )
         end
         # Average the gradients
-        meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
+        if globalParms.adaptiveScaling
+            gradientCoeffs = adaptiveGradientCoeffs(systemLosses)
+            println("\nGradient scaling: \n")
+            for (gradientCoeff, systemParms) in zip(gradientCoeffs, systemParmsList) 
+                println("   System $(systemParms.systemName): $(round(gradientCoeff, digits=8))")
+            end
 
+            meanLossGradients = sum(lossGradients .* gradientCoeffs)
+        else
+            meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
+        end
+        
         # Write the model and opt (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
         checkfile("model-iter-$(iterString).bson")
@@ -472,7 +499,7 @@ function simulate!(model, globalParms, MCParms, NNParms, systemParms)
     outputs = pmap(mcsample!, inputs)
 
     # Collect averages corresponding to each reference system
-    systemOutputs = collectSystemAverages(
+    systemOutputs, systemLosses = collectSystemAverages(
         outputs,
         nothing,
         [systemParms],

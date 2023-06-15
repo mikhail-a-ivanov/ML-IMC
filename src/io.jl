@@ -23,6 +23,8 @@ gradientsFile:
 optimizerFile:
     "none" keyword for default initialization
     name of optimizer file to do a restart (couple with a corresponding model/gradients filenames)
+adaptiveScaling:
+    scales gradients based on system loss (true) or uniform averaging (false)
 """
 struct GlobalParameters
     systemFiles::Vector{String}
@@ -32,6 +34,7 @@ struct GlobalParameters
     modelFile::String
     gradientsFile::String
     optimizerFile::String
+    adaptiveScaling::Bool
 end
 
 """
@@ -56,13 +59,13 @@ end
 struct G2
 
 Radial symmetry function:
-G2 = ∑ exp(-eta * (Rij - rshift))^2 * fc(Rij, rcutoff)
+G2 = ∑ exp(-eta * (Rij - rshift)^2) * fc(Rij, rcutoff)
 where fc is the smooth cutoff function  
 
 Fields:
 eta (Å^-2): 
     parameter controlling the width of G2
-    eta = 1 / sqrt(2 * sigma)
+    eta = 1 / (2 * sigma^2)
 rcutoff (Å):
     Cutoff radius
 rshift (Å):
