@@ -76,6 +76,7 @@ function main()
         # Run the training
         println("\nStarting the main part of the training...\n")
         println("Adaptive gradient scaling: $(globalParms.adaptiveScaling)")
+        println("Consecutive gradient computation: $(globalParms.consectuiveGradients)")
         println("Number of iterations: $(NNParms.iters)")
         println("Running MC simulation on $(nworkers()) rank(s)...\n")
         println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")

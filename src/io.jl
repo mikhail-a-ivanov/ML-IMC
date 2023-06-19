@@ -25,6 +25,8 @@ optimizerFile:
     name of optimizer file to do a restart (couple with a corresponding model/gradients filenames)
 adaptiveScaling:
     scales gradients based on system loss (true) or uniform averaging (false)
+consectuiveGradients:
+    applies gradients from one system at a time (true) or averages from different systems (false)
 """
 struct GlobalParameters
     systemFiles::Vector{String}
@@ -35,6 +37,7 @@ struct GlobalParameters
     gradientsFile::String
     optimizerFile::String
     adaptiveScaling::Bool
+    consectuiveGradients::Bool
 end
 
 """

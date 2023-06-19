@@ -271,16 +271,28 @@ Prepares multi-reference inputs for mcsample! function
 function prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
     nsystems = length(systemParmsList)
     multiReferenceInput = []
-    for systemId = 1:nsystems
-        input =
-            MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
-        append!(multiReferenceInput, [input])
+
+    if !globalParms.consectuiveGradients # ! = not
+        for systemId = 1:nsystems
+            input =
+                MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
+            append!(multiReferenceInput, [input])
+        end
+    else
+        systemId = rand(range(1, nsystems))
+        println("\nSelecting $(systemParmsList[systemId].systemName) for gradient computation during the current iteration...\n")
+        for _ in range(1, nsystems)
+            input = MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
+            append!(multiReferenceInput, [input])
+        end
     end
+
     nsets = Int(nworkers() / nsystems)
     inputs = []
     for setId = 1:nsets
         append!(inputs, multiReferenceInput)
     end
+    
     return (inputs)
 end
 
