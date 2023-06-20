@@ -10,8 +10,8 @@ adaptiveScaling       = false                       # Scales gradients based on 
 consectuiveGradients  = true                        # Applies gradients from one system at a time (true) or averages from different systems (false)
                                   
 # Monte Carlo parameters
-steps          = 2000000                # Total number of MC steps
-Eqsteps        = 500000                 # Equilibration MC steps
+steps          = 100000                # Total number of MC steps
+Eqsteps        = 10000                 # Equilibration MC steps
 stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
 trajout        = 5000                   # XTC trajectory frequency
 outfreq        = 1000                   # Output frequency

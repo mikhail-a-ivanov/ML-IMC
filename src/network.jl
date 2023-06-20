@@ -271,22 +271,11 @@ Prepares multi-reference inputs for mcsample! function
 function prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
     nsystems = length(systemParmsList)
     multiReferenceInput = []
-
-    if !globalParms.consectuiveGradients # ! = not
-        for systemId = 1:nsystems
-            input =
-                MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
-            append!(multiReferenceInput, [input])
-        end
-    else
-        systemId = rand(range(1, nsystems))
-        println("\nSelecting $(systemParmsList[systemId].systemName) for gradient computation during the current iteration...\n")
-        for _ in range(1, nsystems)
-            input = MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
-            append!(multiReferenceInput, [input])
-        end
+    for systemId = 1:nsystems
+        input =
+            MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
+        append!(multiReferenceInput, [input])
     end
-
     nsets = Int(nworkers() / nsystems)
     inputs = []
     for setId = 1:nsets
@@ -386,11 +375,15 @@ function collectSystemAverages(
             meanLoss += systemLoss
             append!(systemLosses, systemLoss)
         end
-
         append!(systemOutputs, [systemOutput])
+        if globalParms.consectuiveGradients
+            break
+        end
     end
     if globalParms.mode == "training"
-        meanLoss /= length(systemParmsList)
+        if !globalParms.consectuiveGradients
+            meanLoss /= length(systemParmsList)
+        end
         println("   \nTotal Average Loss = ", round(meanLoss, digits=8))
     end
     return (systemOutputs, systemLosses)
@@ -419,8 +412,19 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         iterString = lpad(iteration, 2, '0')
         println("\nIteration $(iteration)...")
 
+        if globalParms.consectuiveGradients
+            nsystems = length(systemParmsList)
+            systemId = rand(range(1, nsystems))
+            println("\nSelecting $(systemParmsList[systemId].systemName) for gradient computation during the current iteration...\n")
+            currentSystemParmsList = repeat([systemParmsList[systemId]], nsystems)
+            currentRefRDFs = repeat([refRDFs[systemId]], nsystems)
+        else
+            currentSystemParmsList = systemParmsList
+            currentRefRDFs = refRDFs
+        end
+
         # Prepare multi-reference inputs
-        inputs = prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
+        inputs = prepMCInputs(globalParms, MCParms, NNParms, currentSystemParmsList, model)
 
         # Run the simulation in parallel
         outputs = pmap(mcsample!, inputs)
@@ -428,8 +432,8 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         # Collect averages corresponding to each reference system
         systemOutputs, systemLosses = collectSystemAverages(
             outputs,
-            refRDFs,
-            systemParmsList,
+            currentRefRDFs,
+            currentSystemParmsList,
             globalParms,
             NNParms,
             model,
@@ -438,12 +442,12 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         # Compute loss and the gradients
         lossGradients = []
         for (systemId, systemOutput) in enumerate(systemOutputs)
-            systemParms = systemParmsList[systemId]
+            systemParms = currentSystemParmsList[systemId]
             lossGradient = computeLossGradients(
                 systemOutput.crossAccumulators,
                 systemOutput.symmFuncMatrixAccumulator,
                 systemOutput.descriptor,
-                refRDFs[systemId],
+                currentRefRDFs[systemId],
                 model,
                 systemParms,
                 NNParms,
@@ -468,7 +472,7 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         if globalParms.adaptiveScaling
             gradientCoeffs = adaptiveGradientCoeffs(systemLosses)
             println("\nGradient scaling: \n")
-            for (gradientCoeff, systemParms) in zip(gradientCoeffs, systemParmsList) 
+            for (gradientCoeff, systemParms) in zip(gradientCoeffs, currentSystemParmsList) 
                 println("   System $(systemParms.systemName): $(round(gradientCoeff, digits=8))")
             end
 
