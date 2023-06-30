@@ -29,9 +29,9 @@ function computeG2Element(distance, eta, rcutoff, rshift)::Float64
 Computes a single exponent
 of the G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
-function computeG2Element(distance, eta, rcutoff, rshift)::Float64
+function computeG2Element(distance, eta, sqrtEta, rcutoff, rshift)::Float64
     if distance > 0.0
-        return exp(-eta * (distance - rshift)^2) * distanceCutoff(distance, rcutoff)
+        return exp(-eta * (distance - rshift)^2) * sqrtEta * distanceCutoff(distance, rcutoff)
     else
         return 0.0
     end
@@ -44,8 +44,9 @@ Computes the total G2 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function computeG2(distances, eta, rcutoff, rshift)::Float64
     sum = 0
+    sqrtEta = sqrt(eta)
     @simd for distance in distances
-        sum += computeG2Element(distance, eta, rcutoff, rshift)
+        sum += computeG2Element(distance, eta, sqrtEta, rcutoff, rshift)
     end
     return (sum)
 end
@@ -103,9 +104,10 @@ function updateG2Matrix!(
                 rcutoff = G2Function.rcutoff
                 if 0.0 < distanceVector2[i] < rcutoff || 0.0 < distanceVector1[i] < rcutoff
                     eta = G2Function.eta
+                    sqrtEta = sqrt(eta)
                     rshift = G2Function.rshift
-                    G2_1 = computeG2Element(distanceVector1[i], eta, rcutoff, rshift)
-                    G2_2 = computeG2Element(distanceVector2[i], eta, rcutoff, rshift)
+                    G2_1 = computeG2Element(distanceVector1[i], eta, sqrtEta, rcutoff, rshift)
+                    G2_2 = computeG2Element(distanceVector2[i], eta, sqrtEta, rcutoff, rshift)
                     ΔG2 = G2_2 - G2_1
                     G2Matrix[i, j] += ΔG2 * NNParms.symmFunctionScaling
                 end
