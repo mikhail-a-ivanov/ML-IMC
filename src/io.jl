@@ -153,6 +153,7 @@ maxDistanceCutoff: max distance cutoff
 symmFunctionScaling: scaling factor for the symmetry functions
 neurons: number of hidden neurons in the network
 iters: number of learning iterations
+bias: whether to add bias parameters or not
 activations: list of activation functions
 REGP: regularization parameter
 optimizer: type of optimizer
@@ -169,6 +170,7 @@ struct NNparameters
     symmFunctionScaling::Float64
     neurons::Vector{Int}
     iters::Int
+    bias::Bool
     activations::Vector{String}
     REGP::Float64
     optimizer::String

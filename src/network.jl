@@ -31,21 +31,27 @@ struct MCAverages
 end
 
 """
-function energyGradients(symmFuncMatrix, model)
+function energyGradients(symmFuncMatrix, model, NNParms)
 
 Computes all gradients of energy with respect
 to all parameters in the given network
 """
-function computeEnergyGradients(symmFuncMatrix, model)
-    energyGradients = Vector{Matrix{Float64}}([])
+function computeEnergyGradients(symmFuncMatrix, model, NNParms)
+    energyGradients = []
     # Compute energy gradients
     gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
-    nlayers = length(model)
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
-    for (layerId, layerGradients) in enumerate(gs[2][1])
-        weightGradients = layerGradients[1]
-        append!(energyGradients, [weightGradients])
+    for (layerId, layerGradients) in enumerate(gs[2][1]) 
+        if NNParms.bias
+            weightGradients = layerGradients[1] 
+            append!(energyGradients, [weightGradients])
+            biasGradients = layerGradients[2] 
+            append!(energyGradients, [biasGradients])
+        else
+            weightGradients = layerGradients[1] 
+            append!(energyGradients, [weightGradients])
+        end
     end
     return (energyGradients)
 end
@@ -69,34 +75,31 @@ function crossAccumulatorsInit(NNParms, systemParms)
 Initialize cross correlation accumulator arrays
 """
 function crossAccumulatorsInit(NNParms, systemParms)
-    crossAccumulators = Vector{Matrix{Float64}}([])
+    crossAccumulators = []
     nlayers = length(NNParms.neurons)
-    for layerId = 2:nlayers
-        append!(
-            crossAccumulators,
-            [
-                zeros(
-                    Float64,
-                    (
-                        systemParms.Nbins,
-                        NNParms.neurons[layerId-1] * NNParms.neurons[layerId],
-                    ),
-                ),
-            ],
-        )
+    for layerId in 2:nlayers
+        if NNParms.bias
+            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, 
+                    NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
+            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, 
+                    NNParms.neurons[layerId]))])
+        else
+            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, 
+                    NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
+        end
     end
     return (crossAccumulators)
 end
 
 
 """
-function updateCrossAccumulators(crossAccumulators, descriptor, model)
+function updateCrossAccumulators(crossAccumulators, descriptor, model, NNParms)
 
 Updates cross accumulators by performing element-wise summation
 of the cross accumulators with the new cross correlation data
 """
-function updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, descriptor, model)
-    energyGradients = computeEnergyGradients(symmFuncMatrix, model)
+function updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, descriptor, model, NNParms)
+    energyGradients = computeEnergyGradients(symmFuncMatrix, model, NNParms)
     newCrossCorrelations = computeCrossCorrelation(descriptor, energyGradients)
     for (cross, newCross) in zip(crossAccumulators, newCrossCorrelations)
         cross .+= newCross
@@ -105,13 +108,13 @@ function updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, descriptor,
 end
 
 """
-function computeEnsembleCorrelation(descriptor, model)
+function computeEnsembleCorrelation(descriptor, model, NNParms)
 
 Computes correlations of the ensemble averages of the descriptor
 and the energy gradients
 """
-function computeEnsembleCorrelation(symmFuncMatrix, descriptor, model)
-    energyGradients = computeEnergyGradients(symmFuncMatrix, model)
+function computeEnsembleCorrelation(symmFuncMatrix, descriptor, model, NNParms)
+    energyGradients = computeEnergyGradients(symmFuncMatrix, model, NNParms)
     ensembleCorrelations = computeCrossCorrelation(descriptor, energyGradients)
     return (ensembleCorrelations)
 end
@@ -145,7 +148,7 @@ function computeLossGradients(
     NNParms,
 )
     lossGradients = []
-    ensembleCorrelations = computeEnsembleCorrelation(symmFuncMatrix, descriptorNN, model)
+    ensembleCorrelations = computeEnsembleCorrelation(symmFuncMatrix, descriptorNN, model, NNParms)
     descriptorGradients =
         computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     # Compute derivative of loss with respect to the descriptor
@@ -237,11 +240,14 @@ end
 function buildchain(args...)
 Build a multilayered neural network
 """
-function buildchain(args...)
-    nlayers = length(args)
+function buildchain(NNParms, args...)
     layers = []
     for (layerId, arg) in enumerate(args)
-        layer = Dense(arg..., bias=false)
+        if NNParms.bias
+            layer = Dense(arg...)
+        else
+            layer = Dense(arg..., bias=false)
+        end
         append!(layers, [layer])
     end
     model = Chain(layers...)
@@ -255,12 +261,18 @@ function modelInit(NNParms)
     # Build initial model
     network = buildNetwork!(NNParms)
     println("Building a model...")
-    model = buildchain(network...)
+    model = buildchain(NNParms, network...)
     model = fmap(f64, model)
     println(model)
     #println(typeof(model))
     println("   Number of layers: $(length(NNParms.neurons)) ")
     println("   Number of neurons in each layer: $(NNParms.neurons)")
+    parameterCount = 0
+    for layer in model
+        parameterCount += sum(length, Flux.params(layer))
+    end
+    println("   Total number of parameters: $(parameterCount)")
+    println("   Using bias parameters: $(NNParms.bias)")
     return (model)
 end
 
