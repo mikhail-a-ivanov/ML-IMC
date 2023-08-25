@@ -132,7 +132,7 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFun
 Computes loss gradients for one frame
 """
 function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2,
-    model, preTrainParms::PreTrainParameters, verbose=false)
+    model, preTrainParms::PreTrainParameters, NNParms::NNparameters, verbose=false)
 
     parameters = Flux.params(model)
     loss = (ΔENN - ΔEPMF)^2
@@ -145,8 +145,8 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFun
     end
 
     # Compute dL/dw
-    ENN1Gradients = computeEnergyGradients(symmFuncMatrix1, model)
-    ENN2Gradients = computeEnergyGradients(symmFuncMatrix2, model)
+    ENN1Gradients = computeEnergyGradients(symmFuncMatrix1, model, NNParms)
+    ENN2Gradients = computeEnergyGradients(symmFuncMatrix2, model, NNParms)
     gradientScaling = 2 * (ΔENN - ΔEPMF)
 
     lossGradient = @. gradientScaling * (ENN2Gradients - ENN1Gradients)
@@ -331,7 +331,7 @@ function preTrain!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, 
 
             # Compute the loss gradient
             lossGradient = computePreTrainingLossGradients(
-                ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model, preTrainParms, verbose)
+                ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model, preTrainParms, NNParms, verbose)
             append!(lossGradients, [lossGradient])
         end
         # Update the model

@@ -429,7 +429,7 @@ function mcsample!(input)
                 # Combine symmetry function matrices
                 symmFuncMatrix = combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
 
-                updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, hist, model)
+                updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, hist, model, NNParms)
                 # Nullify the hist array for the next training iteration
                 hist = zeros(Float64, systemParms.Nbins)
             else
