@@ -1,6 +1,7 @@
 using Flux
 using Statistics
 using BSON: @save, @load
+using Dates
 
 """
 struct MCSampleInput
@@ -451,13 +452,14 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
             append!(lossGradients, [lossGradient])
             # Write descriptors and energies
             name = systemParms.systemName
+            current_time = "$(now())"
             writeRDF(
-                "RDFNN-$(name)-iter-$(iterString).dat",
+                "RDFNN-$(name)-iter-$(iterString)-$(current_time).dat",
                 systemOutput.descriptor,
                 systemParms,
             )
             writeEnergies(
-                "energies-$(name)-iter-$(iterString).dat",
+                "energies-$(name)-iter-$(iterString)-$(current_time).dat",
                 systemOutput.energies,
                 MCParms,
                 systemParms,
@@ -478,14 +480,17 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         end
         
         # Write the model and opt (before training!) and the gradients
-        @save "model-iter-$(iterString).bson" model
-        checkfile("model-iter-$(iterString).bson")
+        current_time = "$(now())"
+        @save "model-iter-$(iterString)-$(current_time).bson" model
+        checkfile("model-iter-$(iterString)-$(current_time).bson")
         
-        @save "opt-iter-$(iterString).bson" opt
-        checkfile("opt-iter-$(iterString).bson")
+        current_time = "$(now())"
+        @save "opt-iter-$(iterString)-$(current_time).bson" opt
+        checkfile("opt-iter-$(iterString)-$(current_time).bson")
 
-        @save "gradients-iter-$(iterString).bson" meanLossGradients
-        checkfile("gradients-iter-$(iterString).bson")
+        current_time = "$(now())"
+        @save "gradients-iter-$(iterString)-$(current_time).bson" meanLossGradients
+        checkfile("gradients-iter-$(iterString)-$(current_time).bson")
 
         # Update the model
         updatemodel!(model, opt, meanLossGradients)
