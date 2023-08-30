@@ -484,11 +484,9 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         @save "model-iter-$(iterString)-$(current_time).bson" model
         checkfile("model-iter-$(iterString)-$(current_time).bson")
         
-        current_time = "$(now())"
         @save "opt-iter-$(iterString)-$(current_time).bson" opt
         checkfile("opt-iter-$(iterString)-$(current_time).bson")
 
-        current_time = "$(now())"
         @save "gradients-iter-$(iterString)-$(current_time).bson" meanLossGradients
         checkfile("gradients-iter-$(iterString)-$(current_time).bson")
 
