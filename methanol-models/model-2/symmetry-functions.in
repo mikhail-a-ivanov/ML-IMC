@@ -1,34 +1,47 @@
 ### Symmetry functions
 # G2 symmetry functions (radial symmetry)
-# G2 <eta, Å^-2> <rcutoff, Å> <rshift, Å> 
+# G2 <eta, Å^-2> <rcutoff, Å> <rshift, Å>
 
 # Repulsion G2
-G2 0.125 8.0 0.00
+G2 0.125 10.0 0.00
+G2 0.020 10.0 0.00
 
-# First valley
-G2 2.000 8.0 3.00
+# Main G2
+G2 16.000 10.0 3.00
+G2 16.000 10.0 3.25
+G2 16.000 10.0 3.50
+G2 16.000 10.0 3.75
+G2 16.000 10.0 4.00
+G2 16.000 10.0 4.25
+G2 16.000 10.0 4.50
+G2 16.000 10.0 4.75
+G2 16.000 10.0 5.00
 
-# First peak
-G2 2.000 8.0 3.40
+G2 4.000 10.0 3.00
+G2 4.000 10.0 3.50
+G2 4.000 10.0 4.00
+G2 4.000 10.0 4.50
+G2 4.000 10.0 5.00
+G2 4.000 10.0 5.50
+G2 4.000 10.0 6.00
 
-# Second valley
-G2 2.000 8.0 3.85
+G2 2.000 10.0 3.00
+G2 2.000 10.0 4.00
+G2 2.000 10.0 5.00
+G2 2.000 10.0 6.00
+G2 2.000 10.0 7.00
+G2 2.000 10.0 8.00
 
-# Second peak
-G2 2.000 8.0 4.55
-
-# Third valley
-G2 2.000 8.0 5.50
 
 # G3 symmetry functions (narrow angular symmetry)
 # G3 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
-# G3 0.001  1.0 1.0 4.0 0.0
-# G3 0.001 -1.0 1.0 4.0 0.0
+# G3 0.001  1.0 1.0 5.0 0.0
+# G3 0.001 -1.0 1.0 5.0 0.0
 
 # G9 symmetry functions (wide angular symmetry)
 # G9 <eta, Å^-2> <lambda (+1/-1)> <zeta> <rcutoff, Å> <rshift, Å>
-# G9 0.010  1.0 1.0 4.0 0.0
-# G9 0.010 -1.0 1.0 4.0 0.0
+# G9 0.001  1.0 1.0 5.0 0.0
+# G9 0.001 -1.0 1.0 5.0 0.0
 
 ### Symmetry function scaling factor (scaling = 1.0: no scaling)
 scaling = 1.0

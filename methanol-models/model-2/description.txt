@@ -1,39 +1,38 @@
 methanol-CG-NN.bson
 
 Model outline:
-- G2 symmetry functions: 6
-- Distance cutoff: 8 Å
+- G2 symmetry functions: 24
+- Distance cutoff: 10 Å
 - Neural network architecture:
-6 G2 -> linear -> 40 -> ReLU -> 40 -> ReLU -> 40 -> linear -> 1 
-
+24 G2 -> linear -> 40 -> ReLU -> 40 -> ReLU -> 40 -> linear -> 1 
 
 Training procedure:
-1. Trained according to "ML-IMC-init-training.in".
-2. Post-training starts from "6G2-narrow-wide-repulsion-rc-8/random-model-9/model-iter-04.bson" (iteration 4 of the main training)
-according to "ML-IMC-init-posttraining.in".
-3. The final model corresponds to "continuation-rc-8/random-model-11/model-iter-80.bson".
+1. Run 1 input file: "ML-IMC-init-run-1.in".
+2. Run 2 input file: "ML-IMC-init-run-2.in", starts from iteration 25
+3. Run 3 input file: "ML-IMC-init-run-3.in", starts from iteration 20
+4. The final model is taken after iteration 29 of the run 3
 
 Model performance:
    System 100CH3OH-CG:
-       Acceptance ratio = 0.5037
-       Max displacement = 1.2549
+       Acceptance ratio = 0.4977
+       Max displacement = 1.2453
 Regularization Loss = 0
-Descriptor Loss = 0.48448473
+Descriptor Loss = 0.47026897
    System 60CH3OH-CG:
-       Acceptance ratio = 0.502
-       Max displacement = 1.9136
+       Acceptance ratio = 0.4963
+       Max displacement = 1.8648
 Regularization Loss = 0
-Descriptor Loss = 0.1137261
+Descriptor Loss = 0.06874433
    System 40CH3OH-CG:
-       Acceptance ratio = 0.5022
-       Max displacement = 2.5041
+       Acceptance ratio = 0.4998
+       Max displacement = 2.3412
 Regularization Loss = 0
-Descriptor Loss = 0.21787323
-   System 20CH3OH-CG:
-       Acceptance ratio = 0.5003
-       Max displacement = 3.5198
+Descriptor Loss = 0.04516807
+   System 10CH3OH-CG:
+       Acceptance ratio = 0.5001
+       Max displacement = 9.3559
 Regularization Loss = 0
-Descriptor Loss = 0.30646559
+Descriptor Loss = 0.49452795
 
-Total Average Loss = 0.28063741
+Total Average Loss = 0.26967733
 
