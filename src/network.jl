@@ -4,7 +4,7 @@ using BSON: @save, @load
 
 """
 struct MCSampleInput
-    
+
 Used for packaging mcsample! inputs
 """
 struct MCSampleInput
@@ -42,14 +42,14 @@ function computeEnergyGradients(symmFuncMatrix, model, NNParms)
     gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
-    for (layerId, layerGradients) in enumerate(gs[2][1]) 
+    for (layerId, layerGradients) in enumerate(gs[2][1])
         if NNParms.bias
-            weightGradients = layerGradients[1] 
+            weightGradients = layerGradients[1]
             append!(energyGradients, [weightGradients])
-            biasGradients = layerGradients[2] 
+            biasGradients = layerGradients[2]
             append!(energyGradients, [biasGradients])
         else
-            weightGradients = layerGradients[1] 
+            weightGradients = layerGradients[1]
             append!(energyGradients, [weightGradients])
         end
     end
@@ -79,18 +79,16 @@ function crossAccumulatorsInit(NNParms, systemParms)
     nlayers = length(NNParms.neurons)
     for layerId in 2:nlayers
         if NNParms.bias
-            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, 
-                    NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
-            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, 
-                    NNParms.neurons[layerId]))])
+            append!(crossAccumulators,
+                    [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
+            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId]))])
         else
-            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, 
-                    NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
+            append!(crossAccumulators,
+                    [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
         end
     end
     return (crossAccumulators)
 end
-
 
 """
 function updateCrossAccumulators(crossAccumulators, descriptor, model, NNParms)
@@ -138,23 +136,15 @@ function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, d
 
 Computes the final loss gradients
 """
-function computeLossGradients(
-    crossAccumulators,
-    symmFuncMatrix,
-    descriptorNN,
-    descriptorref,
-    model,
-    systemParms,
-    NNParms,
-)
+function computeLossGradients(crossAccumulators, symmFuncMatrix, descriptorNN, descriptorref, model, systemParms,
+                              NNParms)
     lossGradients = []
     ensembleCorrelations = computeEnsembleCorrelation(symmFuncMatrix, descriptorNN, model, NNParms)
-    descriptorGradients =
-        computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
+    descriptorGradients = computeDescriptorGradients(crossAccumulators, ensembleCorrelations, systemParms)
     # Compute derivative of loss with respect to the descriptor
     descriptorPoints = length(descriptorNN)
     dLdS = zeros(Float64, descriptorPoints)
-    for i = 1:descriptorPoints
+    for i in 1:descriptorPoints
         dLdS[i] = 2 * (descriptorNN[i] - descriptorref[i])
     end
     for (gradient, parameters) in zip(descriptorGradients, Flux.params(model))
@@ -194,23 +184,23 @@ function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
         for parameters in Flux.params(model)
             regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
         end
-        println("Regularization Loss = ", round(regLoss, digits=8))
-        println(io, "Regularization Loss = ", round(regLoss, digits=8))
+        println("Regularization Loss = ", round(regLoss; digits=8))
+        println(io, "Regularization Loss = ", round(regLoss; digits=8))
         totalLoss = strLoss + regLoss
     else
         totalLoss = strLoss
         println("Regularization Loss = ", 0)
         println(io, "Regularization Loss = ", 0)
     end
-    println("Descriptor Loss = ", round(strLoss, digits=8))
-    println(io, "Descriptor Loss = ", round(strLoss, digits=8))
-    println(io, "Total Loss = ", round(totalLoss, digits=8))
+    println("Descriptor Loss = ", round(strLoss; digits=8))
+    println(io, "Descriptor Loss = ", round(strLoss; digits=8))
+    println(io, "Total Loss = ", round(totalLoss; digits=8))
     # Abnormal max displacement is an indication
     # of a poor model, even if the total loss is low!
     # Low max displacement results in a severely
     # undersampled configuration - it becomes "stuck"
     # at the initial configuration
-    println(io, "Max displacement = ", round(meanMaxDisplacement, digits=8))
+    println(io, "Max displacement = ", round(meanMaxDisplacement; digits=8))
     close(io)
     checkfile(outname)
     return (totalLoss)
@@ -223,15 +213,32 @@ Combines input arguments for neural network building
 function buildNetwork!(NNParms)
     nlayers = length(NNParms.neurons)
     network = []
-    for layerId = 2:nlayers
-        append!(
-            network,
-            [(
-                NNParms.neurons[layerId-1],
-                NNParms.neurons[layerId],
-                getfield(Main, Symbol(NNParms.activations[layerId-1])),
-            )],
-        )
+    for layerId in 2:nlayers
+        append!(network,
+                [(NNParms.neurons[layerId - 1], NNParms.neurons[layerId],
+                  getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
+    end
+    return (network)
+end
+
+function buildNetworkOther!(NNParms)
+    """
+    NNParms.neurons[layerId - 1] + 2---- +2 means that we want to add 2 additional neurons
+    to first layer of NN, because we want to put E_pmf and density values to NN
+    """
+
+    nlayers = length(NNParms.neurons)
+    network = []
+    for layerId in 2:nlayers
+        if layerId == 2
+            append!(network,
+                    [(NNParms.neurons[layerId - 1] + 2, NNParms.neurons[layerId],
+                      getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
+        else
+            append!(network,
+                    [(NNParms.neurons[layerId - 1], NNParms.neurons[layerId],
+                      getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
+        end
     end
     return (network)
 end
@@ -246,7 +253,7 @@ function buildchain(NNParms, args...)
         if NNParms.bias
             layer = Dense(arg...)
         else
-            layer = Dense(arg..., bias=false)
+            layer = Dense(arg...; bias=false)
         end
         append!(layers, [layer])
     end
@@ -276,6 +283,25 @@ function modelInit(NNParms)
     return (model)
 end
 
+function modelInitOther(NNParms)
+    # Build initial model
+    network = buildNetworkOther!(NNParms)
+    println("Building a model...")
+    model = buildchain(NNParms, network...)
+    model = fmap(f64, model)
+    println(model)
+    #println(typeof(model))
+    println("   Number of layers: $(length(NNParms.neurons)) ")
+    println("   Number of neurons in each layer: $(NNParms.neurons)")
+    parameterCount = 0
+    for layer in model
+        parameterCount += sum(length, Flux.params(layer))
+    end
+    println("   Total number of parameters: $(parameterCount)")
+    println("   Using bias parameters: $(NNParms.bias)")
+    return (model)
+end
+
 """
 function prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
 Prepares multi-reference inputs for mcsample! function
@@ -283,14 +309,13 @@ Prepares multi-reference inputs for mcsample! function
 function prepMCInputs(globalParms, MCParms, NNParms, systemParmsList, model)
     nsystems = length(systemParmsList)
     multiReferenceInput = []
-    for systemId = 1:nsystems
-        input =
-            MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
+    for systemId in 1:nsystems
+        input = MCSampleInput(globalParms, MCParms, NNParms, systemParmsList[systemId], model)
         append!(multiReferenceInput, [input])
     end
     nsets = Int(nworkers() / nsystems)
     inputs = []
-    for setId = 1:nsets
+    for setId in 1:nsets
         append!(inputs, multiReferenceInput)
     end
     return (inputs)
@@ -300,14 +325,7 @@ end
 function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, NNParms, model)
 Collects averages from different workers corresponding to one reference system
 """
-function collectSystemAverages(
-    outputs,
-    refRDFs,
-    systemParmsList,
-    globalParms,
-    NNParms,
-    model,
-)
+function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, NNParms, model)
     meanLoss = 0.0
     systemOutputs = []
 
@@ -316,7 +334,7 @@ function collectSystemAverages(
     for (systemId, systemParms) in enumerate(systemParmsList)
         println("   System $(systemParms.systemName):")
         systemLoss = 0.0
-         
+
         meanDescriptor = []
         meanEnergies = []
         if globalParms.mode == "training"
@@ -333,10 +351,7 @@ function collectSystemAverages(
                 append!(meanEnergies, [outputs[outputID].energies])
                 if globalParms.mode == "training"
                     append!(meanCrossAccumulators, [outputs[outputID].crossAccumulators])
-                    append!(
-                        meansymmFuncMatrixAccumulator,
-                        [outputs[outputID].symmFuncMatrixAccumulator],
-                    )
+                    append!(meansymmFuncMatrixAccumulator, [outputs[outputID].symmFuncMatrixAccumulator])
                 end
                 append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
                 append!(meanMaxDisplacement, [outputs[outputID].mutatedStepAdjust])
@@ -352,37 +367,18 @@ function collectSystemAverages(
         meanAcceptanceRatio = mean(meanAcceptanceRatio)
         meanMaxDisplacement = mean(meanMaxDisplacement)
         if globalParms.mode == "training"
-            systemOutput = MCAverages(
-                meanDescriptor,
-                meanEnergies,
-                meanCrossAccumulators,
-                meansymmFuncMatrixAccumulator,
-                meanAcceptanceRatio,
-                systemParms,
-                meanMaxDisplacement,
-            )
+            systemOutput = MCAverages(meanDescriptor, meanEnergies, meanCrossAccumulators,
+                                      meansymmFuncMatrixAccumulator, meanAcceptanceRatio, systemParms,
+                                      meanMaxDisplacement)
         else
-            systemOutput = MCAverages(
-                meanDescriptor,
-                meanEnergies,
-                nothing,
-                nothing,
-                meanAcceptanceRatio,
-                systemParms,
-                meanMaxDisplacement,
-            )
+            systemOutput = MCAverages(meanDescriptor, meanEnergies, nothing, nothing, meanAcceptanceRatio, systemParms,
+                                      meanMaxDisplacement)
         end
         # Compute loss and print some output info
-        println("       Acceptance ratio = ", round(meanAcceptanceRatio, digits=4))
-        println("       Max displacement = ", round(meanMaxDisplacement, digits=4))
+        println("       Acceptance ratio = ", round(meanAcceptanceRatio; digits=4))
+        println("       Max displacement = ", round(meanMaxDisplacement; digits=4))
         if globalParms.mode == "training"
-            systemLoss = loss(
-                systemOutput.descriptor,
-                refRDFs[systemId],
-                model,
-                NNParms,
-                meanMaxDisplacement,
-            )
+            systemLoss = loss(systemOutput.descriptor, refRDFs[systemId], model, NNParms, meanMaxDisplacement)
             meanLoss += systemLoss
             append!(systemLosses, systemLoss)
         end
@@ -391,7 +387,7 @@ function collectSystemAverages(
     end
     if globalParms.mode == "training"
         meanLoss /= length(systemParmsList)
-        println("   \nTotal Average Loss = ", round(meanLoss, digits=8))
+        println("   \nTotal Average Loss = ", round(meanLoss; digits=8))
     end
     return (systemOutputs, systemLosses)
 end
@@ -415,7 +411,6 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
     iteration = 1
 
     while iteration <= NNParms.iters
-
         iterString = lpad(iteration, 2, '0')
         println("\nIteration $(iteration)...")
 
@@ -426,49 +421,26 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         outputs = pmap(mcsample!, inputs)
 
         # Collect averages corresponding to each reference system
-        systemOutputs, systemLosses = collectSystemAverages(
-            outputs,
-            refRDFs,
-            systemParmsList,
-            globalParms,
-            NNParms,
-            model,
-        )
+        systemOutputs, systemLosses = collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, NNParms,
+                                                            model)
 
         # Compute loss and the gradients
         lossGradients = []
         for (systemId, systemOutput) in enumerate(systemOutputs)
             systemParms = systemParmsList[systemId]
-            lossGradient = computeLossGradients(
-                systemOutput.crossAccumulators,
-                systemOutput.symmFuncMatrixAccumulator,
-                systemOutput.descriptor,
-                refRDFs[systemId],
-                model,
-                systemParms,
-                NNParms,
-            )
+            lossGradient = computeLossGradients(systemOutput.crossAccumulators, systemOutput.symmFuncMatrixAccumulator,
+                                                systemOutput.descriptor, refRDFs[systemId], model, systemParms, NNParms)
             append!(lossGradients, [lossGradient])
             # Write descriptors and energies
             name = systemParms.systemName
-            writeRDF(
-                "RDFNN-$(name)-iter-$(iterString).dat",
-                systemOutput.descriptor,
-                systemParms,
-            )
-            writeEnergies(
-                "energies-$(name)-iter-$(iterString).dat",
-                systemOutput.energies,
-                MCParms,
-                systemParms,
-                1,
-            )
+            writeRDF("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
+            writeEnergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, MCParms, systemParms, 1)
         end
         # Average the gradients
         if globalParms.adaptiveScaling
             gradientCoeffs = adaptiveGradientCoeffs(systemLosses)
             println("\nGradient scaling: \n")
-            for (gradientCoeff, systemParms) in zip(gradientCoeffs, systemParmsList) 
+            for (gradientCoeff, systemParms) in zip(gradientCoeffs, systemParmsList)
                 println("   System $(systemParms.systemName): $(round(gradientCoeff, digits=8))")
             end
 
@@ -476,11 +448,11 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         else
             meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
         end
-        
+
         # Write the model and opt (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
         checkfile("model-iter-$(iterString).bson")
-        
+
         @save "opt-iter-$(iterString).bson" opt
         checkfile("opt-iter-$(iterString).bson")
 
@@ -511,24 +483,11 @@ function simulate!(model, globalParms, MCParms, NNParms, systemParms)
     outputs = pmap(mcsample!, inputs)
 
     # Collect averages corresponding to each reference system
-    systemOutputs, systemLosses = collectSystemAverages(
-        outputs,
-        nothing,
-        [systemParms],
-        globalParms,
-        nothing,
-        nothing,
-    )
+    systemOutputs, systemLosses = collectSystemAverages(outputs, nothing, [systemParms], globalParms, nothing, nothing)
 
     # Write descriptors and energies
     name = systemParms.systemName
     writeRDF("RDFNN-$(name).dat", systemOutputs[1].descriptor, systemParms)
-    writeEnergies(
-        "energies-$(name).dat",
-        systemOutputs[1].energies,
-        MCParms,
-        systemParms,
-        1,
-    )
+    writeEnergies("energies-$(name).dat", systemOutputs[1].energies, MCParms, systemParms, 1)
     return
 end

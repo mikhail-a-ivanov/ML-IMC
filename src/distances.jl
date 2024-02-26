@@ -9,10 +9,10 @@ function starts indexing atoms from 0!
 """
 function buildDistanceMatrixChemfiles(frame)
     N = length(frame)
-    distanceMatrix = Array{Float64}(undef, (N, N))
-    @inbounds for i = 0:N-1
-        @inbounds for j = 0:N-1
-            distanceMatrix[i+1, j+1] = distance(frame, i, j)
+    distanceMatrix = Matrix{Float64}(undef, N, N)
+    @inbounds for i in 1:N
+        @inbounds for j in 1:N
+            distanceMatrix[i, j] = distance(frame, i - 1, j - 1)
         end
     end
     return (distanceMatrix)
@@ -32,8 +32,8 @@ so I need to shift it by -1 so it takes
 the same values as the iterator i
 """
 function updateDistance!(frame, distanceVector, pointIndex)
-    @fastmath @inbounds for i = 0:length(distanceVector)-1
-        distanceVector[i+1] = distance(frame, i, pointIndex - 1)
+    @fastmath @inbounds for i in 0:(length(distanceVector) - 1)
+        distanceVector[i + 1] = distance(frame, i, pointIndex - 1)
     end
     return (distanceVector)
 end
@@ -95,7 +95,6 @@ function computeDistance(r1, r2, box)
     return sqrt.(reduce(+, map(computeSquaredDistanceComponent, r1, r2, box)))
 end
 
-
 """
 computeDistanceVector(r1, coordinates, box)
 
@@ -103,9 +102,8 @@ Computes a vector of PBC distances between point r1
 and all the others in the simulation box
 """
 function computeDistanceVector(r1, coordinates, box)
-    return vec(sqrt.(sum(broadcast(computeSquaredDistanceComponent, r1, coordinates, box), dims=1)))
+    return vec(sqrt.(sum(broadcast(computeSquaredDistanceComponent, r1, coordinates, box); dims=1)))
 end
-
 
 """
 buildDistanceMatrix(frame)
@@ -125,4 +123,4 @@ function buildDistanceMatrix(frame)
     end
 
     return (distanceMatrix)
-end    
+end
