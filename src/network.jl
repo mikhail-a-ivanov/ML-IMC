@@ -221,27 +221,7 @@ function buildNetwork!(NNParms)
     return (network)
 end
 
-function buildNetworkOther!(NNParms)
-    """
-    NNParms.neurons[layerId - 1] + 2---- +2 means that we want to add 2 additional neurons
-    to first layer of NN, because we want to put E_pmf and density values to NN
-    """
 
-    nlayers = length(NNParms.neurons)
-    network = []
-    for layerId in 2:nlayers
-        if layerId == 2
-            append!(network,
-                    [(NNParms.neurons[layerId - 1] + 2, NNParms.neurons[layerId],
-                      getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
-        else
-            append!(network,
-                    [(NNParms.neurons[layerId - 1], NNParms.neurons[layerId],
-                      getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
-        end
-    end
-    return (network)
-end
 
 """
 function buildchain(args...)

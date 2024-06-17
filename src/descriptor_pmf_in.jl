@@ -1,3 +1,14 @@
+struct MCAveragesOther
+    descriptor::Vector{Float64}
+    energies::Vector{Float64}
+    crossAccumulators::Union{Nothing,Vector{Matrix{Float64}}}
+    symmFuncMatrixAccumulator::Union{Nothing,Matrix{Float64}}
+    pmfEnergiesVec::Union{Nothing,Vector{Float64}}
+    acceptanceRatio::Float64
+    systemParms::SystemParameters
+    mutatedStepAdjust::Float64
+end
+
 mutable struct InputPreTrainData
     PMF::Vector{Float64}
     frame::Frame
@@ -14,6 +25,28 @@ struct MCSampleInputOther
     systemParms::SystemParameters
     model::Chain
     PMF::Vector{Float64}
+end
+
+function buildNetworkOther!(NNParms)
+    """
+    NNParms.neurons[layerId - 1] + 2---- +2 means that we want to add 2 additional neurons
+    to first layer of NN, because we want to put E_pmf and density values to NN
+    """
+
+    nlayers = length(NNParms.neurons)
+    network = []
+    for layerId in 2:nlayers
+        if layerId == 2
+            append!(network,
+                    [(NNParms.neurons[layerId - 1] + 2, NNParms.neurons[layerId],
+                      getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
+        else
+            append!(network,
+                    [(NNParms.neurons[layerId - 1], NNParms.neurons[layerId],
+                      getfield(Main, Symbol(NNParms.activations[layerId - 1])))])
+        end
+    end
+    return (network)
 end
 
 function initHist(distanceMatrix, systemParms)
@@ -102,15 +135,10 @@ function computeEnergyGradientsOther(input_mat, model, NNParms)
     # Loop over the gradients and collect them in the array
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
     for (layerId, layerGradients) in enumerate(gs[2][1])
-        if NNParms.bias
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-            biasGradients = layerGradients[2]
-            append!(energyGradients, [biasGradients])
-        else
-            weightGradients = layerGradients[1]
-            append!(energyGradients, [weightGradients])
-        end
+        weightGradients = layerGradients[1]
+        append!(energyGradients, [weightGradients])
+        biasGradients = layerGradients[2]
+        append!(energyGradients, [biasGradients])
     end
     return (energyGradients)
 end
@@ -207,6 +235,39 @@ function pretrainingMoveOther!(model, input_struct::InputPreTrainData, NNParms, 
 
     # Return input for NN and delta Energies for Loss
     return (input_struct, input_mat_to_nn, input_mat_to_nn_after, ΔENN, ΔEPMF)
+end
+
+function updateCrossAccumulatorsOther!(crossAccumulators, input_mat, descriptor, model, NNParms)
+    """
+    дескриптом это гистограмма размером 300
+    energyGradients - 8, 4 слоя, 4 соединения.
+
+    println(size(cross))        (300, 320)
+    println(size(newCross))     (300, 400)    
+    """
+    energyGradients = computeEnergyGradientsOther(input_mat, model, NNParms)
+    newCrossCorrelations = computeCrossCorrelation(descriptor, energyGradients)
+    for (cross, newCross) in zip(crossAccumulators, newCrossCorrelations)
+        cross .+= newCross
+    end
+    return (crossAccumulators)
+end
+
+function crossAccumulatorsInitOther(NNParms, systemParms)
+    crossAccumulators = []
+    nlayers = length(NNParms.neurons)
+    for layerId in 2:nlayers
+        if layerId == 2
+            append!(crossAccumulators,
+                    [zeros(Float64, (systemParms.Nbins, (NNParms.neurons[layerId - 1] + 2) * NNParms.neurons[layerId]))])
+            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId]))])
+        else
+            append!(crossAccumulators,
+                    [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId - 1] * NNParms.neurons[layerId]))])
+            append!(crossAccumulators, [zeros(Float64, (systemParms.Nbins, NNParms.neurons[layerId]))])
+        end
+    end
+    return (crossAccumulators)
 end
 
 function preTrainOther!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
@@ -357,16 +418,20 @@ function mcmoveOther!(mcarrays, E, nn_energy_vec_prev, model, NNParams, sysParam
         dist_mat[:, rndp] = dist_vec_2
         # Pack mcarrays
         mcarrays = (frame, dist_mat, g2_mat_2)
-        return (mcarrays, E, nn_evergy_vec_cur, accepted)
+        return (mcarrays, E, nn_evergy_vec_cur, pmf_energy_vec_current, accepted)
     else
         positions(frame)[:, rndp] .-= dr
+
+        dist_mat[rndp, :] = dist_vec_1
+        dist_mat[:, rndp] = dist_vec_1
 
         # Check if all coordinates inside simulation box with PBC
         wrapFrame!(frame, box, rndp)
 
+        pmf_energy_vec_current = computePMFenergyVec(dist_mat, PMF, sysParams)
         # Pack mcarrays
         mcarrays = (frame, dist_mat, g2_mat_1)
-        return (mcarrays, E, nn_energy_vec_prev, accepted)
+        return (mcarrays, E, nn_energy_vec_prev, pmf_energy_vec_current, accepted)
     end
 end
 
@@ -453,8 +518,9 @@ function mcsampleOther!(input::MCSampleInputOther)
     # and the symmetry function matrix accumulator
     if globalParms.mode == "training"
         hist = zeros(Float64, systemParms.Nbins)
+        Energies_Accumulator = zeros(size(positions(frame))[2])
         G2MatrixAccumulator = zeros(size(G2Matrix))
-        crossAccumulators = crossAccumulatorsInit(NNParms, systemParms)
+        crossAccumulators = crossAccumulatorsInitOther(NNParms, systemParms)
     end
 
     # Combine symmetry function matrices
@@ -474,8 +540,9 @@ function mcsampleOther!(input::MCSampleInputOther)
 
     # Run MC simulation
     @fastmath for step in 1:(MCParms.steps)
-        mcarrays, E, nn_energy_prev_vec, accepted = mcmoveOther!(mcarrays, E, nn_energy_prev_vec, model, NNParms,
-                                                                 systemParms, box, rngXor, mutatedStepAdjust, PMF)
+        mcarrays, E, nn_energy_prev_vec, pmf_energy_prev_vec, accepted = mcmoveOther!(mcarrays, E, nn_energy_prev_vec,
+                                                                                      model, NNParms, systemParms, box,
+                                                                                      rngXor, mutatedStepAdjust, PMF)
         acceptedTotal += accepted
         acceptedIntermediate += accepted
 
@@ -499,25 +566,22 @@ function mcsampleOther!(input::MCSampleInputOther)
 
         # Accumulate the distance histogram
         if step % MCParms.outfreq == 0 && step > MCParms.Eqsteps
-            frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix = mcarrays
+            frame, distanceMatrix, G2Matrix = mcarrays
             # Update the cross correlation array during the training
             if globalParms.mode == "training"
                 hist = hist!(distanceMatrix, hist, systemParms)
                 histAccumulator .+= hist
                 G2MatrixAccumulator .+= G2Matrix
-                if G3Matrix != []
-                    G3MatrixAccumulator .+= G3Matrix
-                end
-                if G9Matrix != []
-                    G9MatrixAccumulator .+= G9Matrix
-                end
+                Energies_Accumulator .+= pmf_energy_prev_vec
+
                 # Normalize the histogram to RDF
                 normalizehist!(hist, systemParms, box)
 
                 # Combine symmetry function matrices
-                symmFuncMatrix = combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
+                # symmFuncMatrix = combineSymmFuncMatrices(G2Matrix, [], [])
+                input_mat = createInputMatOther(nn_energy_prev_vec, G2Matrix, systemParms)
 
-                updateCrossAccumulators!(crossAccumulators, symmFuncMatrix, hist, model, NNParms)
+                updateCrossAccumulatorsOther!(crossAccumulators, input_mat, hist, model, NNParms)
                 # Nullify the hist array for the next training iteration
                 hist = zeros(Float64, systemParms.Nbins)
             else
@@ -536,9 +600,9 @@ function mcsampleOther!(input::MCSampleInputOther)
             cross ./= prodDataPoints
         end
         G2MatrixAccumulator ./= prodDataPoints
+        Energies_Accumulator ./= pmf_energy_prev_vec
 
-        symmFuncMatrixAccumulator = combineSymmFuncMatrices(G2MatrixAccumulator, G3MatrixAccumulator,
-                                                            G9MatrixAccumulator)
+        # symmFuncMatrixAccumulator = combineSymmFuncMatrices(G2MatrixAccumulator, [], [])
     end
 
     # Normalize the sampled distance histogram
@@ -547,12 +611,12 @@ function mcsampleOther!(input::MCSampleInputOther)
 
     # Combine symmetry function matrices accumulators
     if globalParms.mode == "training"
-        MCoutput = MCAverages(histAccumulator, energies, crossAccumulators, symmFuncMatrixAccumulator, acceptanceRatio,
-                              systemParms, mutatedStepAdjust)
+        MCoutput = MCAveragesOther(histAccumulator, energies, crossAccumulators, G2MatrixAccumulator,
+                                   Energies_Accumulator, acceptanceRatio, systemParms, mutatedStepAdjust)
         return (MCoutput)
     else
-        MCoutput = MCAverages(histAccumulator, energies, nothing, nothing, acceptanceRatio, systemParms,
-                              mutatedStepAdjust)
+        MCoutput = MCAveragesOther(histAccumulator, energies, nothing, nothing, nothing, acceptanceRatio, systemParms,
+                                   mutatedStepAdjust)
         return (MCoutput)
     end
 end
@@ -587,28 +651,12 @@ function trainOther!(globalParms, MCParms, NNParms, systemParmsList, model, opt,
             writeRDF("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
             # writeEnergies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, MCParms, systemParms, 1)
         end
-        # Average the gradients
-        if globalParms.adaptiveScaling
-            gradientCoeffs = adaptiveGradientCoeffs(systemLosses)
-            println("\nGradient scaling: \n")
-            for (gradientCoeff, systemParms) in zip(gradientCoeffs, systemParmsList)
-                println("   System $(systemParms.systemName): $(round(gradientCoeff, digits=8))")
-            end
 
-            meanLossGradients = sum(lossGradients .* gradientCoeffs)
-        else
-            meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
-        end
+        meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
 
         # Write the model and opt (before training!) and the gradients
         @save "model-iter-$(iterString).bson" model
         checkfile("model-iter-$(iterString).bson")
-
-        # @save "opt-iter-$(iterString).bson" opt
-        # checkfile("opt-iter-$(iterString).bson")
-
-        # @save "gradients-iter-$(iterString).bson" meanLossGradients
-        # checkfile("gradients-iter-$(iterString).bson")
 
         # Update the model
         updatemodel!(model, opt, meanLossGradients)

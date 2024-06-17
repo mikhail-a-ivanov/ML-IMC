@@ -13,11 +13,11 @@ descriptorType        = other                       # symfun / other
 
 
 # Monte Carlo parameters
-steps          = 1000000                # Total number of MC steps
-Eqsteps        = 200000                 # Equilibration MC steps
-stepAdjustFreq = 5000                   # Frequency of MC step adjustment   
-trajout        = 5000                   # XTC trajectory frequency
-outfreq        = 1000                   # Output frequency
+steps          = 1000                # Total number of MC steps
+Eqsteps        = 200                 # Equilibration MC steps
+stepAdjustFreq = 5                   # Frequency of MC step adjustment   
+trajout        = 5                   # XTC trajectory frequency
+outfreq        = 1                   # Output frequency
 
 # Network parameters
 neurons         = 40, 30, 20, 1                     # Number of hidden neurons in the network (plus an output neuron)
