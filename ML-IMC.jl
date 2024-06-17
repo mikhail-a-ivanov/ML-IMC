@@ -12,6 +12,7 @@ BLAS.set_num_threads(1)
     include("src/symmfunctions.jl")
     include("src/base.jl")
     include("src/pretraining.jl")
+    include("src/descriptor_pmf_in.jl")
 end
 
 function main()
@@ -24,11 +25,13 @@ function main()
 
     # Check if the number of workers is divisble by the number of ref systems
     @assert(nworkers() % length(systemParmsList) == 0,
-        "Number of requested CPU cores ($(nworkers())) " * 
-        "must be divisible by the number of systems ($(length(systemParmsList)))!")
+            "Number of requested CPU cores ($(nworkers())) " *
+            "must be divisible by the number of systems ($(length(systemParmsList)))!")
 
     # Initialize the input data
+
     inputs = inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
+
     if globalParms.mode == "training"
         model, opt, refRDFs = inputs
     else
@@ -60,40 +63,67 @@ function main()
     println("Maximum cutoff distance: $(NNParms.maxDistanceCutoff) Å")
     println("Symmetry function scaling parameter: $(NNParms.symmFunctionScaling)")
 
-    if globalParms.mode == "training"
-        nsystems = length(systemParmsList)
-        println("Training a model using $(nsystems) reference system(s)")
-        println("Using the following activation functions: $(NNParms.activations)")
-        if globalParms.modelFile == "none"
-            # Run pretraining
-            model = preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
-            # Restore optimizer state to default
-            println("\nRe-initializing the optimizer for the training...\n")
-            opt = optInit(NNParms)
-            reportOpt(opt)
-            println("Neural network regularization parameter: $(NNParms.REGP)")
+    if globalParms.descriptorType == "symfun"
+        if globalParms.mode == "training"
+            nsystems = length(systemParmsList)
+            println("Training a model using $(nsystems) reference system(s)")
+            println("Using the following activation functions: $(NNParms.activations)")
+            if globalParms.modelFile == "none"
+                # Run pretraining
+                model = preTrainSymFun!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
+                # Restore optimizer state to default
+                println("\nRe-initializing the optimizer for the training...\n")
+                opt = optInit(NNParms)
+                reportOpt(opt)
+                println("Neural network regularization parameter: $(NNParms.REGP)")
+            end
+            # Run the training
+            println("\nStarting the main part of the training...\n")
+            println("Adaptive gradient scaling: $(globalParms.adaptiveScaling)")
+            println("Number of iterations: $(NNParms.iters)")
+            println("Running MC simulation on $(nworkers()) rank(s)...\n")
+            println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
+            println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
+            train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
+        else
+            @assert(length(systemParmsList) == 1, "Only one system at a time can be simulated!")
+            println("Running simulation with $(globalParms.modelFile)")
+            # Run the simulation
+            simulate!(model, globalParms, MCParms, NNParms, systemParmsList[1])
         end
-        # Run the training
-        println("\nStarting the main part of the training...\n")
-        println("Adaptive gradient scaling: $(globalParms.adaptiveScaling)")
-        println("Number of iterations: $(NNParms.iters)")
-        println("Running MC simulation on $(nworkers()) rank(s)...\n")
-        println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
-        println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
-        train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
-    else
-        @assert(length(systemParmsList) == 1, 
-            "Only one system at a time can be simulated!")
-        println("Running simulation with $(globalParms.modelFile)")
-        # Run the simulation
-        simulate!(model, globalParms, MCParms, NNParms, systemParmsList[1])
+    elseif globalParms.descriptorType == "other"
+        if globalParms.mode == "training"
+            nsystems = length(systemParmsList)
+            println("Training a model using $(nsystems) reference system(s)")
+            println("Using the following activation functions: $(NNParms.activations)")
+            if globalParms.modelFile == "none"
+                model = preTrainOther!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
+
+                # Restore optimizer state to default
+                println("\nRe-initializing the optimizer for the training...\n")
+                opt = optInit(NNParms)
+                reportOpt(opt)
+                println("Neural network regularization parameter: $(NNParms.REGP)")
+            end
+            # Run the training
+            println("\nStarting the main part of the training...\n")
+            println("Adaptive gradient scaling: $(globalParms.adaptiveScaling)")
+            println("Number of iterations: $(NNParms.iters)")
+            println("Running MC simulation on $(nworkers()) rank(s)...\n")
+            println("Total number of steps: $(MCParms.steps * nworkers() / 1E6)M")
+            println("Number of equilibration steps per rank: $(MCParms.Eqsteps / 1E6)M")
+            trainOther!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refRDFs)
+        else
+            println("TODO: not implemented yet")
+            println("It should be simulation mode for other kind of descriptor")
+        end
     end
 
     # Stop the timer
     stopTime = Dates.now()
     wallTime = Dates.canonicalize(stopTime - startTime)
     println("Stopping at: ", stopTime, "\n")
-    println("Walltime: ", wallTime)
+    return println("Walltime: ", wallTime)
 end
 
 """

@@ -4,12 +4,12 @@ struct referenceData
 Contains pre-computed data for the reference trajectory frames
 
 Fields:
-    distanceMatrices: list of distance matrices of each frame
-    histograms: list of distance histograms of each frame
-    PMF: potential of mean force
-    G2Matrices: list of G2 matrices of each frame
-    G3Matrices: list of G3 matrices of each frame
-    G9Matrices: list of G9 matrices of each frame
+distanceMatrices: list of distance matrices of each frame
+histograms: list of distance histograms of each frame
+PMF: potential of mean force
+G2Matrices: list of G2 matrices of each frame
+G3Matrices: list of G3 matrices of each frame
+G9Matrices: list of G9 matrices of each frame
 """
 struct referenceData
     distanceMatrices::Vector{Matrix{Float64}}
@@ -39,10 +39,10 @@ Compute PMF for a given system (in kT units)
 function computePMF(refRDF, systemParms)
     PMF = Array{Float64}(undef, systemParms.Nbins)
     repulsionRegion = refRDF .== 0
-    repulsionPoints = length(repulsionRegion[repulsionRegion.!=0])
+    repulsionPoints = length(repulsionRegion[repulsionRegion .!= 0])
     maxPMFIndex = repulsionPoints + 1
     maxPMF = -log(refRDF[maxPMFIndex]) / systemParms.β
-    secondMaxPMF = -log(refRDF[maxPMFIndex+1]) / systemParms.β
+    secondMaxPMF = -log(refRDF[maxPMFIndex + 1]) / systemParms.β
     diffPMF = maxPMF - secondMaxPMF
 
     for i in eachindex(PMF)
@@ -56,7 +56,7 @@ function computePMF(refRDF, systemParms)
 end
 
 function updatehist!(hist, distanceVector1, distanceVector2, systemParms)
-    @fastmath for i = 1:systemParms.N
+    @fastmath for i in 1:(systemParms.N)
         # Remove histogram entries corresponding to distanceVector1 
         histIndex = floor(Int, 1 + distanceVector1[i] / systemParms.binWidth)
         if histIndex <= systemParms.Nbins
@@ -95,7 +95,7 @@ function preComputeRefData(refDataInput::preComputeInput)::referenceData
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1 # Don't take the first frame
 
-    for frameId = 1:nframes
+    for frameId in 1:nframes
         #println("Frame $(frameId)...")
         frame = read_step(traj, frameId)
         box = lengths(UnitCell(frame))
@@ -131,9 +131,8 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFun
 
 Computes loss gradients for one frame
 """
-function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2,
-    model, preTrainParms::PreTrainParameters, NNParms::NNparameters, verbose=false)
-
+function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model,
+                                         preTrainParms::PreTrainParameters, NNParms::NNparameters, verbose=false)
     parameters = Flux.params(model)
     loss = (ΔENN - ΔEPMF)^2
     regloss = sum(parameters[1] .^ 2) * preTrainParms.PTREGP
@@ -161,7 +160,7 @@ function pretrainingMove!(refData, model, NNParms, systemParms, rng)
 Displaces one randomly selected particle,
 computes energy differences using PMF and the neural network
 """
-function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, rng)
+function pretrainingMoveSym!(refData::referenceData, model, NNParms, systemParms, rng)
     # Pick a frame
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1 # Don't take the first frame
@@ -169,7 +168,7 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     frame = read_step(traj, frameId)
     box = lengths(UnitCell(frame))
     # Pick a particle
-    pointIndex = rand(rng, 1:systemParms.N)
+    pointIndex = rand(rng, 1:(systemParms.N))
 
     # Read reference data
     distanceMatrix = refData.distanceMatrices[frameId]
@@ -184,18 +183,11 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
         coordinates1 = copy(positions(frame))
         # Combine symmetry function matrices
         if refData.G3Matrices == []
-            symmFuncMatrices = [
-                refData.G2Matrices[frameId],
-                refData.G9Matrices[frameId]]
+            symmFuncMatrices = [refData.G2Matrices[frameId], refData.G9Matrices[frameId]]
         elseif refData.G9Matrices == []
-            symmFuncMatrices = [
-                refData.G2Matrices[frameId],
-                refData.G3Matrices[frameId]]
+            symmFuncMatrices = [refData.G2Matrices[frameId], refData.G3Matrices[frameId]]
         else
-            symmFuncMatrices = [
-                refData.G2Matrices[frameId],
-                refData.G3Matrices[frameId],
-                refData.G9Matrices[frameId]]
+            symmFuncMatrices = [refData.G2Matrices[frameId], refData.G3Matrices[frameId], refData.G9Matrices[frameId]]
         end
         # Unpack symmetry functions and concatenate horizontally into a single matrix
         symmFuncMatrix1 = hcat(symmFuncMatrices...)
@@ -210,11 +202,8 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
     distanceVector1 = distanceMatrix[:, pointIndex]
 
     # Displace the particle
-    dr = [
-        systemParms.Δ * (rand(rng, Float64) - 0.5),
-        systemParms.Δ * (rand(rng, Float64) - 0.5),
-        systemParms.Δ * (rand(rng, Float64) - 0.5),
-    ]
+    dr = [systemParms.Δ * (rand(rng, Float64) - 0.5), systemParms.Δ * (rand(rng, Float64) - 0.5),
+          systemParms.Δ * (rand(rng, Float64) - 0.5)]
 
     positions(frame)[:, pointIndex] .+= dr
 
@@ -230,47 +219,22 @@ function pretrainingMove!(refData::referenceData, model, NNParms, systemParms, r
 
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(refData.G2Matrices[frameId])
-    updateG2Matrix!(
-        G2Matrix2,
-        distanceVector1,
-        distanceVector2,
-        systemParms,
-        NNParms,
-        pointIndex,
-    )
+    updateG2Matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
 
     # Make a copy of the original angular matrices and update them
     G3Matrix2 = []
     if refData.G3Matrices != []
         G3Matrix2 = copy(refData.G3Matrices[frameId])
-        updateG3Matrix!(
-            G3Matrix2,
-            coordinates1,
-            positions(frame),
-            box,
-            distanceVector1,
-            distanceVector2,
-            systemParms,
-            NNParms,
-            pointIndex,
-        )
+        updateG3Matrix!(G3Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
+                        NNParms, pointIndex)
     end
 
     # Make a copy of the original angular matrices and update them
     G9Matrix2 = []
     if refData.G9Matrices != []
         G9Matrix2 = copy(refData.G9Matrices[frameId])
-        updateG9Matrix!(
-            G9Matrix2,
-            coordinates1,
-            positions(frame),
-            box,
-            distanceVector1,
-            distanceVector2,
-            systemParms,
-            NNParms,
-            pointIndex,
-        )
+        updateG9Matrix!(G9Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
+                        NNParms, pointIndex)
     end
 
     # Combine symmetry function matrices accumulators
@@ -297,7 +261,7 @@ function preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
 
 Run pre-training for a given number of steps
 """
-function preTrain!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
+function preTrainSymFun!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
     println("\nRunning $(preTrainParms.PTsteps) steps of pre-training Monte-Carlo...\n")
     println("Neural network regularization parameter: $(preTrainParms.PTREGP)")
     reportOpt(opt)
@@ -307,31 +271,31 @@ function preTrain!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, 
 
     # Pre-compute reference data in parallelrefRDFs
     refDataInputs = []
-    for systemId = 1:nsystems
+    for systemId in 1:nsystems
         refDataInput = preComputeInput(NNParms, systemParmsList[systemId], refRDFs[systemId])
         append!(refDataInputs, [refDataInput])
     end
     refDataList::Vector{referenceData} = pmap(preComputeRefData, refDataInputs)
 
-    for step = 1:preTrainParms.PTsteps
+    for step in 1:(preTrainParms.PTsteps)
         verbose::Bool = false
         if step % preTrainParms.PToutfreq == 0 || step == 1
             verbose = true
             println("\nStep $(step)...\n")
         end
         lossGradients = []
-        for systemId = 1:nsystems
+        for systemId in 1:nsystems
             # Pack frame input arrays   
             refData = refDataList[systemId]
 
             # Run a pre-training step, compute energy differences with PMF and the neural network,
             # restore all input arguments to their original state
-            symmFuncMatrix1, symmFuncMatrix2, ΔENN, ΔEPMF = pretrainingMove!(
-                refData, model, NNParms, systemParmsList[systemId], rngXor)
+            symmFuncMatrix1, symmFuncMatrix2, ΔENN, ΔEPMF = pretrainingMoveSym!(refData, model, NNParms,
+                                                                                systemParmsList[systemId], rngXor)
 
             # Compute the loss gradient
-            lossGradient = computePreTrainingLossGradients(
-                ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model, preTrainParms, NNParms, verbose)
+            lossGradient = computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model,
+                                                           preTrainParms, NNParms, verbose)
             append!(lossGradients, [lossGradient])
         end
         # Update the model

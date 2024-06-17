@@ -1,0 +1,5 @@
+style = "yas"
+margin = 120
+remove_extra_newlines = true
+indent = 4
+join_lines_based_on_source = false

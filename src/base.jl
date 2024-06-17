@@ -6,8 +6,8 @@ function hist!(distanceMatrix, hist, systemParms)
 Accumulates pair distances in a histogram
 """
 function hist!(distanceMatrix, hist, systemParms)
-    for i = 1:systemParms.N
-        @fastmath for j = 1:i-1
+    for i in 1:(systemParms.N)
+        @fastmath for j in 1:(i - 1)
             histIndex = floor(Int, 1 + distanceMatrix[i, j] / systemParms.binWidth)
             if histIndex <= systemParms.Nbins
                 hist[histIndex] += 1
@@ -25,7 +25,7 @@ Normalizes distance histogram to RDF
 function normalizehist!(hist, systemParms, box)
     boxVolume = box[1] * box[2] * box[3]
     Npairs::Int = systemParms.N * (systemParms.N - 1) / 2
-    bins = [bin * systemParms.binWidth for bin = 1:systemParms.Nbins]
+    bins = [bin * systemParms.binWidth for bin in 1:(systemParms.Nbins)]
     shellVolumes = [4 * π * systemParms.binWidth * bins[i]^2 for i in eachindex(bins)]
     rdfNorm = ones(Float64, systemParms.Nbins)
     for i in eachindex(rdfNorm)
@@ -80,7 +80,7 @@ Computes the total potential energy of the system
 function totalEnergyScalar(symmFuncMatrix, model)
     N = size(symmFuncMatrix)[1]
     E = 0.0
-    for i = 1:N
+    for i in 1:N
         E += atomicEnergy(symmFuncMatrix[i, :], model)
     end
     return (E)
@@ -95,7 +95,7 @@ True if the distance between moved particle and i-th atom is less than NNParms.m
 function getBoolMaskForUpdating(distanceVectorInput, NNParms)
     N = size(distanceVectorInput)[1]
     indexes = Array{Bool}(undef, N)
-    for i = 1:N
+    for i in 1:N
         indexes[i] = (distanceVectorInput[i] < NNParms.maxDistanceCutoff)
     end
     return (indexes)
@@ -109,7 +109,7 @@ Computes vector of atomic energy contributions
 function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
     N = size(symmFuncMatrix)[1]
     E = copy(previousE)
-    for i = 1:N
+    for i in 1:N
         if indexesForUpdate[i]
             E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
         end
@@ -125,7 +125,7 @@ Computes initial vector of energies for the system
 function totalEnergyVectorInit(symmFuncMatrix, model)
     N = size(symmFuncMatrix)[1]
     E = Array{Float64}(undef, N)
-    for i = 1:N
+    for i in 1:N
         E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
     end
     return (E)
@@ -138,17 +138,7 @@ Performs a Metropolis Monte Carlo
 displacement move using a neural network
 to predict energies from the symmetry function matrix
 """
-function mcmove!(
-    mcarrays,
-    E,
-    EpreviousVector,
-    model,
-    NNParms,
-    systemParms,
-    box,
-    rng,
-    mutatedStepAdjust,
-)
+function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box, rng, mutatedStepAdjust)
     # Unpack mcarrays
     frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1 = mcarrays
     # Optionally make a copy of the original coordinates
@@ -166,11 +156,8 @@ function mcmove!(
     E1 = copy(E)
 
     # Displace the particle
-    dr = [
-        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
-        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
-        mutatedStepAdjust * (rand(rng, Float64) - 0.5),
-    ]
+    dr = [mutatedStepAdjust * (rand(rng, Float64) - 0.5), mutatedStepAdjust * (rand(rng, Float64) - 0.5),
+          mutatedStepAdjust * (rand(rng, Float64) - 0.5)]
 
     positions(frame)[:, pointIndex] .+= dr
 
@@ -189,44 +176,19 @@ function mcmove!(
 
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
-    updateG2Matrix!(
-        G2Matrix2,
-        distanceVector1,
-        distanceVector2,
-        systemParms,
-        NNParms,
-        pointIndex,
-    )
+    updateG2Matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
 
     # Make a copy of the original angular matrices and update them
     G3Matrix2 = copy(G3Matrix1)
     if G3Matrix1 != []
-        updateG3Matrix!(
-            G3Matrix2,
-            coordinates1,
-            positions(frame),
-            box,
-            distanceVector1,
-            distanceVector2,
-            systemParms,
-            NNParms,
-            pointIndex,
-        )
+        updateG3Matrix!(G3Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
+                        NNParms, pointIndex)
     end
 
     G9Matrix2 = copy(G9Matrix1)
     if G9Matrix1 != []
-        updateG9Matrix!(
-            G9Matrix2,
-            coordinates1,
-            positions(frame),
-            box,
-            distanceVector1,
-            distanceVector2,
-            systemParms,
-            NNParms,
-            pointIndex,
-        )
+        updateG9Matrix!(G9Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
+                        NNParms, pointIndex)
     end
 
     # Combine symmetry function matrices accumulators
@@ -260,7 +222,6 @@ function mcmove!(
         mcarrays = (frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1)
         return (mcarrays, E, EpreviousVector, accepted)
     end
-
 end
 
 """
@@ -367,39 +328,21 @@ function mcsample!(input)
     acceptedIntermediate = 0
 
     # Run MC simulation
-    @fastmath for step = 1:MCParms.steps
-
-        mcarrays, E, EpreviousVector, accepted = mcmove!(
-            mcarrays,
-            E,
-            EpreviousVector,
-            model,
-            NNParms,
-            systemParms,
-            box,
-            rngXor,
-            mutatedStepAdjust,
-        )
+    @fastmath for step in 1:(MCParms.steps)
+        mcarrays, E, EpreviousVector, accepted = mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
+                                                         rngXor, mutatedStepAdjust)
         acceptedTotal += accepted
         acceptedIntermediate += accepted
 
         # Perform MC step adjustment during the equilibration
-        if MCParms.stepAdjustFreq > 0 &&
-           step % MCParms.stepAdjustFreq == 0 &&
-           step < MCParms.Eqsteps
-            mutatedStepAdjust = stepAdjustment!(
-                mutatedStepAdjust,
-                systemParms,
-                box,
-                MCParms,
-                acceptedIntermediate,
-            )
+        if MCParms.stepAdjustFreq > 0 && step % MCParms.stepAdjustFreq == 0 && step < MCParms.Eqsteps
+            mutatedStepAdjust = stepAdjustment!(mutatedStepAdjust, systemParms, box, MCParms, acceptedIntermediate)
             acceptedIntermediate = 0
         end
 
         # Collect the output energies
         if step % MCParms.outfreq == 0
-            energies[Int(step / MCParms.outfreq)+1] = E
+            energies[Int(step / MCParms.outfreq) + 1] = E
         end
 
         # MC trajectory output
@@ -436,7 +379,6 @@ function mcsample!(input)
                 histAccumulator = hist!(distanceMatrix, histAccumulator, systemParms)
             end
         end
-
     end
     # Compute and report the final acceptance ratio
     acceptanceRatio = acceptedTotal / MCParms.steps
@@ -455,7 +397,8 @@ function mcsample!(input)
         if G9Matrix != []
             G9MatrixAccumulator ./= prodDataPoints
         end
-        symmFuncMatrixAccumulator = combineSymmFuncMatrices(G2MatrixAccumulator, G3MatrixAccumulator, G9MatrixAccumulator)
+        symmFuncMatrixAccumulator = combineSymmFuncMatrices(G2MatrixAccumulator, G3MatrixAccumulator,
+                                                            G9MatrixAccumulator)
     end
 
     # Normalize the sampled distance histogram
@@ -464,26 +407,12 @@ function mcsample!(input)
 
     # Combine symmetry function matrices accumulators
     if globalParms.mode == "training"
-        MCoutput = MCAverages(
-            histAccumulator,
-            energies,
-            crossAccumulators,
-            symmFuncMatrixAccumulator,
-            acceptanceRatio,
-            systemParms,
-            mutatedStepAdjust,
-        )
+        MCoutput = MCAverages(histAccumulator, energies, crossAccumulators, symmFuncMatrixAccumulator, acceptanceRatio,
+                              systemParms, mutatedStepAdjust)
         return (MCoutput)
     else
-        MCoutput = MCAverages(
-            histAccumulator,
-            energies,
-            nothing,
-            nothing,
-            acceptanceRatio,
-            systemParms,
-            mutatedStepAdjust,
-        )
+        MCoutput = MCAverages(histAccumulator, energies, nothing, nothing, acceptanceRatio, systemParms,
+                              mutatedStepAdjust)
         return (MCoutput)
     end
 end
