@@ -1,6 +1,7 @@
 using Flux
 using Statistics
 using BSON: @save, @load
+using Dates
 
 """
 struct MCSampleInput
@@ -436,8 +437,8 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         @save "opt-iter-$(iterString).bson" opt
         checkfile("opt-iter-$(iterString).bson")
 
-        @save "gradients-iter-$(iterString).bson" meanLossGradients
-        checkfile("gradients-iter-$(iterString).bson")
+        @save "gradients-iter-$(iterString)-$(current_time).bson" meanLossGradients
+        checkfile("gradients-iter-$(iterString)-$(current_time).bson")
 
         # Update the model
         updatemodel!(model, opt, meanLossGradients)
