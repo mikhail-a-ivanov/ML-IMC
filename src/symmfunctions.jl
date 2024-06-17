@@ -10,10 +10,7 @@ function combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
         symmFuncMatrix = G2Matrix
     else
         # Combine all symmetry functions into a temporary array
-        symmFuncMatrices = [
-            G2Matrix,
-            G3Matrix,
-            G9Matrix]
+        symmFuncMatrices = [G2Matrix, G3Matrix, G9Matrix]
 
         # Remove empty matrices
         filter!(x -> x != [], symmFuncMatrices)
@@ -58,7 +55,7 @@ Builds a matrix of G2 values with varying Rs and η parameters for each atom in 
 function buildG2Matrix(distanceMatrix, NNParms)
     N = size(distanceMatrix)[1]
     G2Matrix = Matrix{Float64}(undef, N, length(NNParms.G2Functions))
-    for i = 1:N
+    for i in 1:N
         distanceVector = distanceMatrix[i, :]
         for (j, G2Function) in enumerate(NNParms.G2Functions)
             eta = G2Function.eta
@@ -79,23 +76,15 @@ function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms
 
 Updates the G2 matrix with the displacement of a single atom
 """
-function updateG2Matrix!(
-    G2Matrix,
-    distanceVector1,
-    distanceVector2,
-    systemParms,
-    NNParms,
-    pointIndex,
-)
-    for i = 1:systemParms.N
+function updateG2Matrix!(G2Matrix, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+    for i in 1:(systemParms.N)
         # Rebuild the whole G2 matrix column for the displaced particle
         if i == pointIndex
             for (j, G2Function) in enumerate(NNParms.G2Functions)
                 eta = G2Function.eta
                 rcutoff = G2Function.rcutoff
                 rshift = G2Function.rshift
-                G2Matrix[pointIndex, j] =
-                    computeG2(distanceVector2, eta, rcutoff, rshift) * NNParms.symmFunctionScaling
+                G2Matrix[pointIndex, j] = computeG2(distanceVector2, eta, rcutoff, rshift) * NNParms.symmFunctionScaling
             end
             # Compute the change in G2 caused by the displacement of an atom
         else
@@ -156,15 +145,11 @@ Computes a single exponent
 of the G3 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function computeG3element(cosAngle, distance_ij, distance_ik, distance_kj, rcutoff, eta, zeta, lambda, rshift)::Float64
-    return (
-        (1.0 + lambda * cosAngle)^zeta *
-        exp(-eta * (
-            (distance_ij - rshift)^2 +
-            (distance_ik - rshift)^2 +
-            (distance_kj - rshift)^2)) *
-        distanceCutoff(distance_ij, rcutoff) *
-        distanceCutoff(distance_ik, rcutoff) *
-        distanceCutoff(distance_kj, rcutoff))
+    return ((1.0 + lambda * cosAngle)^zeta *
+            exp(-eta * ((distance_ij - rshift)^2 + (distance_ik - rshift)^2 + (distance_kj - rshift)^2)) *
+            distanceCutoff(distance_ij, rcutoff) *
+            distanceCutoff(distance_ik, rcutoff) *
+            distanceCutoff(distance_kj, rcutoff))
 end
 
 """
@@ -176,11 +161,12 @@ function computeG3(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lamb
     sum = 0.0
     @inbounds for k in eachindex(distanceVector)
         distance_ik = distanceVector[k]
-        @inbounds @simd for j in 1:k-1
+        @inbounds @simd for j in 1:(k - 1)
             distance_ij = distanceVector[j]
             if 0 < distance_ij < rcutoff && 0 < distance_ik < rcutoff
                 cosAngle, distance_kj = computeTripletGeometry(coordinates, box, i, j, k, distance_ij, distance_ik)
-                sum += computeG3element(cosAngle, distance_ij, distance_ik, distance_kj, rcutoff, eta, zeta, lambda, rshift)
+                sum += computeG3element(cosAngle, distance_ij, distance_ik, distance_kj, rcutoff, eta, zeta, lambda,
+                                        rshift)
             end
         end
     end
@@ -195,7 +181,7 @@ Builds a matrix of G3 values
 function buildG3Matrix(distanceMatrix, coordinates, box, NNParms)
     N = size(distanceMatrix)[1]
     G3Matrix = Matrix{Float64}(undef, N, length(NNParms.G3Functions))
-    for i = 1:N
+    for i in 1:N
         distanceVector = distanceMatrix[i, :]
         for (j, G3Function) in enumerate(NNParms.G3Functions)
             eta = G3Function.eta
@@ -215,22 +201,13 @@ end
 
 """
 function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box,
-    distanceVector1, distanceVector2, systemParms, NNParms, displacedAtomIndex)
+distanceVector1, distanceVector2, systemParms, NNParms, displacedAtomIndex)
 
 Updates the G3 matrix with the displacement of a single atom
 """
-function updateG3Matrix!(
-    G3Matrix,
-    coordinates1,
-    coordinates2,
-    box,
-    distanceVector1,
-    distanceVector2,
-    systemParms,
-    NNParms,
-    displacedAtomIndex,
-)
-    for selectedAtomIndex = 1:systemParms.N
+function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2, systemParms,
+                         NNParms, displacedAtomIndex)
+    for selectedAtomIndex in 1:(systemParms.N)
         # Rebuild the whole G3 matrix column for the displaced atom
         if selectedAtomIndex == displacedAtomIndex
             for (G3Index, G3Function) in enumerate(NNParms.G3Functions)
@@ -239,8 +216,9 @@ function updateG3Matrix!(
                 zeta = G3Function.zeta
                 rcutoff = G3Function.rcutoff
                 rshift = G3Function.rshift
-                G3Matrix[selectedAtomIndex, G3Index] = computeG3(displacedAtomIndex, coordinates2, box,
-                    distanceVector2, rcutoff, eta, zeta, lambda, rshift) * NNParms.symmFunctionScaling
+                G3Matrix[selectedAtomIndex, G3Index] = computeG3(displacedAtomIndex, coordinates2, box, distanceVector2,
+                                                                 rcutoff, eta, zeta, lambda, rshift) *
+                                                       NNParms.symmFunctionScaling
             end
             # Compute the change in G3 caused by the displacement of an atom
             # New ijk triplet description
@@ -262,7 +240,7 @@ function updateG3Matrix!(
                     # over all third atoms
                     ΔG3 = 0.0
                     # Loop over all ik pairs
-                    for thirdAtomIndex in 1:systemParms.N
+                    for thirdAtomIndex in 1:(systemParms.N)
                         # Make sure i != j != k
                         if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
                             # It does not make a difference whether
@@ -293,9 +271,9 @@ function updateG3Matrix!(
                                     @assert -1.0 <= cosAngle2 <= 1.0
                                     # Compute differences in G3
                                     G3_1 = computeG3element(cosAngle1, distance_ij_1, distance_ik, distance_kj_1,
-                                        rcutoff, eta, zeta, lambda, rshift)
+                                                            rcutoff, eta, zeta, lambda, rshift)
                                     G3_2 = computeG3element(cosAngle2, distance_ij_2, distance_ik, distance_kj_2,
-                                        rcutoff, eta, zeta, lambda, rshift)
+                                                            rcutoff, eta, zeta, lambda, rshift)
                                     ΔG3 += 2.0^(1.0 - zeta) * (G3_2 - G3_1)
                                 end
                             end
@@ -310,7 +288,6 @@ function updateG3Matrix!(
     return (G3Matrix)
 end
 
-
 """
 function computeG9element(cosAngle, distance_ij, distance_ik, rcutoff, eta, zeta, lambda, rshift)::Float64
 
@@ -318,16 +295,11 @@ Computes a single exponent
 of the G9 symmetry function (J. Chem. Phys. 134, 074106 (2011))
 """
 function computeG9element(cosAngle, distance_ij, distance_ik, rcutoff, eta, zeta, lambda, rshift)::Float64
-    return (
-        (1.0 + lambda * cosAngle)^zeta *
-        exp(-eta * (
-            (distance_ij - rshift)^2 +
-            (distance_ik - rshift)^2)
-        ) *
-        distanceCutoff(distance_ij, rcutoff) *
-        distanceCutoff(distance_ik, rcutoff))
+    return ((1.0 + lambda * cosAngle)^zeta *
+            exp(-eta * ((distance_ij - rshift)^2 + (distance_ik - rshift)^2)) *
+            distanceCutoff(distance_ij, rcutoff) *
+            distanceCutoff(distance_ik, rcutoff))
 end
-
 
 """
 function computeG9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)::Float64
@@ -338,7 +310,7 @@ function computeG9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lamb
     sum = 0.0
     @inbounds for k in eachindex(distanceVector)
         distance_ik = distanceVector[k]
-        @inbounds @simd for j in 1:k-1
+        @inbounds @simd for j in 1:(k - 1)
             distance_ij = distanceVector[j]
             if 0 < distance_ij < rcutoff && 0 < distance_ik < rcutoff
                 cosAngle = computeCosAngle(coordinates, box, i, j, k, distance_ij, distance_ik)
@@ -357,7 +329,7 @@ Builds a matrix of G9 values
 function buildG9Matrix(distanceMatrix, coordinates, box, NNParms)
     N = size(distanceMatrix)[1]
     G9Matrix = Matrix{Float64}(undef, N, length(NNParms.G9Functions))
-    for i = 1:N
+    for i in 1:N
         distanceVector = distanceMatrix[i, :]
         for (j, G9Function) in enumerate(NNParms.G9Functions)
             eta = G9Function.eta
@@ -377,22 +349,13 @@ end
 
 """
 function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box,
-    distanceVector1, distanceVector2, systemParms, NNParms, displacedAtomIndex)
+distanceVector1, distanceVector2, systemParms, NNParms, displacedAtomIndex)
 
 Updates the G9 matrix with the displacement of a single atom
 """
-function updateG9Matrix!(
-    G9Matrix,
-    coordinates1,
-    coordinates2,
-    box,
-    distanceVector1,
-    distanceVector2,
-    systemParms,
-    NNParms,
-    displacedAtomIndex,
-)
-    for selectedAtomIndex = 1:systemParms.N
+function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2, systemParms,
+                         NNParms, displacedAtomIndex)
+    for selectedAtomIndex in 1:(systemParms.N)
         # Rebuild the whole G9 matrix column for the displaced atom
         if selectedAtomIndex == displacedAtomIndex
             for (G9Index, G9Function) in enumerate(NNParms.G9Functions)
@@ -401,8 +364,9 @@ function updateG9Matrix!(
                 zeta = G9Function.zeta
                 rcutoff = G9Function.rcutoff
                 rshift = G9Function.rshift
-                G9Matrix[selectedAtomIndex, G9Index] = computeG9(displacedAtomIndex, coordinates2, box,
-                    distanceVector2, rcutoff, eta, zeta, lambda, rshift) * NNParms.symmFunctionScaling
+                G9Matrix[selectedAtomIndex, G9Index] = computeG9(displacedAtomIndex, coordinates2, box, distanceVector2,
+                                                                 rcutoff, eta, zeta, lambda, rshift) *
+                                                       NNParms.symmFunctionScaling
             end
             # Compute the change in G9 caused by the displacement of an atom
             # New ijk triplet description
@@ -424,7 +388,7 @@ function updateG9Matrix!(
                     # over all third atoms
                     ΔG9 = 0.0
                     # Loop over all ik pairs
-                    for thirdAtomIndex in 1:systemParms.N
+                    for thirdAtomIndex in 1:(systemParms.N)
                         # Make sure i != j != k
                         if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
                             # It does not make a difference whether
@@ -451,10 +415,10 @@ function updateG9Matrix!(
                                 @assert -1.0 <= cosAngle1 <= 1.0
                                 @assert -1.0 <= cosAngle2 <= 1.0
                                 # Compute differences in G9
-                                G9_1 = computeG9element(cosAngle1, distance_ij_1, distance_ik,
-                                    rcutoff, eta, zeta, lambda, rshift)
-                                G9_2 = computeG9element(cosAngle2, distance_ij_2, distance_ik,
-                                    rcutoff, eta, zeta, lambda, rshift)
+                                G9_1 = computeG9element(cosAngle1, distance_ij_1, distance_ik, rcutoff, eta, zeta,
+                                                        lambda, rshift)
+                                G9_2 = computeG9element(cosAngle2, distance_ij_2, distance_ik, rcutoff, eta, zeta,
+                                                        lambda, rshift)
                                 ΔG9 += 2.0^(1.0 - zeta) * (G9_2 - G9_1)
                             end
                         end

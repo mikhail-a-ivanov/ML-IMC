@@ -6,25 +6,25 @@ using BSON: @save, @load
 struct globalParameters
 
 Fields:
-systemFiles: 
-    list of input filenames for each system
+systemFiles:
+list of input filenames for each system
 symmetryFunctionFile:
-    name of file containing symmetry function information
-mode: 
-    ML-IMC mode - training with reference data or simulation using a trained model
+name of file containing symmetry function information
+mode:
+ML-IMC mode - training with reference data or simulation using a trained model
 outputMode:
-    default (rdf, energy, model, opt, gradients); verbose (+trajectories)     
-modelFile: 
-    "none" keyword for random initialization
-    name of model file to do a restart
+default (rdf, energy, model, opt, gradients); verbose (+trajectories)
+modelFile:
+"none" keyword for random initialization
+name of model file to do a restart
 gradientsFile:
-    "none" keyword for default initialization
-    name of gradients file to do a restart (couple with a corresponding model/opt filenames)
+"none" keyword for default initialization
+name of gradients file to do a restart (couple with a corresponding model/opt filenames)
 optimizerFile:
-    "none" keyword for default initialization
-    name of optimizer file to do a restart (couple with a corresponding model/gradients filenames)
+"none" keyword for default initialization
+name of optimizer file to do a restart (couple with a corresponding model/gradients filenames)
 adaptiveScaling:
-    scales gradients based on system loss (true) or uniform averaging (false)
+scales gradients based on system loss (true) or uniform averaging (false)
 """
 struct GlobalParameters
     systemFiles::Vector{String}
@@ -35,6 +35,7 @@ struct GlobalParameters
     gradientsFile::String
     optimizerFile::String
     adaptiveScaling::Bool
+    descriptorType::String
 end
 
 """
@@ -60,16 +61,16 @@ struct G2
 
 Radial symmetry function:
 G2 = ∑ exp(-eta * (Rij - rshift)^2) * fc(Rij, rcutoff)
-where fc is the smooth cutoff function  
+where fc is the smooth cutoff function
 
 Fields:
-eta (Å^-2): 
-    parameter controlling the width of G2
-    eta = 1 / (2 * sigma^2)
+eta (Å^-2):
+parameter controlling the width of G2
+eta = 1 / (2 * sigma^2)
 rcutoff (Å):
-    Cutoff radius
+Cutoff radius
 rshift (Å):
-    distance shifting parameter
+distance shifting parameter
 """
 struct G2
     eta::Float64
@@ -81,25 +82,25 @@ end
 struct G3
 
 Narrow angular symmetry function
-G3 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta * 
-    exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2 + (Rkj - rshift)^2) * 
-    fc(Rij, rcutoff) * fc(Rik, rcutoff) * fc(Rkj, rcutoff)
+G3 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta *
+exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2 + (Rkj - rshift)^2) *
+fc(Rij, rcutoff) * fc(Rik, rcutoff) * fc(Rkj, rcutoff)
 
-where fc is the smooth cutoff function  
+where fc is the smooth cutoff function
 
 Fields:
-eta (Å^-2): 
-    parameter controlling the width of the radial part of G9
-    eta = 1 / sqrt(2 * sigma)
-lambda: 
-    parameter controlling the phase of cosine function
-    either +1 or -1
+eta (Å^-2):
+parameter controlling the width of the radial part of G9
+eta = 1 / sqrt(2 * sigma)
+lambda:
+parameter controlling the phase of cosine function
+either +1 or -1
 zeta:
-    parameter controlling angular resolution
+parameter controlling angular resolution
 rcutoff (Å):
-    Cutoff radius
+Cutoff radius
 rshift (Å):
-    distance shifting parameter
+distance shifting parameter
 """
 struct G3
     eta::Float64
@@ -109,30 +110,29 @@ struct G3
     rshift::Float64
 end
 
-
 """
 struct G9
 
 Wide angular symmetry function
-G9 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta * 
-    exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2) * 
-    fc(Rij, rcutoff) * fc(Rik, rcutoff)
+G9 = 2^(1 - zeta) * ∑ (1 + lambda * cos(theta))^zeta *
+exp(-eta * ((Rij - rshift)^2 + (Rik - rshift)^2) *
+fc(Rij, rcutoff) * fc(Rik, rcutoff)
 
-where fc is the smooth cutoff function  
+where fc is the smooth cutoff function
 
 Fields:
-eta (Å^-2): 
-    parameter controlling the width of the radial part of G9
-    eta = 1 / sqrt(2 * sigma)
-lambda: 
-    parameter controlling the phase of cosine function
-    either +1 or -1
+eta (Å^-2):
+parameter controlling the width of the radial part of G9
+eta = 1 / sqrt(2 * sigma)
+lambda:
+parameter controlling the phase of cosine function
+either +1 or -1
 zeta:
-    parameter controlling angular resolution
+parameter controlling angular resolution
 rcutoff (Å):
-    Cutoff radius
+Cutoff radius
 rshift (Å):
-    distance shifting parameter
+distance shifting parameter
 """
 struct G9
     eta::Float64
@@ -147,7 +147,7 @@ struct NNparameters
 
 Fields:
 G2Functions: list of G2 symmetry function parameters
-G3Functions: list of G3 symmetry function parameters  
+G3Functions: list of G3 symmetry function parameters
 G9Functions: list of G9 symmetry function parameters
 maxDistanceCutoff: max distance cutoff
 symmFunctionScaling: scaling factor for the symmetry functions
@@ -229,6 +229,7 @@ struct SystemParameters
     β::Float64
     Δ::Float64
     targetAR::Float64
+    concentration::Float64
 end
 
 """
@@ -240,18 +241,18 @@ parameter structs
 """
 function parametersInit()
     # Read the input name from the command line argument
-    if length(ARGS) > 0 
+    if length(ARGS) > 0
         inputname = ARGS[1]
-    # Check if no input file is provided
-    # or if ML-IMC is started from jupyter
-    # in the latter case the first argument has "json" extension
+        # Check if no input file is provided
+        # or if ML-IMC is started from jupyter
+        # in the latter case the first argument has "json" extension
     end
     if length(ARGS) == 0 || occursin("json", ARGS[1])
         println("No input file was provided!")
         println("Trying to read input data from ML-IMC-init.in")
         inputname = "ML-IMC-init.in"
     end
-        
+
     # Constants
     NA::Float64 = 6.02214076 # [mol-1] * 10^-23
     kB::Float64 = 1.38064852 * NA / 1000 # [kJ/(mol*K)]
@@ -315,21 +316,21 @@ function parametersInit()
         if length(line) != 0 && line[1] == "G2"
             G2Parameters = []
             for (fieldIndex, fieldtype) in enumerate(fieldtypes(G2))
-                append!(G2Parameters, parse(fieldtype, line[fieldIndex+1]))
+                append!(G2Parameters, parse(fieldtype, line[fieldIndex + 1]))
             end
             append!(G2s, [G2(G2Parameters...)])
         end
         if length(line) != 0 && line[1] == "G3"
             G3Parameters = []
             for (fieldIndex, fieldtype) in enumerate(fieldtypes(G3))
-                append!(G3Parameters, parse(fieldtype, line[fieldIndex+1]))
+                append!(G3Parameters, parse(fieldtype, line[fieldIndex + 1]))
             end
             append!(G3s, [G3(G3Parameters...)])
         end
         if length(line) != 0 && line[1] == "G9"
             G9Parameters = []
             for (fieldIndex, fieldtype) in enumerate(fieldtypes(G9))
-                append!(G9Parameters, parse(fieldtype, line[fieldIndex+1]))
+                append!(G9Parameters, parse(fieldtype, line[fieldIndex + 1]))
             end
             append!(G9s, [G9(G9Parameters...)])
         end
@@ -485,7 +486,7 @@ Reads input configurations from XTC file
 function readXTC(systemParms)
     checkfile(systemParms.trajfile)
     traj = Trajectory(systemParms.trajfile)
-    return (traj)
+    return traj
 end
 
 """
@@ -496,7 +497,7 @@ Reads input configuration from PDB file
 function readPDB(systemParms)
     checkfile(systemParms.topname)
     pdb = Trajectory(systemParms.topname)
-    return (pdb)
+    return pdb
 end
 
 """
@@ -505,6 +506,80 @@ function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
 Initializes input data
 """
 function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
+    # Read reference data
+    refRDFs = []
+    for systemParms in systemParmsList
+        bins, refRDF = readRDF(systemParms.rdfname)
+        append!(refRDFs, [refRDF])
+    end
+
+    # Initialize the model and the optimizer
+    if globalParms.modelFile == "none"
+        # Initialize the model
+        println("Initializing a new neural network with random weigths")
+        if globalParms.descriptorType == "other"
+            model = modelInitOther(NNParms)
+        else
+            model = modelInit(NNParms)
+        end
+        if globalParms.optimizerFile != "none"
+            println("Ignoring given optimizer filename...")
+        end
+        if globalParms.gradientsFile != "none"
+            println("Ignoring given gradients filename...")
+        end
+        # Run pre-training if no initial model is given
+        opt = optInit(preTrainParms)
+        # Restart the training
+    else
+        # Loading the model
+        checkfile(globalParms.modelFile)
+        println("Reading model from $(globalParms.modelFile)")
+        @load globalParms.modelFile model
+        if globalParms.mode == "training"
+            # Either initialize the optimizer or read from a file
+            if globalParms.optimizerFile != "none"
+                checkfile(globalParms.optimizerFile)
+                println("Reading optimizer state from $(globalParms.optimizerFile)")
+                @load globalParms.optimizerFile opt
+            else
+                opt = optInit(NNParms)
+            end
+            # Optionally read gradients from a file
+            if globalParms.gradientsFile != "none"
+                checkfile(globalParms.gradientsFile)
+                println("Reading gradients from $(globalParms.gradientsFile)")
+                @load globalParms.gradientsFile meanLossGradients
+            end
+            # Update the model if both opt and gradients are restored
+            if globalParms.optimizerFile != "none" && globalParms.gradientsFile != "none"
+                println("\nUsing the restored gradients and optimizer to update the current model...\n")
+                updatemodel!(model, opt, meanLossGradients)
+
+                # Skip updating if no gradients are provided
+            elseif globalParms.optimizerFile != "none" && globalParms.gradientsFile == "none"
+                println("\nNo gradients were provided, rerunning the training iteration with the current model and restored optimizer...\n")
+
+                # Update the model if gradients are provided without the optimizer:
+                # valid for optimizer that do not save their state, e.g. Descent,
+                # otherwise might produce unexpected results
+            elseif globalParms.optimizerFile == "none" && globalParms.gradientsFile != "none"
+                println("\nUsing the restored gradients with reinitialized optimizer to update the current model...\n")
+                updatemodel!(model, opt, meanLossGradients)
+            else
+                println("\nNeither gradients nor optimizer were provided, rerunning the training iteration with the current model...\n")
+            end
+        end
+    end
+
+    if globalParms.mode == "training"
+        return (model, opt, refRDFs)
+    else
+        return (model)
+    end
+end
+
+function inputInitOther(globalParms, NNParms, preTrainParms, systemParmsList)
     # Read reference data
     refRDFs = []
     for systemParms in systemParmsList
@@ -580,7 +655,7 @@ function writeRDF(outname, rdf, systemParms)
 Writes RDF into a file
 """
 function writeRDF(outname, rdf, systemParms)
-    bins = [bin * systemParms.binWidth for bin = 1:systemParms.Nbins]
+    bins = [bin * systemParms.binWidth for bin in 1:(systemParms.Nbins)]
     # Write the data
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n")
@@ -590,7 +665,7 @@ function writeRDF(outname, rdf, systemParms)
         print(io, @sprintf("%6.3f %12.3f", bins[i], rdf[i]), "\n")
     end
     close(io)
-    checkfile(outname)
+    return checkfile(outname)
 end
 
 """
@@ -599,16 +674,16 @@ function writeenergies(outname, energies, MCParms, systemParms, slicing=1)
 Writes the total energy to an output file
 """
 function writeEnergies(outname, energies, MCParms, systemParms, slicing=1)
-    steps = 0:MCParms.outfreq*slicing:MCParms.steps
+    steps = 0:(MCParms.outfreq * slicing):(MCParms.steps)
     io = open(outname, "w")
     print(io, "# System: $(systemParms.systemName)\n#")
     print(io, @sprintf("%8s %22s", " Step", "Total energy, kJ/mol"))
     print(io, "\n")
-    for i = 1:length(energies[1:slicing:end])
+    for i in 1:length(energies[1:slicing:end])
         print(io, @sprintf("%9d %10.3f", steps[i], energies[1:slicing:end][i]), "\n")
     end
     close(io)
-    checkfile(outname)
+    return checkfile(outname)
 end
 
 """
@@ -623,13 +698,13 @@ function writeTraj(conf, box, systemParms, outname, mode='w')
     boxCenter = box ./ 2
     set_cell!(frame, UnitCell(box))
     # Add wrapped atomic coordinates to the frame
-    for i = 1:systemParms.N
+    for i in 1:(systemParms.N)
         wrappedAtomCoords = wrap!(UnitCell(frame), conf[:, i]) .+ boxCenter
         add_atom!(frame, Atom(systemParms.atomname), wrappedAtomCoords)
     end
     # Write to file
     Trajectory(outname, mode) do traj
-        write(traj, frame)
+        return write(traj, frame)
     end
     checkfile(outname)
     return
@@ -647,15 +722,15 @@ function readRDF(rdfname)
     nlines = length(lines) - ncomments
     bins = zeros(nlines)
     rdf = zeros(nlines)
-    for i = (1+ncomments):length(lines)
+    for i in (1 + ncomments):length(lines)
         rdfline = split(lines[i])
         if rdfline[1] != "#"
-            bins[i-ncomments] = parse(Float64, rdfline[1])
-            rdf[i-ncomments] = parse(Float64, rdfline[2])
+            bins[i - ncomments] = parse(Float64, rdfline[1])
+            rdf[i - ncomments] = parse(Float64, rdfline[2])
         end
     end
-    return (bins, rdf)
     close(file)
+    return (bins, rdf)
 end
 
 function checkfile(filename)

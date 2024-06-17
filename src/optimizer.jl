@@ -70,11 +70,9 @@ function optInit(NNParms::NNparameters)
 
     else
         opt = Descent(NNParms.rate)
-        println(
-            "Unsupported type of optimizer! \n
-            Default optimizer is 'Descent' \n
-            For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n",
-        )
+        println("Unsupported type of optimizer! \n
+                Default optimizer is 'Descent' \n
+                For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n")
     end
     return (opt)
 end
@@ -129,11 +127,9 @@ function optInit(preTrainParms::PreTrainParameters)
 
     else
         opt = Descent(preTrainParms.PTrate)
-        println(
-            "Unsupported type of optimizer! \n
-            Default optimizer is 'Descent' \n
-            For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n",
-        )
+        println("Unsupported type of optimizer! \n
+                Default optimizer is 'Descent' \n
+                For more optimizers look at: https://fluxml.ai/Flux.jl/stable/training/optimisers/ \n")
     end
     return (opt)
 end
