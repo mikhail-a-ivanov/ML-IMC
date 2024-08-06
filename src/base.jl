@@ -157,7 +157,7 @@ function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
 
     # Displace the particle
     dr = [mutatedStepAdjust * (rand(rng, Float64) - 0.5), mutatedStepAdjust * (rand(rng, Float64) - 0.5),
-          mutatedStepAdjust * (rand(rng, Float64) - 0.5)]
+        mutatedStepAdjust * (rand(rng, Float64) - 0.5)]
 
     positions(frame)[:, pointIndex] .+= dr
 

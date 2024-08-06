@@ -1,5 +1,6 @@
-style = "yas"
+style = "sciml"
 margin = 120
-remove_extra_newlines = true
-indent = 4
-join_lines_based_on_source = false
+yas_style_nesting = true
+whitespace_in_kwargs = false
+format_docstrings = true
+verbose = true

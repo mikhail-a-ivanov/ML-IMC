@@ -203,7 +203,7 @@ function pretrainingMoveSym!(refData::referenceData, model, NNParms, systemParms
 
     # Displace the particle
     dr = [systemParms.Δ * (rand(rng, Float64) - 0.5), systemParms.Δ * (rand(rng, Float64) - 0.5),
-          systemParms.Δ * (rand(rng, Float64) - 0.5)]
+        systemParms.Δ * (rand(rng, Float64) - 0.5)]
 
     positions(frame)[:, pointIndex] .+= dr
 

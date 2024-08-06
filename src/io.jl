@@ -35,7 +35,6 @@ struct GlobalParameters
     gradientsFile::String
     optimizerFile::String
     adaptiveScaling::Bool
-    descriptorType::String
 end
 
 """
@@ -229,7 +228,6 @@ struct SystemParameters
     β::Float64
     Δ::Float64
     targetAR::Float64
-    concentration::Float64
 end
 
 """
@@ -517,11 +515,9 @@ function inputInit(globalParms, NNParms, preTrainParms, systemParmsList)
     if globalParms.modelFile == "none"
         # Initialize the model
         println("Initializing a new neural network with random weigths")
-        if globalParms.descriptorType == "other"
-            model = modelInitOther(NNParms)
-        else
-            model = modelInit(NNParms)
-        end
+
+        model = modelInit(NNParms)
+
         if globalParms.optimizerFile != "none"
             println("Ignoring given optimizer filename...")
         end

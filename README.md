@@ -2,40 +2,56 @@
 
 **M**achine **L**earning enhanced **I**nverse **M**onte **C**arlo.
 
-## How to run
+This project implements an algorithm for creating neural network force fields and performing simulations.
 
-Clone the repository and run:
+## Installation
 
-`julia -p n ML-IMC.jl ML-IMC-init.in | tee mc.out` where `n` is the number of available cores
+1. **Julia Version:**  Ensure you have Julia version 1.10 or later installed.
 
-## Required Julia packages
+2. **Package Installation:** Open the Julia REPL and install the required packages:
 
-**Julia version: 1.8**
+  ```julia
+   using Pkg
+   Pkg.add(["Distributed", "LinearAlgebra", "Dates", "Flux", "Statistics", "BSON", "RandomNumbers", "Chemfiles", "Printf"])
+  ```
 
-```console
-pkg> add Dates, Statistics, LinearAlgebra, Distributed, Chemfiles, BSON, Flux, RandomNumbers
-```
+## Running the Code
 
-Core packages:
+1. **Clone the Repository:**
 
-- `Flux`
-- `Distributed`
-- `Chemfiles`
-- `LinearAlgebra`
-- `RandomNumbers`
+   ```bash
+   git clone https://github.com/mikhail-a-ivanov/ML-IMC.git
+   ```
 
-Other packages:
+2. **Configuration:**
+   - Modify the `ML-IMC-init.in` file to specify the desired parameters for training or simulation.
+   - See the detailed parameter descriptions in the `ML-IMC-init.in` file.
 
-- `Dates`
-- `Printf`
-- `BSON`
-- `Statistics`
+3. **Execution:**
+   - **Training:**
+
+     ```bash
+     julia -p n ML-IMC.jl ML-IMC-init.in | tee report.out 
+     ```
+
+     where `n` is the number of systems you want to train.
+
+   - **Simulation:**
+     - Set the `mode` parameter in `ML-IMC-init.in` to "simulation".
+     - Specify the input PDB file and trained model file in the appropriate parameters.
+     - Run the same command as for training.
+
+## Input Files
+
+- **`ML-IMC-init.in`:**  Main input file containing global parameters, Monte Carlo settings, neural network parameters, and pre-training parameters.
+- **`symmetry-functions.in`:**  Defines the symmetry functions to be used as input features for the neural network.
+- **System Input Files (`.in`):**  Individual input files for each system to be trained, containing information such as topology, reference RDF, and simulation parameters.
 
 ## Authors
 
-- Prof. Alexander Lyubartsev (alexander.lyubartsev@mmk.su.se) - Principal investigator and method developer
-- Mikhail Ivanov (mikhail.ivanov@mmk.su.se) - Software developer
-- Maksim Posysoev (maksim.posysoev@mmk.su.se) - Software developer
+- Prof. Alexander Lyubartsev (<alexander.lyubartsev@mmk.su.se>) - Principal investigator and method developer
+- Mikhail Ivanov (<mikhail.ivanov@mmk.su.se>) - Software developer
+- Maksim Posysoev (<maksim.posysoev@mmk.su.se>) - Software developer
 
 ## Acknowledgement
 
