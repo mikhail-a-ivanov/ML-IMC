@@ -1,5 +1,5 @@
 """
-struct referenceData
+struct ReferenceData
 
 Contains pre-computed data for the reference trajectory frames
 
@@ -11,7 +11,7 @@ G2Matrices: list of G2 matrices of each frame
 G3Matrices: list of G3 matrices of each frame
 G9Matrices: list of G9 matrices of each frame
 """
-struct referenceData
+struct ReferenceData
     distanceMatrices::Vector{Matrix{Float64}}
     histograms::Vector{Vector{Float64}}
     PMF::Vector{Float64}
@@ -25,7 +25,7 @@ struct preComputeInput
 
 Contains input data necessary for pre-computation
 """
-struct preComputeInput
+struct PreComputedInput
     NNParms::NNparameters
     systemParms::SystemParameters
     refRDF::Vector{Float64}
@@ -57,7 +57,7 @@ end
 
 function updatehist!(hist, distanceVector1, distanceVector2, systemParms)
     @fastmath for i in 1:(systemParms.N)
-        # Remove histogram entries corresponding to distanceVector1 
+        # Remove histogram entries corresponding to distanceVector1
         histIndex = floor(Int, 1 + distanceVector1[i] / systemParms.binWidth)
         if histIndex <= systemParms.Nbins
             hist[histIndex] -= 1
@@ -77,7 +77,7 @@ function preComputeRefData(refDataInput)
 Pre-compute PMFs, distance and symmetry function matrices as well as the reference trajectory frames
 for later use in pre-training steps for a given system
 """
-function preComputeRefData(refDataInput::preComputeInput)::referenceData
+function preComputeRefData(refDataInput::PreComputedInput)::ReferenceData
     distanceMatrices = []
     histograms = []
     G2Matrices = []
@@ -122,7 +122,7 @@ function preComputeRefData(refDataInput::preComputeInput)::referenceData
         end
     end
     # Save the output in the referenceData struct
-    refData = referenceData(distanceMatrices, histograms, PMF, G2Matrices, G3Matrices, G9Matrices)
+    refData = ReferenceData(distanceMatrices, histograms, PMF, G2Matrices, G3Matrices, G9Matrices)
     return (refData)
 end
 
@@ -135,12 +135,18 @@ function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFun
                                          preTrainParms::PreTrainParameters, NNParms::NNparameters, verbose=false)
     parameters = Flux.params(model)
     loss = (ΔENN - ΔEPMF)^2
+
+    outname = "pretraining-loss-values.out"
+    open(outname, "a") do io
+        println(io, round(loss; digits=8))
+    end
+
     regloss = sum(parameters[1] .^ 2) * preTrainParms.PTREGP
     if verbose
-        println("   Energy loss: $(round(loss, digits=4))")
-        println("   PMF energy difference: $(round(ΔEPMF, digits=4))")
-        println("   NN energy difference: $(round(ΔENN, digits=4))")
-        println("   Regularization loss: $(round(regloss, digits=4))")
+        println("  Energy loss: $(round(loss, digits=8))")
+        println("  PMF energy difference: $(round(ΔEPMF, digits=8))")
+        println("  NN energy difference: $(round(ΔENN, digits=8))")
+        println("  Regularization loss: $(round(regloss, digits=8))")
     end
 
     # Compute dL/dw
@@ -160,7 +166,7 @@ function pretrainingMove!(refData, model, NNParms, systemParms, rng)
 Displaces one randomly selected particle,
 computes energy differences using PMF and the neural network
 """
-function pretrainingMoveSym!(refData::referenceData, model, NNParms, systemParms, rng)
+function pretrainingMoveSym!(refData::ReferenceData, model, NNParms, systemParms, rng)
     # Pick a frame
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1 # Don't take the first frame
@@ -272,10 +278,10 @@ function preTrainSymFun!(preTrainParms::PreTrainParameters, NNParms, systemParms
     # Pre-compute reference data in parallelrefRDFs
     refDataInputs = []
     for systemId in 1:nsystems
-        refDataInput = preComputeInput(NNParms, systemParmsList[systemId], refRDFs[systemId])
+        refDataInput = PreComputedInput(NNParms, systemParmsList[systemId], refRDFs[systemId])
         append!(refDataInputs, [refDataInput])
     end
-    refDataList::Vector{referenceData} = pmap(preComputeRefData, refDataInputs)
+    refDataList::Vector{ReferenceData} = pmap(preComputeRefData, refDataInputs)
 
     for step in 1:(preTrainParms.PTsteps)
         verbose::Bool = false
@@ -285,7 +291,7 @@ function preTrainSymFun!(preTrainParms::PreTrainParameters, NNParms, systemParms
         end
         lossGradients = []
         for systemId in 1:nsystems
-            # Pack frame input arrays   
+            # Pack frame input arrays
             refData = refDataList[systemId]
 
             # Run a pre-training step, compute energy differences with PMF and the neural network,
