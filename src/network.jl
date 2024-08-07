@@ -24,8 +24,8 @@ Used for packaging mcsample! outputs
 struct MCAverages
     descriptor::Vector{Float64}
     energies::Vector{Float64}
-    crossAccumulators::Union{Nothing,Vector{Matrix{Float64}}}
-    symmFuncMatrixAccumulator::Union{Nothing,Matrix{Float64}}
+    crossAccumulators::Union{Nothing, Vector{Matrix{Float64}}}
+    symmFuncMatrixAccumulator::Union{Nothing, Matrix{Float64}}
     acceptanceRatio::Float64
     systemParms::SystemParameters
     mutatedStepAdjust::Float64
@@ -40,7 +40,7 @@ to all parameters in the given network
 function computeEnergyGradients(symmFuncMatrix, model, NNParms)
     energyGradients = []
     # Compute energy gradients
-    gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
+    gs = gradient(compute_system_total_energy_scalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
     for (layerId, layerGradients) in enumerate(gs[2][1])
@@ -54,7 +54,7 @@ function computeEnergyGradients(symmFuncMatrix, model, NNParms)
             append!(energyGradients, [weightGradients])
         end
     end
-    return (energyGradients)
+    return energyGradients
 end
 
 """
@@ -172,39 +172,36 @@ function updatemodel!(model, opt, lossGradients)
 end
 
 """
-function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
+    loss(descriptor_nn, descriptor_ref, model, nn_params, mean_max_displacement)
 
-Compute the error function
+Compute the error function.
 """
-function loss(descriptorNN, descriptorref, model, NNParms, meanMaxDisplacement)
-    outname = "loss.out"
-    io = open(outname, "a")
-    strLoss = sum((descriptorNN - descriptorref) .^ 2)
-    if NNParms.REGP > 0
-        regLoss = 0.0
+function loss(descriptor_nn, descriptor_ref, model, nn_params, mean_max_displacement)
+    squared_difference = sum((descriptor_nn .- descriptor_ref) .^ 2)
+
+    # Calculate L2 regularization loss
+    reg_loss = 0.0
+    if nn_params.REGP > 0.0
         for parameters in Flux.params(model)
-            regLoss += NNParms.REGP * sum(abs2, parameters) # sum of squared abs values
+            reg_loss += nn_params.REGP * sum(abs2, parameters)
         end
-        println("Regularization Loss = ", round(regLoss; digits=8))
-        println(io, "Regularization Loss = ", round(regLoss; digits=8))
-        totalLoss = strLoss + regLoss
-    else
-        totalLoss = strLoss
-        println("Regularization Loss = ", 0)
-        println(io, "Regularization Loss = ", 0)
     end
-    println("Descriptor Loss = ", round(strLoss; digits=8))
-    println(io, "Descriptor Loss = ", round(strLoss; digits=8))
-    println(io, "Total Loss = ", round(totalLoss; digits=8))
-    # Abnormal max displacement is an indication
-    # of a poor model, even if the total loss is low!
-    # Low max displacement results in a severely
-    # undersampled configuration - it becomes "stuck"
-    # at the initial configuration
-    println(io, "Max displacement = ", round(meanMaxDisplacement; digits=8))
-    close(io)
+
+    total_loss = squared_difference + reg_loss
+
+    println("  Regularization Loss = $(round(reg_loss; digits=8))")
+    println("  Descriptor Loss = $(round(squared_difference; digits=8))")
+    println("  Total Loss = $(round(total_loss; digits=8))")
+    println("  Max displacement = $(round(mean_max_displacement; digits=8))")
+
+    # Log loss to file
+    outname = "training-loss-values.out"
+    open(outname, "a") do io
+        println(io, round(squared_difference; digits=8))
+    end
     checkfile(outname)
-    return (totalLoss)
+
+    return total_loss
 end
 
 """
@@ -221,8 +218,6 @@ function buildNetwork!(NNParms)
     end
     return (network)
 end
-
-
 
 """
 function buildchain(args...)
@@ -248,25 +243,6 @@ function modelInit(NNParms)
 function modelInit(NNParms)
     # Build initial model
     network = buildNetwork!(NNParms)
-    println("Building a model...")
-    model = buildchain(NNParms, network...)
-    model = fmap(f64, model)
-    println(model)
-    #println(typeof(model))
-    println("   Number of layers: $(length(NNParms.neurons)) ")
-    println("   Number of neurons in each layer: $(NNParms.neurons)")
-    parameterCount = 0
-    for layer in model
-        parameterCount += sum(length, Flux.params(layer))
-    end
-    println("   Total number of parameters: $(parameterCount)")
-    println("   Using bias parameters: $(NNParms.bias)")
-    return (model)
-end
-
-function modelInitOther(NNParms)
-    # Build initial model
-    network = buildNetworkOther!(NNParms)
     println("Building a model...")
     model = buildchain(NNParms, network...)
     model = fmap(f64, model)
@@ -437,8 +413,8 @@ function train!(globalParms, MCParms, NNParms, systemParmsList, model, opt, refR
         @save "opt-iter-$(iterString).bson" opt
         checkfile("opt-iter-$(iterString).bson")
 
-        @save "gradients-iter-$(iterString)-$(current_time).bson" meanLossGradients
-        checkfile("gradients-iter-$(iterString)-$(current_time).bson")
+        @save "gradients-iter-$(iterString).bson" meanLossGradients
+        checkfile("gradients-iter-$(iterString).bson")
 
         # Update the model
         updatemodel!(model, opt, meanLossGradients)

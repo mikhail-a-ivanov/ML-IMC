@@ -1,4 +1,5 @@
 using RandomNumbers
+using Flux
 
 """
 function hist!(distanceMatrix, hist, systemParms)
@@ -62,73 +63,66 @@ function wrapFrame!(frame, box, pointIndex)
 end
 
 """
-function atomicEnergy(inputlayer, model)
+    compute_atomic_energy(inputlayer::AbstractVector{T}, model::Flux.Chain) where T <: AbstractFloat
 
-Computes the potential energy of one particle
-from the input layer of the neural network
+Computes the potential energy of one particle from the input layer of the neural network.
 """
-function atomicEnergy(inputlayer, model)
-    E::Float64 = model(inputlayer)[1]
-    return (E)
+function compute_atomic_energy(inputlayer::AbstractVector{T}, model::Flux.Chain) where {T <: AbstractFloat}
+    E = only(model(inputlayer))
+    return E
 end
 
 """
-function totalEnergyScalar(symmFuncMatrix, model)
+    compute_system_total_energy_scalar(symm_func_matrix::AbstractMatrix{T}, model::Flux.Chain) where T <: AbstractFloat
 
-Computes the total potential energy of the system
+Computes the total potential energy of the system.
 """
-function totalEnergyScalar(symmFuncMatrix, model)
-    N = size(symmFuncMatrix)[1]
-    E = 0.0
-    for i in 1:N
-        E += atomicEnergy(symmFuncMatrix[i, :], model)
+function compute_system_total_energy_scalar(symm_func_matrix::AbstractMatrix{T},
+                                            model::Flux.Chain) where {T <: AbstractFloat}
+    return sum(compute_atomic_energy(row, model) for row in eachrow(symm_func_matrix))
+end
+
+"""
+    update_system_energies_vector(symm_func_matrix::AbstractMatrix{T},
+                                  model::Flux.Chain,
+                                  indices_for_update::AbstractVector{Bool},
+                                  previous_energies::AbstractVector{T}) where {T <: AbstractFloat}
+
+Computes vector of atomic energy contributions.
+"""
+function update_system_energies_vector(symm_func_matrix::AbstractMatrix{T},
+                                       model::Flux.Chain,
+                                       indices_for_update::AbstractVector{Bool},
+                                       previous_energies::AbstractVector{T}) where {T <: AbstractFloat}
+    updated_energies = copy(previous_energies)
+    update_indices = findall(indices_for_update)
+
+    if !isempty(update_indices)
+        new_energies = [compute_atomic_energy(symm_func_matrix[i, :], model) for i in update_indices]
+        updated_energies[update_indices] .= new_energies
     end
-    return (E)
+
+    return updated_energies
 end
 
 """
-function getBoolMaskForUpdating(distanceVectorInput, NNParms)
+    get_energies_update_mask(distance_vector::AbstractVector{T}, nn_params) where T <: AbstractFloat
 
 Return boolean mask array of indexes for updating energies
-True if the distance between moved particle and i-th atom is less than NNParms.maxDistanceCutoff
+True if the distance between moved particle and i-th atom is less than nn_params.maxDistanceCutoff.
 """
-function getBoolMaskForUpdating(distanceVectorInput, NNParms)
-    N = size(distanceVectorInput)[1]
-    indexes = Array{Bool}(undef, N)
-    for i in 1:N
-        indexes[i] = (distanceVectorInput[i] < NNParms.maxDistanceCutoff)
-    end
-    return (indexes)
+function get_energies_update_mask(distance_vector::AbstractVector{T},
+                                  nn_params)::Vector{Bool} where {T <: AbstractFloat}
+    return distance_vector .< nn_params.maxDistanceCutoff
 end
 
 """
-function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
+    init_system_energies_vector(symm_func_matrix::AbstractMatrix{T}, model::Flux.Chain) where T <: AbstractFloat
 
-Computes vector of atomic energy contributions
+Computes initial vector of energies for the system.
 """
-function totalEnergyVector(symmFuncMatrix, model, indexesForUpdate, previousE)
-    N = size(symmFuncMatrix)[1]
-    E = copy(previousE)
-    for i in 1:N
-        if indexesForUpdate[i]
-            E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
-        end
-    end
-    return (E)
-end
-
-"""
-function totalEnergyVectorInit(symmFuncMatrix, model)
-
-Computes initial vector of energies for the system
-"""
-function totalEnergyVectorInit(symmFuncMatrix, model)
-    N = size(symmFuncMatrix)[1]
-    E = Array{Float64}(undef, N)
-    for i in 1:N
-        E[i] = atomicEnergy(symmFuncMatrix[i, :], model)
-    end
-    return (E)
+function init_system_energies_vector(symm_func_matrix::AbstractMatrix{T}, model::Flux.Chain) where {T <: AbstractFloat}
+    return [compute_atomic_energy(row, model) for row in eachrow(symm_func_matrix)]
 end
 
 """
@@ -156,8 +150,7 @@ function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
     E1 = copy(E)
 
     # Displace the particle
-    dr = [mutatedStepAdjust * (rand(rng, Float64) - 0.5), mutatedStepAdjust * (rand(rng, Float64) - 0.5),
-          mutatedStepAdjust * (rand(rng, Float64) - 0.5)]
+    dr = mutatedStepAdjust * (rand(rng, Float64, 3) .- 0.5)
 
     positions(frame)[:, pointIndex] .+= dr
 
@@ -172,7 +165,7 @@ function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
     accepted = 0
 
     # Get indexes of atoms for energy contribution update
-    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, NNParms)
+    indexesForUpdate = get_energies_update_mask(distanceVector2, NNParms)
 
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
@@ -195,8 +188,8 @@ function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
     symmFuncMatrix2 = combineSymmFuncMatrices(G2Matrix2, G3Matrix2, G9Matrix2)
 
     # Compute the energy again
-    # E2 = totalEnergyScalar(G2Matrix2, model) 
-    newEnergyVector = totalEnergyVector(symmFuncMatrix2, model, indexesForUpdate, EpreviousVector)
+    # E2 = totalEnergyScalar(G2Matrix2, model)
+    newEnergyVector = update_system_energies_vector(symmFuncMatrix2, model, indexesForUpdate, EpreviousVector)
     E2 = sum(newEnergyVector)
 
     # Get energy difference
@@ -318,7 +311,7 @@ function mcsample!(input)
     symmFuncMatrix = combineSymmFuncMatrices(G2Matrix, G3Matrix, G9Matrix)
 
     # Initialize the starting energy and the energy array
-    EpreviousVector = totalEnergyVectorInit(symmFuncMatrix, model)
+    EpreviousVector = init_system_energies_vector(symmFuncMatrix, model)
     E = sum(EpreviousVector)
     energies = zeros(totalDataPoints + 1)
     energies[1] = E

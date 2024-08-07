@@ -125,7 +125,7 @@ function computeTripletGeometry(coordinates, box, i, j, k, distance_ij, distance
 Computes cosine of angle in a triplet of atoms ijk with atom i as the central atom
 and the distance kj for G3 symmetry function
 """
-function computeTripletGeometry(coordinates, box, i, j, k, distance_ij, distance_ik)::Tuple{Float64,Float64}
+function computeTripletGeometry(coordinates, box, i, j, k, distance_ij, distance_ik)::Tuple{Float64, Float64}
     @assert i != j && i != k && k != j
     vector_0i = coordinates[:, i]
     vector_0j = coordinates[:, j]
