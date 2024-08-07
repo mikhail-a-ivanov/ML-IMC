@@ -40,7 +40,7 @@ to all parameters in the given network
 function computeEnergyGradients(symmFuncMatrix, model, NNParms)
     energyGradients = []
     # Compute energy gradients
-    gs = gradient(totalEnergyScalar, symmFuncMatrix, model)
+    gs = gradient(compute_system_total_energy_scalar, symmFuncMatrix, model)
     # Loop over the gradients and collect them in the array
     # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
     for (layerId, layerGradients) in enumerate(gs[2][1])
@@ -54,7 +54,7 @@ function computeEnergyGradients(symmFuncMatrix, model, NNParms)
             append!(energyGradients, [weightGradients])
         end
     end
-    return (energyGradients)
+    return energyGradients
 end
 
 """
@@ -243,25 +243,6 @@ function modelInit(NNParms)
 function modelInit(NNParms)
     # Build initial model
     network = buildNetwork!(NNParms)
-    println("Building a model...")
-    model = buildchain(NNParms, network...)
-    model = fmap(f64, model)
-    println(model)
-    #println(typeof(model))
-    println("   Number of layers: $(length(NNParms.neurons)) ")
-    println("   Number of neurons in each layer: $(NNParms.neurons)")
-    parameterCount = 0
-    for layer in model
-        parameterCount += sum(length, Flux.params(layer))
-    end
-    println("   Total number of parameters: $(parameterCount)")
-    println("   Using bias parameters: $(NNParms.bias)")
-    return (model)
-end
-
-function modelInitOther(NNParms)
-    # Build initial model
-    network = buildNetworkOther!(NNParms)
     println("Building a model...")
     model = buildchain(NNParms, network...)
     model = fmap(f64, model)

@@ -1,3 +1,10 @@
+using Flux
+using RandomNumbers.Xorshifts
+using Distributed
+using BSON: @save
+using LinearAlgebra
+using Statistics
+
 """
 struct ReferenceData
 
@@ -21,7 +28,7 @@ struct ReferenceData
 end
 
 """
-struct preComputeInput
+struct PreComputedInput
 
 Contains input data necessary for pre-computation
 """
@@ -166,15 +173,15 @@ function pretrainingMove!(refData, model, NNParms, systemParms, rng)
 Displaces one randomly selected particle,
 computes energy differences using PMF and the neural network
 """
-function pretrainingMoveSym!(refData::ReferenceData, model, NNParms, systemParms, rng)
+function pretraining_move!(refData::ReferenceData, model, NNParms, systemParms, rng)
     # Pick a frame
     traj = readXTC(systemParms)
     nframes = Int(size(traj)) - 1 # Don't take the first frame
-    frameId = rand(rng, 1:nframes)
+    frameId::Int = rand(rng, 1:nframes)
     frame = read_step(traj, frameId)
     box = lengths(UnitCell(frame))
     # Pick a particle
-    pointIndex = rand(rng, 1:(systemParms.N))
+    pointIndex::Int = rand(rng, 1:(systemParms.N))
 
     # Read reference data
     distanceMatrix = refData.distanceMatrices[frameId]
@@ -200,7 +207,7 @@ function pretrainingMoveSym!(refData::ReferenceData, model, NNParms, systemParms
     end
 
     # Compute energy of the initial configuration
-    ENN1Vector = totalEnergyVectorInit(symmFuncMatrix1, model)
+    ENN1Vector = init_system_energies_vector(symmFuncMatrix1, model)
     ENN1 = sum(ENN1Vector)
     EPMF1 = sum(hist .* PMF)
 
@@ -208,8 +215,7 @@ function pretrainingMoveSym!(refData::ReferenceData, model, NNParms, systemParms
     distanceVector1 = distanceMatrix[:, pointIndex]
 
     # Displace the particle
-    dr = [systemParms.Δ * (rand(rng, Float64) - 0.5), systemParms.Δ * (rand(rng, Float64) - 0.5),
-        systemParms.Δ * (rand(rng, Float64) - 0.5)]
+    dr = systemParms.Δ * (rand(rng, Float64, 3) .- 0.5)
 
     positions(frame)[:, pointIndex] .+= dr
 
@@ -221,7 +227,7 @@ function pretrainingMoveSym!(refData::ReferenceData, model, NNParms, systemParms
     hist = updatehist!(hist, distanceVector1, distanceVector2, systemParms)
 
     # Get indexes for updating ENN
-    indexesForUpdate = getBoolMaskForUpdating(distanceVector2, NNParms)
+    indexesForUpdate = get_energies_update_mask(distanceVector2, NNParms)
 
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(refData.G2Matrices[frameId])
@@ -247,7 +253,7 @@ function pretrainingMoveSym!(refData::ReferenceData, model, NNParms, systemParms
     symmFuncMatrix2 = combineSymmFuncMatrices(G2Matrix2, G3Matrix2, G9Matrix2)
 
     # Compute the NN energy again
-    ENN2Vector = totalEnergyVector(symmFuncMatrix2, model, indexesForUpdate, ENN1Vector)
+    ENN2Vector = update_system_energies_vector(symmFuncMatrix2, model, indexesForUpdate, ENN1Vector)
     ENN2 = sum(ENN2Vector)
     EPMF2 = sum(hist .* PMF)
 
@@ -267,12 +273,12 @@ function preTrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
 
 Run pre-training for a given number of steps
 """
-function preTrainSymFun!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
+function pretrain!(preTrainParms::PreTrainParameters, NNParms, systemParmsList, model, opt, refRDFs)
     println("\nRunning $(preTrainParms.PTsteps) steps of pre-training Monte-Carlo...\n")
     println("Neural network regularization parameter: $(preTrainParms.PTREGP)")
     reportOpt(opt)
 
-    rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
+    rng = RandomNumbers.Xorshifts.Xoroshiro128Plus()
     nsystems = length(systemParmsList)
 
     # Pre-compute reference data in parallelrefRDFs
@@ -296,8 +302,8 @@ function preTrainSymFun!(preTrainParms::PreTrainParameters, NNParms, systemParms
 
             # Run a pre-training step, compute energy differences with PMF and the neural network,
             # restore all input arguments to their original state
-            symmFuncMatrix1, symmFuncMatrix2, ΔENN, ΔEPMF = pretrainingMoveSym!(refData, model, NNParms,
-                                                                                systemParmsList[systemId], rngXor)
+            symmFuncMatrix1, symmFuncMatrix2, ΔENN, ΔEPMF = pretraining_move!(refData, model, NNParms,
+                                                                              systemParmsList[systemId], rng)
 
             # Compute the loss gradient
             lossGradient = computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model,

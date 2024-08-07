@@ -46,7 +46,7 @@ function main()
         println("Using the following activation functions: $(NNParms.activations)")
         if globalParms.modelFile == "none"
             # Run pretraining
-            model = preTrainSymFun!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
+            model = pretrain!(preTrainParms, NNParms, systemParmsList, model, opt, refRDFs)
             # Restore optimizer state to default
             println("\nRe-initializing the optimizer for the training...\n")
             opt = optInit(NNParms)
