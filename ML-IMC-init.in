@@ -12,11 +12,11 @@ adaptiveScaling       = false                       # Whether to scale gradients
 
 # Monte Carlo parameters
 
-steps          = 500000                 # Total number of Monte Carlo simulation steps.
-Eqsteps        = 100000                 # Number of equilibration steps before data collection begins.
-stepAdjustFreq = 5000                   # Frequency (in steps) for adjusting the maximum MC displacement to achieve the target acceptance ratio.
-trajout        = 5000                   # Frequency (in steps) for writing the system configuration to a trajectory file.
-outfreq        = 1000                   # Frequency (in steps) for writing energy and other data to output files.
+steps          = 5000                 # Total number of Monte Carlo simulation steps.
+Eqsteps        = 1000                 # Number of equilibration steps before data collection begins.
+stepAdjustFreq = 50                   # Frequency (in steps) for adjusting the maximum MC displacement to achieve the target acceptance ratio.
+trajout        = 50                   # Frequency (in steps) for writing the system configuration to a trajectory file.
+outfreq        = 10                   # Frequency (in steps) for writing energy and other data to output files.
 
 
 # Network parameters
@@ -35,8 +35,8 @@ decay2          = 0.999                             # Second decay parameter use
 
 # Pre-training parameters
 
-PTsteps         = 10000         # Number of Monte Carlo steps for pre-training the neural network.
-PToutfreq       = 100           # Frequency (in steps) for reporting progress during pre-training.
+PTsteps         = 100         # Number of Monte Carlo steps for pre-training the neural network.
+PToutfreq       = 10           # Frequency (in steps) for reporting progress during pre-training.
 PTREGP          = 0.0           # L2 regularization parameter for pre-training (0.0 disables regularization).
 PToptimizer     = AMSGrad       # Optimizer for pre-training (same options as `optimizer`).
 PTrate          = 0.0005        # Learning rate for the pre-training optimizer.
