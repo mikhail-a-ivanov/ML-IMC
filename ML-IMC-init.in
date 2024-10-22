@@ -1,6 +1,6 @@
 # Global parameters
 
-systemFiles           = 100CH3OH-CG.in, 60CH3OH-CG.in, 40CH3OH-CG.in, 10CH3OH-CG.in   # Comma-separated list of input filepaths, each defining a system for training or simulation.
+systemFiles           = 100CH3OH-CG.in, 60CH3OH-CG.in # Comma-separated list of input filepaths, each defining a system for training or simulation.
 symmetryFunctionFile  = symmetry-functions.in       # File containing definitions of symmetry functions used for atomic descriptors.
 mode                  = training                    # Mode of operation: "training" for optimizing the neural network, "simulation" for running MC simulations with a trained model.
 outputMode            = default                     # Level of output detail: "default" for essential output, "verbose" for additional trajectory files.
@@ -21,10 +21,10 @@ outfreq        = 10                   # Frequency (in steps) for writing energy 
 
 # Network parameters
 
-neurons         = 40, 30, 20, 1                     # Number of neurons in each hidden layer of the neural network, followed by the number of output neurons. 
-iters           = 10                                # Number of training iterations for the neural network.
+neurons         = 10, 10, 1                     # Number of neurons in each hidden layer of the neural network, followed by the number of output neurons. 
+iters           = 2                                # Number of training iterations for the neural network.
 bias            = true                              # Whether to use bias parameters in the neural network layers.
-activations     = identity, relu, relu, identity    # Activation functions for each layer of the neural network (must match the number of layers).
+activations     = identity, relu, identity    # Activation functions for each layer of the neural network (must match the number of layers).
 REGP            = 0.0                               # L2 regularization parameter for the neural network weights (0.0 disables regularization).
 optimizer       = AMSGrad                           # Optimization algorithm for training the neural network (recommended: AMSGrad, Adam, AdamW). See https://fluxml.ai/Flux.jl/stable/training/optimisers/ for more options.
 rate            = 0.0001                            # Learning rate for the optimizer.
@@ -35,8 +35,8 @@ decay2          = 0.999                             # Second decay parameter use
 
 # Pre-training parameters
 
-PTsteps         = 100         # Number of Monte Carlo steps for pre-training the neural network.
-PToutfreq       = 10           # Frequency (in steps) for reporting progress during pre-training.
+PTsteps         = 500         # Number of Monte Carlo steps for pre-training the neural network.
+PToutfreq       = 100           # Frequency (in steps) for reporting progress during pre-training.
 PTREGP          = 0.0           # L2 regularization parameter for pre-training (0.0 disables regularization).
 PToptimizer     = AMSGrad       # Optimizer for pre-training (same options as `optimizer`).
 PTrate          = 0.0005        # Learning rate for the pre-training optimizer.

@@ -58,7 +58,6 @@ struct NeuralNetParameters
     decay2::Float64
 end
 
-
 struct SystemParameters
     systemName::String
     trajfile::String
@@ -74,7 +73,6 @@ struct SystemParameters
     targetAR::Float64
 end
 
-
 struct MonteCarloParameters
     steps::Int
     Eqsteps::Int
@@ -82,7 +80,6 @@ struct MonteCarloParameters
     trajout::Int
     outfreq::Int
 end
-
 
 struct GlobalParameters
     systemFiles::Vector{String}
@@ -95,7 +92,6 @@ struct GlobalParameters
     adaptiveScaling::Bool
 end
 
-
 struct PreTrainingParameters
     PTsteps::Int64
     PToutfreq::Int64
@@ -106,7 +102,6 @@ struct PreTrainingParameters
     PTdecay1::Float64
     PTdecay2::Float64
 end
-
 
 struct MonteCarloSampleInput
     globalParms::GlobalParameters
@@ -121,7 +116,6 @@ struct PreComputedInput
     systemParms::SystemParameters
     refRDF::Vector{Float64}
 end
-
 
 struct MonteCarloAverages
     descriptor::Vector{Float64}
@@ -1023,11 +1017,12 @@ function collectSystemAverages(outputs, refRDFs, systemParmsList, globalParms, N
         meanMaxDisplacement = mean(meanMaxDisplacement)
         if globalParms.mode == "training"
             systemOutput = MonteCarloAverages(meanDescriptor, meanEnergies, meanCrossAccumulators,
-                                      meansymmFuncMatrixAccumulator, meanAcceptanceRatio, systemParms,
-                                      meanMaxDisplacement)
+                                              meansymmFuncMatrixAccumulator, meanAcceptanceRatio, systemParms,
+                                              meanMaxDisplacement)
         else
-            systemOutput = MonteCarloAverages(meanDescriptor, meanEnergies, nothing, nothing, meanAcceptanceRatio, systemParms,
-                                      meanMaxDisplacement)
+            systemOutput = MonteCarloAverages(meanDescriptor, meanEnergies, nothing, nothing, meanAcceptanceRatio,
+                                              systemParms,
+                                              meanMaxDisplacement)
         end
         # Compute loss and print some output info
         println("       Acceptance ratio = ", round(meanAcceptanceRatio; digits=4))
@@ -1800,12 +1795,13 @@ function mcsample!(input)
 
     # Combine symmetry function matrices accumulators
     if globalParms.mode == "training"
-        MCoutput = MonteCarloAverages(histAccumulator, energies, crossAccumulators, symmFuncMatrixAccumulator, acceptanceRatio,
-                              systemParms, mutatedStepAdjust)
+        MCoutput = MonteCarloAverages(histAccumulator, energies, crossAccumulators, symmFuncMatrixAccumulator,
+                                      acceptanceRatio,
+                                      systemParms, mutatedStepAdjust)
         return (MCoutput)
     else
         MCoutput = MonteCarloAverages(histAccumulator, energies, nothing, nothing, acceptanceRatio, systemParms,
-                              mutatedStepAdjust)
+                                      mutatedStepAdjust)
         return (MCoutput)
     end
 end
@@ -1909,7 +1905,8 @@ function preComputeRefData(refDataInput::PreComputedInput)::ReferenceData
 end
 
 function computePreTrainingLossGradients(ΔENN, ΔEPMF, symmFuncMatrix1, symmFuncMatrix2, model,
-                                         preTrainParms::PreTrainingParameters, NNParms::NeuralNetParameters, verbose=false)
+                                         preTrainParms::PreTrainingParameters, NNParms::NeuralNetParameters,
+                                         verbose=false)
     parameters = Flux.params(model)
     loss = (ΔENN - ΔEPMF)^2
 
