@@ -146,8 +146,8 @@ end
 # -----------------------------------------------------------------------------
 # --- Helper Functions (Utils)
 
-function report_optimizer(opt)
-    println("Optimizer type: $(typeof(opt))")
+function report_optimizer(optimizer::Flux.Optimise.AbstractOptimiser)
+    println("Optimizer type: $(typeof(optimizer))")
     println("   Parameters:")
 
     param_descriptions = Dict(:eta => "Learning rate",
@@ -155,9 +155,9 @@ function report_optimizer(opt)
                               :velocity => "Velocity",
                               :rho => "Momentum coefficient")
 
-    for name in fieldnames(typeof(opt))
+    for name in fieldnames(typeof(optimizer))
         if name ∉ (:state, :velocity)
-            value = getfield(opt, name)
+            value = getfield(optimizer, name)
             description = get(param_descriptions, name, string(name))
             println("       $description: $value")
         end
@@ -526,7 +526,7 @@ function parameters_init()
 end
 
 function input_init(global_params::GlobalParameters, nn_params::NeuralNetParameters,
-                    pretrain_params::PreTrainingParameters, system_params_list)
+                    pretrain_params::PreTrainingParameters, system_params_list::Vector{SystemParameters})
     # Read reference data
     ref_rdfs = []
     for system_params in system_params_list
@@ -864,7 +864,7 @@ end
 function prepare_monte_carlo_inputs(global_params::GlobalParameters,
                                     mc_params::MonteCarloParameters,
                                     nn_params::NeuralNetParameters,
-                                    system_params_list,
+                                    system_params_list::Vector{SystemParameters},
                                     model::Flux.Chain)
     n_systems = length(system_params_list)
     n_workers = nworkers()
@@ -889,78 +889,93 @@ function prepare_monte_carlo_inputs(global_params::GlobalParameters,
     return repeat(reference_inputs, sets_per_system)
 end
 
-function collect_system_averages(outputs::Vector{MonteCarloAverages}, ref_rdfs,
+function collect_system_averages(outputs::Vector{MonteCarloAverages},
+                                 reference_rdfs,
                                  system_params_list::Vector{SystemParameters},
-                                 global_params::GlobalParameters, nn_params::NeuralNetParameters, model)
-    meanLoss = 0.0
-    system_outputs = []
+                                 global_params::GlobalParameters,
+                                 nn_params::NeuralNetParameters,
+                                 model::Chain)::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
+    total_loss::Float64 = 0.0
+    system_outputs::Vector{MonteCarloAverages} = Vector{MonteCarloAverages}()
+    system_losses::Vector{Float64} = Vector{Float64}()
 
-    systemLosses = []
-
-    for (systemId, system_params) in enumerate(system_params_list)
+    for (system_idx, system_params) in enumerate(system_params_list)
         println("   System $(system_params.system_name):")
-        systemLoss = 0.0
 
-        meanDescriptor = []
-        meanEnergies = []
-        if global_params.mode == "training"
-            meanCrossAccumulators = []
-            meansymmFuncMatrixAccumulator = []
-        end
-        meanAcceptanceRatio = []
-        meanMaxDisplacement = []
+        # Initialize collection vectors
+        descriptors::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
+        energies::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
+        acceptance_ratios::Vector{Float64} = Vector{Float64}()
+        max_displacements::Vector{Float64} = Vector{Float64}()
 
-        # Find the corresponding outputs
-        for outputID in eachindex(outputs)
-            # Save the outputID if the system names from input and output match
-            if system_params.system_name == outputs[outputID].system_params.system_name
-                append!(meanDescriptor, [outputs[outputID].descriptor])
-                append!(meanEnergies, [outputs[outputID].energies])
+        # Training-specific accumulators
+        cross_accumulators::Vector{Vector{Matrix{Float64}}} = Vector{Vector{Matrix{Float64}}}()
+        symm_func_accumulators::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}()
+
+        # Collect matching outputs
+        for output in outputs
+            if system_params.system_name == output.system_params.system_name
+                push!(descriptors, output.descriptor)
+                push!(energies, output.energies)
+                push!(acceptance_ratios, output.acceptance_ratio)
+                push!(max_displacements, output.step_size)
+
                 if global_params.mode == "training"
-                    append!(meanCrossAccumulators, [outputs[outputID].cross_accumulators])
-                    append!(meansymmFuncMatrixAccumulator, [outputs[outputID].symmetry_matrix_accumulator])
+                    push!(cross_accumulators, output.cross_accumulators)
+                    push!(symm_func_accumulators, output.symmetry_matrix_accumulator)
                 end
-                append!(meanAcceptanceRatio, [outputs[outputID].acceptance_ratio])
-                append!(meanMaxDisplacement, [outputs[outputID].step_size])
             end
         end
-        # Take averages from each worker
-        meanDescriptor = mean(meanDescriptor)
-        meanEnergies = mean(meanEnergies)
+
+        # Compute averages
+        avg_descriptor::Vector{Float64} = mean(descriptors)
+        avg_energies::Vector{Float64} = mean(energies)
+        avg_acceptance::Float64 = mean(acceptance_ratios)
+        avg_displacement::Float64 = mean(max_displacements)
+
+        # Training-specific averages
+        avg_cross_acc::Union{Vector{Matrix{Float64}}, Nothing} = nothing
+        avg_symm_func::Union{Matrix{Float64}, Nothing} = nothing
+
         if global_params.mode == "training"
-            meanCrossAccumulators = mean(meanCrossAccumulators)
-            meansymmFuncMatrixAccumulator = mean(meansymmFuncMatrixAccumulator)
-        end
-        meanAcceptanceRatio = mean(meanAcceptanceRatio)
-        meanMaxDisplacement = mean(meanMaxDisplacement)
-        if global_params.mode == "training"
-            system_output = MonteCarloAverages(meanDescriptor, meanEnergies, meanCrossAccumulators,
-                                               meansymmFuncMatrixAccumulator, meanAcceptanceRatio,
-                                               system_params,
-                                               meanMaxDisplacement)
-        else
-            system_output = MonteCarloAverages(meanDescriptor, meanEnergies, nothing, nothing,
-                                               meanAcceptanceRatio,
-                                               system_params,
-                                               meanMaxDisplacement)
-        end
-        # Compute loss and print some output info
-        println("       Acceptance ratio = ", round(meanAcceptanceRatio; digits=4))
-        println("       Max displacement = ", round(meanMaxDisplacement; digits=4))
-        if global_params.mode == "training"
-            systemLoss = compute_training_loss(system_output.descriptor, ref_rdfs[systemId], model, nn_params,
-                                               meanMaxDisplacement)
-            meanLoss += systemLoss
-            append!(systemLosses, systemLoss)
+            avg_cross_acc = mean(cross_accumulators)
+            avg_symm_func = mean(symm_func_accumulators)
         end
 
-        append!(system_outputs, [system_output])
+        # Create system output
+        system_output = MonteCarloAverages(avg_descriptor,
+                                           avg_energies,
+                                           avg_cross_acc,
+                                           avg_symm_func,
+                                           avg_acceptance,
+                                           system_params,
+                                           avg_displacement)
+
+        # Print statistics
+        println("       Acceptance ratio = ", round(avg_acceptance; digits=4))
+        println("       Max displacement = ", round(avg_displacement; digits=4))
+
+        # Compute and accumulate loss for training mode
+        if global_params.mode == "training"
+            system_loss::Float64 = compute_training_loss(system_output.descriptor,
+                                                         reference_rdfs[system_idx],
+                                                         model,
+                                                         nn_params,
+                                                         avg_displacement)
+            total_loss += system_loss
+            push!(system_losses, system_loss)
+        end
+
+        push!(system_outputs, system_output)
     end
+
+    # Calculate and print average loss for training mode
     if global_params.mode == "training"
-        meanLoss /= length(system_params_list)
-        println("   \nTotal Average Loss = ", round(meanLoss; digits=8))
+        total_loss /= length(system_params_list)
+        println("   \nTotal Average Loss = ", round(total_loss; digits=8))
     end
-    return (system_outputs, systemLosses)
+
+    return (system_outputs, system_losses)
 end
 
 function compute_adaptive_gradient_coefficients(system_losses::AbstractVector{T})::Vector{T} where {T <: AbstractFloat}
@@ -981,100 +996,118 @@ function compute_adaptive_gradient_coefficients(system_losses::AbstractVector{T}
     return relative_coefficients .* normalization_factor
 end
 
-function train!(global_params::GlobalParameters, mc_params::MonteCarloParameters, nn_params::NeuralNetParameters,
-                system_params_list, model::Flux.Chain, optimizer, ref_rdfs)
-    # Run training iterations
-    iteration = 1
+function train!(global_params::GlobalParameters,
+                mc_params::MonteCarloParameters,
+                nn_params::NeuralNetParameters,
+                system_params_list::Vector{SystemParameters},
+                model::Flux.Chain,
+                optimizer::Flux.Optimise.AbstractOptimiser,
+                ref_rdfs)
+    for iteration in 1:(nn_params.iterations)
+        iter_string = lpad(iteration, 2, "0")
+        println("\nIteration $iteration...")
 
-    while iteration <= nn_params.iterations
-        iterString = lpad(iteration, 2, '0')
-        println("\nIteration $(iteration)...")
-
-        # Prepare multi-reference inputs
+        # Monte Carlo sampling
         inputs = prepare_monte_carlo_inputs(global_params, mc_params, nn_params, system_params_list, model)
-
-        # Run the simulation in parallel
         outputs = pmap(mcsample!, inputs)
 
-        # Collect averages corresponding to each reference system
-        systemOutputs, systemLosses = collect_system_averages(outputs, ref_rdfs, system_params_list, global_params,
-                                                              nn_params,
-                                                              model)
+        # Process system outputs and compute losses
+        system_outputs, system_losses = collect_system_averages(outputs, ref_rdfs, system_params_list, global_params,
+                                                                nn_params, model)
 
-        # Compute loss and the gradients
-        lossGradients = []
-        for (systemId, systemOutput) in enumerate(systemOutputs)
-            system_params = system_params_list[systemId]
-            lossGradient = compute_loss_gradients(systemOutput.cross_accumulators,
-                                                  systemOutput.symmetry_matrix_accumulator,
-                                                  systemOutput.descriptor, ref_rdfs[systemId], model, system_params,
-                                                  nn_params)
+        # Compute gradients for each system
+        loss_gradients = Vector{Any}(undef, length(system_outputs))
+        for (system_id, system_output) in enumerate(system_outputs)
+            system_params = system_params_list[system_id]
 
-            append!(lossGradients, [lossGradient])
-            # Write descriptors and energies
+            loss_gradients[system_id] = compute_loss_gradients(system_output.cross_accumulators,
+                                                               system_output.symmetry_matrix_accumulator,
+                                                               system_output.descriptor,
+                                                               ref_rdfs[system_id],
+                                                               model,
+                                                               system_params,
+                                                               nn_params)
+
+            # Save system outputs
             name = system_params.system_name
-            write_rdf("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, system_params)
-            write_energies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, mc_params, system_params,
+            write_rdf("RDFNN-$(name)-iter-$(iter_string).dat", system_output.descriptor, system_params)
+            write_energies("energies-$(name)-iter-$(iter_string).dat",
+                           system_output.energies,
+                           mc_params,
+                           system_params,
                            1)
         end
-        # Average the gradients
-        if global_params.adaptive_scaling
-            gradientCoeffs = compute_adaptive_gradient_coefficients(systemLosses)
-            println("\nGradient scaling: \n")
-            for (gradientCoeff, system_params) in zip(gradientCoeffs, system_params_list)
-                println("   System $(system_params.system_name): $(round(gradientCoeff, digits=8))")
+
+        # Compute mean loss gradients
+        mean_loss_gradients = if global_params.adaptive_scaling
+            gradient_coeffs = compute_adaptive_gradient_coefficients(system_losses)
+
+            println("\nGradient scaling:")
+            for (coeff, params) in zip(gradient_coeffs, system_params_list)
+                println("   System $(params.system_name): $(round(coeff; digits=8))")
             end
 
-            mean_loss_gradients = sum(lossGradients .* gradientCoeffs)
+            sum(loss_gradients .* gradient_coeffs)
         else
-            mean_loss_gradients = mean([lossGradient for lossGradient in lossGradients])
+            mean(loss_gradients)
         end
 
-        # Write the model and opt (before training!) and the gradients
-        @save "model-iter-$(iterString).bson" model
-        check_file("model-iter-$(iterString).bson")
+        # Save model state
+        for (filename, data) in [
+            ("model-iter-$(iter_string).bson", model),
+            ("opt-iter-$(iter_string).bson", optimizer),
+            ("gradients-iter-$(iter_string).bson", mean_loss_gradients)
+        ]
+            @save filename data
+            check_file(filename)
+        end
 
-        @save "opt-iter-$(iterString).bson" optimizer
-        check_file("opt-iter-$(iterString).bson")
-
-        @save "gradients-iter-$(iterString).bson" mean_loss_gradients
-        check_file("gradients-iter-$(iterString).bson")
-
-        # Update the model
+        # Update model with computed gradients
         update_model!(model, optimizer, mean_loss_gradients)
-
-        # Move on to the next iteration
-        iteration += 1
     end
-    println("The training is finished!")
+
+    println("Training completed!")
 end
 
 # -----------------------------------------------------------------------------
 # --- Simulation
 
-function simulate!(model, global_params, mc_params, nn_params, system_params)
-    # Pack inputs
-    input = MonteCarloSampleInput(global_params, mc_params, nn_params, system_params, model)
-    inputs = [input for worker in workers()]
+function simulate!(model::Flux.Chain,
+                   global_params::GlobalParameters,
+                   mc_params::MonteCarloParameters,
+                   nn_params::NeuralNetParameters,
+                   system_params::SystemParameters)
 
-    # Run the simulation in parallel
+    # Create input for each worker
+    input = MonteCarloSampleInput(global_params, mc_params, nn_params, system_params, model)
+    inputs = fill(input, nworkers())
+
+    # Run parallel Monte Carlo sampling
     outputs = pmap(mcsample!, inputs)
 
-    # Collect averages corresponding to each reference system
-    systemOutputs, systemLosses = collect_system_averages(outputs, nothing, [system_params], global_params, nothing,
-                                                          nothing)
+    # Collect system statistics
+    system_outputs, system_losses = collect_system_averages(outputs,
+                                                            nothing,
+                                                            [system_params],
+                                                            global_params,
+                                                            nothing,
+                                                            nothing)
 
-    # Write descriptors and energies
-    name = system_params.system_name
-    write_rdf("RDFNN-$(name).dat", systemOutputs[1].descriptor, system_params)
-    write_energies("energies-$(name).dat", systemOutputs[1].energies, mc_params, system_params, 1)
-    return
+    # Save simulation results
+    system_name = system_params.system_name
+    try
+        write_rdf("RDFNN-$(system_name).dat", system_outputs[1].descriptor, system_params)
+        write_energies("energies-$(system_name).dat", system_outputs[1].energies, mc_params, system_params, 1)
+    catch e
+        @error "Failed to save simulation results" exception=e system=system_name
+        rethrow()
+    end
 end
 
 # -----------------------------------------------------------------------------
 # --- Symmetry Function
 
-function combine_symmetry_matrices(g2_matrix, g3_matrix, g9_matrix)
+function combine_symmetry_matrices(g2_matrix, g3_matrix, g9_matrix) # NOTE: better no types
     if isempty(g3_matrix) && isempty(g9_matrix)
         return g2_matrix
     end
@@ -1290,89 +1323,99 @@ function build_g3_matrix(distance_matrix::AbstractMatrix{T},
     return scaling == one(T) ? g3_matrix : rmul!(g3_matrix, scaling)
 end
 
-function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2,
-                         systemParms::SystemParameters,
-                         NNParms::NeuralNetParameters, displacedAtomIndex)
-    for selectedAtomIndex in 1:(systemParms.n_atoms)
-        # Rebuild the whole G3 matrix column for the displaced atom
-        if selectedAtomIndex == displacedAtomIndex
-            for (G3Index, G3Function) in enumerate(NNParms.g3_functions)
-                eta = G3Function.eta
-                lambda = G3Function.lambda
-                zeta = G3Function.zeta
-                rcutoff = G3Function.rcutoff
-                rshift = G3Function.rshift
-                G3Matrix[selectedAtomIndex, G3Index] = compute_g3(displacedAtomIndex, coordinates2, box,
-                                                                  distanceVector2,
-                                                                  rcutoff, eta, zeta, lambda, rshift) *
-                                                       NNParms.symm_function_scaling
+function update_g3_matrix!(g3_matrix::Matrix{T},
+                           coordinates1::Matrix{T},
+                           coordinates2::Matrix{T},
+                           box::Vector{T},
+                           distance_vec_1::Vector{T},
+                           distance_vec_2::Vector{T},
+                           system_params::SystemParameters,
+                           nn_params::NeuralNetParameters,
+                           displaced_atom_index::Integer)::Matrix{T} where {T <: AbstractFloat}
+    scaling_factor::T = nn_params.symm_function_scaling
+    n_atoms::Int = system_params.n_atoms
+
+    @inbounds for central_atom_idx in 1:n_atoms
+        if central_atom_idx == displaced_atom_index
+            # Update matrix for displaced atom
+            @inbounds for (g3_idx, g3_func) in enumerate(nn_params.g3_functions)
+                g3_matrix[central_atom_idx, g3_idx] = compute_g3(displaced_atom_index,
+                                                                 coordinates2,
+                                                                 box,
+                                                                 distance_vec_2,
+                                                                 g3_func.rcutoff,
+                                                                 g3_func.eta,
+                                                                 g3_func.zeta,
+                                                                 g3_func.lambda,
+                                                                 g3_func.rshift) * scaling_factor
             end
-            # Compute the change in G3 caused by the displacement of an atom
-            # New ijk triplet description
-            # Central atom (i): selectedAtomIndex
-            # Second atom (j): displacedAtomIndex
-            # Third atom (k): thirdAtomIndex
         else
-            for (G3Index, G3Function) in enumerate(NNParms.g3_functions)
-                rcutoff = G3Function.rcutoff
-                distance_ij_1 = distanceVector1[selectedAtomIndex]
-                distance_ij_2 = distanceVector2[selectedAtomIndex]
-                # Ignore if the selected atom is far from the displaced atom
-                if 0.0 < distance_ij_2 < rcutoff || 0.0 < distance_ij_1 < rcutoff
-                    eta = G3Function.eta
-                    lambda = G3Function.lambda
-                    zeta = G3Function.zeta
-                    rshift = G3Function.rshift
-                    # Accumulate differences for the selected atom
-                    # over all third atoms
-                    ΔG3 = 0.0
-                    # Loop over all ik pairs
-                    for thirdAtomIndex in 1:(systemParms.n_atoms)
-                        # Make sure i != j != k
-                        if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
-                            # It does not make a difference whether
-                            # coordinates2 or coordinates1 are used -
-                            # both selectedAtom and thirdAtom have
-                            # have the same coordinates in the old and
-                            # the updated configuration
-                            selectedAtom = coordinates2[:, selectedAtomIndex]
-                            thirdAtom = coordinates2[:, thirdAtomIndex]
-                            distance_ik = compute_distance(selectedAtom, thirdAtom, box)
-                            # The current ik pair is fixed so if r_ik > rcutoff
-                            # no change in this G3(i,j,k) is needed
-                            if 0.0 < distance_ik < rcutoff
-                                # Compute the contribution to the change
-                                # from the old configuration
-                                displacedAtom_1 = coordinates1[:, displacedAtomIndex]
-                                displacedAtom_2 = coordinates2[:, displacedAtomIndex]
-                                distance_kj_1 = compute_distance(displacedAtom_1, thirdAtom, box)
-                                distance_kj_2 = compute_distance(displacedAtom_2, thirdAtom, box)
-                                if 0.0 < distance_kj_1 < rcutoff || 0.0 < distance_kj_2 < rcutoff
-                                    # Compute cos of angle
-                                    vector_ij_1 = compute_directional_vector(selectedAtom, displacedAtom_1, box)
-                                    vector_ij_2 = compute_directional_vector(selectedAtom, displacedAtom_2, box)
-                                    vector_ik = compute_directional_vector(selectedAtom, thirdAtom, box)
-                                    cosAngle1 = dot(vector_ij_1, vector_ik) / (distance_ij_1 * distance_ik)
-                                    cosAngle2 = dot(vector_ij_2, vector_ik) / (distance_ij_2 * distance_ik)
-                                    @assert -1.0 <= cosAngle1 <= 1.0
-                                    @assert -1.0 <= cosAngle2 <= 1.0
-                                    # Compute differences in G3
-                                    G3_1 = compute_g3_element(cosAngle1, distance_ij_1, distance_ik, distance_kj_1,
-                                                              rcutoff, eta, zeta, lambda, rshift)
-                                    G3_2 = compute_g3_element(cosAngle2, distance_ij_2, distance_ik, distance_kj_2,
-                                                              rcutoff, eta, zeta, lambda, rshift)
-                                    ΔG3 += 2.0^(1.0 - zeta) * (G3_2 - G3_1)
-                                end
+            # Update matrix for other atoms
+            @inbounds for (g3_idx, g3_func) in enumerate(nn_params.g3_functions)
+                r_cutoff::T = g3_func.rcutoff
+                dist_ij_1::T = distance_vec_1[central_atom_idx]
+                dist_ij_2::T = distance_vec_2[central_atom_idx]
+
+                # Check if atom is within cutoff distance
+                if (zero(T) < dist_ij_1 < r_cutoff) || (zero(T) < dist_ij_2 < r_cutoff)
+                    central_atom_pos::Vector{T} = @view coordinates2[:, central_atom_idx]
+                    delta_g3::T = zero(T)
+
+                    # Calculate G3 changes for all third atoms
+                    @inbounds for third_atom_idx in 1:n_atoms
+                        # Skip if atoms are identical
+                        if third_atom_idx == displaced_atom_index ||
+                           third_atom_idx == central_atom_idx
+                            continue
+                        end
+
+                        third_atom_pos::Vector{T} = @view coordinates2[:, third_atom_idx]
+                        dist_ik::T = compute_distance(central_atom_pos, third_atom_pos, box)
+
+                        # Check if third atom is within cutoff
+                        if zero(T) < dist_ik < r_cutoff
+                            displaced_pos_1::Vector{T} = @view coordinates1[:, displaced_atom_index]
+                            displaced_pos_2::Vector{T} = @view coordinates2[:, displaced_atom_index]
+
+                            dist_kj_1::T = compute_distance(displaced_pos_1, third_atom_pos, box)
+                            dist_kj_2::T = compute_distance(displaced_pos_2, third_atom_pos, box)
+
+                            if (zero(T) < dist_kj_1 < r_cutoff) ||
+                               (zero(T) < dist_kj_2 < r_cutoff)
+                                # Calculate angle vectors
+                                vec_ij_1::Vector{T} = compute_directional_vector(central_atom_pos, displaced_pos_1, box)
+                                vec_ij_2::Vector{T} = compute_directional_vector(central_atom_pos, displaced_pos_2, box)
+                                vec_ik::Vector{T} = compute_directional_vector(central_atom_pos, third_atom_pos, box)
+
+                                # Calculate cosine angles
+                                cos_angle_1::T = dot(vec_ij_1, vec_ik) / (dist_ij_1 * dist_ik)
+                                cos_angle_2::T = dot(vec_ij_2, vec_ik) / (dist_ij_2 * dist_ik)
+
+                                # Ensure angles are valid
+                                @assert -one(T) <= cos_angle_1 <= one(T)
+                                @assert -one(T) <= cos_angle_2 <= one(T)
+
+                                # Calculate G3 differences
+                                g3_val_1::T = compute_g3_element(cos_angle_1, dist_ij_1, dist_ik, dist_kj_1,
+                                                                 r_cutoff, g3_func.eta, g3_func.zeta,
+                                                                 g3_func.lambda, g3_func.rshift)
+                                g3_val_2::T = compute_g3_element(cos_angle_2, dist_ij_2, dist_ik, dist_kj_2,
+                                                                 r_cutoff, g3_func.eta, g3_func.zeta,
+                                                                 g3_func.lambda, g3_func.rshift)
+
+                                delta_g3 += T(2)^(one(T) - g3_func.zeta) * (g3_val_2 - g3_val_1)
                             end
                         end
                     end
-                    # Apply the computed differences
-                    G3Matrix[selectedAtomIndex, G3Index] += ΔG3 * NNParms.symm_function_scaling
+
+                    # Update matrix element with accumulated changes
+                    g3_matrix[central_atom_idx, g3_idx] += delta_g3 * scaling_factor
                 end
             end
         end
     end
-    return (G3Matrix)
+
+    return g3_matrix
 end
 
 function compute_g9_element(cos_angle::T,
@@ -1397,51 +1440,45 @@ function compute_g9_element(cos_angle::T,
     end
 end
 
-function compute_g9(i, coordinates, box, distanceVector, rcutoff, eta, zeta, lambda, rshift)::Float64
-    sum = 0.0
-    @inbounds for k in eachindex(distanceVector)
-        distance_ik = distanceVector[k]
-        @inbounds @simd for j in 1:(k - 1)
-            distance_ij = distanceVector[j]
-            if 0 < distance_ij < rcutoff && 0 < distance_ik < rcutoff
-                cosAngle = compute_cos_angle(coordinates, box, i, j, k, distance_ij, distance_ik)
-                sum += compute_g9_element(cosAngle, distance_ij, distance_ik, rcutoff, eta, zeta, lambda, rshift)
-            end
-        end
-    end
-    return (2.0^(1.0 - zeta) * sum)
-end
-
 function compute_g9(atom_index::Integer,
-                    coordinates::AbstractMatrix{T},
-                    box::AbstractVector{T},
-                    distance_vector::AbstractVector{T},
+                    coordinates::Matrix{T},
+                    box::Vector{T},
+                    distance_vector::Vector{T},
                     r_cutoff::T,
                     η::T,
                     ζ::T,
                     λ::T,
                     r_shift::T)::T where {T <: AbstractFloat}
     accumulator = zero(T)
-    norm_factor = T(2)^(one(T) - ζ)
 
     @inbounds for k in eachindex(distance_vector)
         distance_ik = distance_vector[k]
-        distance_ik <= zero(T) && continue
 
         @inbounds @simd for j in 1:(k - 1)
             distance_ij = distance_vector[j]
 
-            if zero(T) < distance_ij < r_cutoff && distance_ik < r_cutoff
-                cos_angle = compute_cos_angle(coordinates, box, atom_index, j, k,
-                                              distance_ij, distance_ik)
+            if zero(T) < distance_ij < r_cutoff && zero(T) < distance_ik < r_cutoff
+                cos_angle = compute_cos_angle(coordinates,
+                                              box,
+                                              atom_index,
+                                              j,
+                                              k,
+                                              distance_ij,
+                                              distance_ik)
 
-                accumulator += compute_g9_element(cos_angle, distance_ij, distance_ik,
-                                                  r_cutoff, η, ζ, λ, r_shift)
+                accumulator += compute_g9_element(cos_angle,
+                                                  distance_ij,
+                                                  distance_ik,
+                                                  r_cutoff,
+                                                  η,
+                                                  ζ,
+                                                  λ,
+                                                  r_shift)
             end
         end
     end
 
-    return norm_factor * accumulator
+    return (T(2)^(one(T) - ζ) * accumulator)
 end
 
 function build_g9_matrix(distance_matrix::AbstractMatrix{T},
@@ -1467,91 +1504,79 @@ function build_g9_matrix(distance_matrix::AbstractMatrix{T},
     return scaling == one(T) ? g9_matrix : rmul!(g9_matrix, scaling)
 end
 
-function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2,
-                         systemParms::SystemParameters,
-                         NNParms::NeuralNetParameters, displacedAtomIndex)
-    for selectedAtomIndex in 1:(systemParms.n_atoms)
-        # Rebuild the whole G9 matrix column for the displaced atom
-        if selectedAtomIndex == displacedAtomIndex
-            for (G9Index, G9Function) in enumerate(NNParms.g9_functions)
-                eta = G9Function.eta
-                lambda = G9Function.lambda
-                zeta = G9Function.zeta
-                rcutoff = G9Function.rcutoff
-                rshift = G9Function.rshift
-                G9Matrix[selectedAtomIndex, G9Index] = compute_g9(displacedAtomIndex, coordinates2, box,
-                                                                  distanceVector2,
-                                                                  rcutoff, eta, zeta, lambda, rshift) *
-                                                       NNParms.symm_function_scaling
+function update_g9_matrix!(g9_matrix::AbstractMatrix{T},
+                           coordinates1::AbstractMatrix{T},
+                           coordinates2::AbstractMatrix{T},
+                           box::AbstractVector{T},
+                           distance_vector1::AbstractVector{T},
+                           distance_vector2::AbstractVector{T},
+                           system_params::SystemParameters,
+                           nn_params::NeuralNetParameters,
+                           displaced_atom_index::Integer) where {T <: AbstractFloat}
+    for selected_atom_index in 1:(system_params.n_atoms)
+        if selected_atom_index == displaced_atom_index
+            for (g9_index, g9_func) in enumerate(nn_params.g9_functions)
+                g9_matrix[selected_atom_index, g9_index] = compute_g9(displaced_atom_index, coordinates2, box,
+                                                                      distance_vector2,
+                                                                      g9_func.rcutoff, g9_func.eta, g9_func.zeta,
+                                                                      g9_func.lambda, g9_func.rshift) *
+                                                           nn_params.symm_function_scaling
             end
-            # Compute the change in G9 caused by the displacement of an atom
-            # New ijk triplet description
-            # Central atom (i): selectedAtomIndex
-            # Second atom (j): displacedAtomIndex
-            # Third atom (k): thirdAtomIndex
         else
-            for (G9Index, G9Function) in enumerate(NNParms.g9_functions)
-                rcutoff = G9Function.rcutoff
-                distance_ij_1 = distanceVector1[selectedAtomIndex]
-                distance_ij_2 = distanceVector2[selectedAtomIndex]
-                # Ignore if the selected atom is far from the displaced atom
-                if 0.0 < distance_ij_2 < rcutoff || 0.0 < distance_ij_1 < rcutoff
-                    eta = G9Function.eta
-                    lambda = G9Function.lambda
-                    zeta = G9Function.zeta
-                    rshift = G9Function.rshift
-                    # Accumulate differences for the selected atom
-                    # over all third atoms
-                    ΔG9 = 0.0
-                    # Loop over all ik pairs
-                    for thirdAtomIndex in 1:(systemParms.n_atoms)
-                        # Make sure i != j != k
-                        if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
-                            # It does not make a difference whether
-                            # coordinates2 or coordinates1 are used -
-                            # both selectedAtom and thirdAtom have
-                            # have the same coordinates in the old and
-                            # the updated configuration
-                            selectedAtom = coordinates2[:, selectedAtomIndex]
-                            thirdAtom = coordinates2[:, thirdAtomIndex]
-                            distance_ik = compute_distance(selectedAtom, thirdAtom, box)
-                            # The current ik pair is fixed so if r_ik > rcutoff
-                            # no change in this G9(i,j,k) is needed
-                            if 0.0 < distance_ik < rcutoff
-                                # Compute the contribution to the change
-                                # from the old configuration
-                                displacedAtom_1 = coordinates1[:, displacedAtomIndex]
-                                displacedAtom_2 = coordinates2[:, displacedAtomIndex]
-                                # Compute cos of angle
-                                vector_ij_1 = compute_directional_vector(selectedAtom, displacedAtom_1, box)
-                                vector_ij_2 = compute_directional_vector(selectedAtom, displacedAtom_2, box)
-                                vector_ik = compute_directional_vector(selectedAtom, thirdAtom, box)
-                                cosAngle1 = dot(vector_ij_1, vector_ik) / (distance_ij_1 * distance_ik)
-                                cosAngle2 = dot(vector_ij_2, vector_ik) / (distance_ij_2 * distance_ik)
-                                @assert -1.0 <= cosAngle1 <= 1.0
-                                @assert -1.0 <= cosAngle2 <= 1.0
-                                # Compute differences in G9
-                                G9_1 = compute_g9_element(cosAngle1, distance_ij_1, distance_ik, rcutoff, eta, zeta,
-                                                          lambda, rshift)
-                                G9_2 = compute_g9_element(cosAngle2, distance_ij_2, distance_ik, rcutoff, eta, zeta,
-                                                          lambda, rshift)
-                                ΔG9 += 2.0^(1.0 - zeta) * (G9_2 - G9_1)
+            for (g9_index, g9_func) in enumerate(nn_params.g9_functions)
+                distance_ij_1 = distance_vector1[selected_atom_index]
+                distance_ij_2 = distance_vector2[selected_atom_index]
+
+                if 0 < distance_ij_2 < g9_func.rcutoff || 0 < distance_ij_1 < g9_func.rcutoff
+                    Δg9 = zero(T)
+
+                    for third_atom_index in 1:(system_params.n_atoms)
+                        if third_atom_index != displaced_atom_index && third_atom_index != selected_atom_index
+                            selected_atom = @view coordinates2[:, selected_atom_index]
+                            third_atom = @view coordinates2[:, third_atom_index]
+                            distance_ik = compute_distance(selected_atom, third_atom, box)
+
+                            if 0 < distance_ik < g9_func.rcutoff
+                                displaced_atom_1 = @view coordinates1[:, displaced_atom_index]
+                                displaced_atom_2 = @view coordinates2[:, displaced_atom_index]
+
+                                vector_ij_1 = compute_directional_vector(selected_atom, displaced_atom_1, box)
+                                vector_ij_2 = compute_directional_vector(selected_atom, displaced_atom_2, box)
+                                vector_ik = compute_directional_vector(selected_atom, third_atom, box)
+
+                                cos_angle1 = dot(vector_ij_1, vector_ik) / (distance_ij_1 * distance_ik)
+                                cos_angle2 = dot(vector_ij_2, vector_ik) / (distance_ij_2 * distance_ik)
+
+                                @assert -1≤cos_angle1≤1 "Invalid cosine value: $cos_angle1"
+                                @assert -1≤cos_angle2≤1 "Invalid cosine value: $cos_angle2"
+
+                                g9_1 = compute_g9_element(cos_angle1, distance_ij_1, distance_ik,
+                                                          g9_func.rcutoff, g9_func.eta, g9_func.zeta,
+                                                          g9_func.lambda, g9_func.rshift)
+                                g9_2 = compute_g9_element(cos_angle2, distance_ij_2, distance_ik,
+                                                          g9_func.rcutoff, g9_func.eta, g9_func.zeta,
+                                                          g9_func.lambda, g9_func.rshift)
+
+                                Δg9 += 2^(1 - g9_func.zeta) * (g9_2 - g9_1)
                             end
                         end
                     end
-                    # Apply the computed differences
-                    G9Matrix[selectedAtomIndex, G9Index] += ΔG9 * NNParms.symm_function_scaling
+
+                    g9_matrix[selected_atom_index, g9_index] += Δg9 * nn_params.symm_function_scaling
                 end
             end
         end
     end
-    return (G9Matrix)
+
+    return g9_matrix
 end
 
 # -----------------------------------------------------------------------------
 # --- Monte Carlo
 
-function update_distance_histogram!(distance_matrix, histogram, system_params::SystemParameters)
+function update_distance_histogram!(distance_matrix::Matrix{T},
+                                    histogram::Vector{T},
+                                    system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
     n_atoms = system_params.n_atoms
     bin_width = system_params.bin_width
     n_bins = system_params.n_bins
@@ -1568,7 +1593,10 @@ function update_distance_histogram!(distance_matrix, histogram, system_params::S
     return histogram
 end
 
-function update_distance_histogram_vectors!(histogram, old_distances, new_distances, system_params::SystemParameters)
+function update_distance_histogram_vectors!(histogram::Vector{T},
+                                            old_distances::Vector{T},
+                                            new_distances::Vector{T},
+                                            system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
     n_atoms = system_params.n_atoms
     bin_width = system_params.bin_width
     n_bins = system_params.n_bins
@@ -1630,277 +1658,262 @@ function apply_periodic_boundaries!(frame::Frame,
     return frame
 end
 
-function mcmove!(mc_arrays, E, energy_prev_vec, model::Flux.Chain, nn_params::NeuralNetParameters,
-                 system_params::SystemParameters, box, rng, mutatedStepAdjust)
-    # Unpack mcarrays
-    frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1 = mc_arrays
-    # Optionally make a copy of the original coordinates
-    if G3Matrix1 != [] || G9Matrix1 != []
-        coordinates1 = copy(positions(frame))
+function mcmove!(mc_arrays::Tuple{Frame, Matrix{T}, Matrix{T}, Union{Matrix{T}, Vector{T}},
+                                  Union{Matrix{T}, Vector{T}}},
+                 current_energy::T,
+                 energy_prev_vec::Vector{T},
+                 model::Flux.Chain,
+                 nn_params::NeuralNetParameters,
+                 system_params::SystemParameters,
+                 box::Vector{T},
+                 rng::Xoroshiro128Plus,
+                 step_size::T)::Tuple{Tuple{Frame, Matrix{T}, Matrix{T}, Union{Matrix{T}, Vector{T}},
+                                            Union{Matrix{T}, Vector{T}}},
+                                      T,
+                                      Vector{T},
+                                      Int} where {T <: AbstractFloat}
+
+    # Unpack simulation arrays
+    frame, distance_matrix, g2_matrix, g3_matrix, g9_matrix = mc_arrays
+
+    # Store original coordinates if needed for angular terms
+    coordinates_orig = (!isempty(g3_matrix) || !isempty(g9_matrix)) ? copy(positions(frame)) : nothing
+
+    # Select random particle and get its initial distances
+    particle_index = rand(rng, 1:(system_params.n_atoms))
+    distances_orig = @view distance_matrix[:, particle_index]
+    energy_orig = copy(current_energy)
+
+    # Displace particle
+    displacement = step_size * (rand(rng, T, 3) .- 0.5)
+    positions(frame)[:, particle_index] .+= displacement
+    apply_periodic_boundaries!(frame, box, particle_index)
+
+    # Compute new distances
+    new_position = positions(frame)[:, particle_index]
+    distances_new = compute_distance_vector(new_position, positions(frame), box)
+
+    # Update symmetry matrices
+    indexes_for_update = get_energies_update_mask(distances_new, nn_params)
+
+    g2_matrix_new = copy(g2_matrix)
+    update_g2_matrix!(g2_matrix_new, distances_orig, distances_new, system_params, nn_params, particle_index)
+
+    g3_matrix_new = copy(g3_matrix)
+    if !isempty(g3_matrix)
+        update_g3_matrix!(g3_matrix_new, coordinates_orig, positions(frame), box,
+                          distances_orig, distances_new, system_params, nn_params, particle_index)
     end
 
-    # Pick a particle
-    pointIndex = rand(rng, Int32(1):Int32(system_params.n_atoms))
+    g9_matrix_new = copy(g9_matrix)
+    if !isempty(g9_matrix)
+        update_g9_matrix!(g9_matrix_new, coordinates_orig, positions(frame), box,
+                          distances_orig, distances_new, system_params, nn_params, particle_index)
+    end
 
-    # Allocate the distance vector
-    distanceVector1 = distanceMatrix[:, pointIndex]
+    # Compute new energy
+    symmetry_matrix = combine_symmetry_matrices(g2_matrix_new, g3_matrix_new, g9_matrix_new)
+    energy_vector_new = update_system_energies_vector(symmetry_matrix, model, indexes_for_update, energy_prev_vec)
+    energy_new = sum(energy_vector_new)
 
-    # Take a copy of the previous energy value
-    E1 = copy(E)
-
-    # Displace the particle
-    dr = mutatedStepAdjust * (rand(rng, Float64, 3) .- 0.5)
-
-    positions(frame)[:, pointIndex] .+= dr
-
-    # Check if all coordinates inside simulation box with PBC
-    apply_periodic_boundaries!(frame, box, pointIndex)
-
-    # Compute the updated distance vector
-    point = positions(frame)[:, pointIndex]
-    distanceVector2 = compute_distance_vector(point, positions(frame), box)
-
-    # Acceptance counter
+    # Accept/reject move using Metropolis criterion
     accepted = 0
-
-    # Get indexes of atoms for energy contribution update
-    indexesForUpdate = get_energies_update_mask(distanceVector2, nn_params)
-
-    # Make a copy of the original G2 matrix and update it
-    G2Matrix2 = copy(G2Matrix1)
-    update_g2_matrix!(G2Matrix2, distanceVector1, distanceVector2, system_params, nn_params, pointIndex)
-
-    # Make a copy of the original angular matrices and update them
-    G3Matrix2 = copy(G3Matrix1)
-    if G3Matrix1 != []
-        updateG3Matrix!(G3Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, system_params,
-                        nn_params, pointIndex)
-    end
-
-    G9Matrix2 = copy(G9Matrix1)
-    if G9Matrix1 != []
-        updateG9Matrix!(G9Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, system_params,
-                        nn_params, pointIndex)
-    end
-
-    # Combine symmetry function matrices accumulators
-    symmFuncMatrix2 = combine_symmetry_matrices(G2Matrix2, G3Matrix2, G9Matrix2)
-
-    # Compute the energy again
-    # E2 = totalEnergyScalar(G2Matrix2, model)
-    newEnergyVector = update_system_energies_vector(symmFuncMatrix2, model, indexesForUpdate, energy_prev_vec)
-    E2 = sum(newEnergyVector)
-
-    # Get energy difference
-    ΔE = E2 - E1
-
-    # Accept or reject the move
-    if rand(rng, Float64) < exp(-ΔE * system_params.beta)
-        accepted += 1
-        E += ΔE
-        # Update distance matrix
-        distanceMatrix[pointIndex, :] = distanceVector2
-        distanceMatrix[:, pointIndex] = distanceVector2
-        # Pack mcarrays
-        mc_arrays = (frame, distanceMatrix, G2Matrix2, G3Matrix2, G9Matrix2)
-        return (mc_arrays, E, newEnergyVector, accepted)
+    if rand(rng, T) < exp(-((energy_new - energy_orig) * system_params.beta))
+        accepted = 1
+        current_energy = energy_new
+        distance_matrix[particle_index, :] = distances_new
+        distance_matrix[:, particle_index] = distances_new
+        return ((frame, distance_matrix, g2_matrix_new, g3_matrix_new, g9_matrix_new),
+                current_energy, energy_vector_new, accepted)
     else
-        positions(frame)[:, pointIndex] .-= dr
-
-        # Check if all coordinates inside simulation box with PBC
-        apply_periodic_boundaries!(frame, box, pointIndex)
-
-        # Pack mcarrays
-        mc_arrays = (frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1)
-        return (mc_arrays, E, energy_prev_vec, accepted)
+        positions(frame)[:, particle_index] .-= displacement
+        apply_periodic_boundaries!(frame, box, particle_index)
+        return ((frame, distance_matrix, g2_matrix, g3_matrix, g9_matrix),
+                current_energy, energy_prev_vec, accepted)
     end
 end
 
-function mcsample!(input::MonteCarloSampleInput)
-    # Unpack the inputs
+function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
+    # Unpack input parameters with improved naming
     model = input.model
-    globalParms = input.global_params
-    MCParms = input.mc_params
-    NNParms = input.nn_params
-    systemParms = input.system_params
+    global_params = input.global_params
+    mc_params = input.mc_params
+    nn_params = input.nn_params
+    system_params = input.system_params
 
-    mutatedStepAdjust = copy(systemParms.max_displacement)
+    # Initialize simulation parameters
+    step_size::Float64 = copy(system_params.max_displacement)
 
-    # Get the worker id and the output filenames
-    if nprocs() == 1
-        id = myid()
-    else
-        id = myid() - 1
-    end
-    idString = lpad(id, 3, '0')
+    # Set worker ID and output files
+    worker_id::Int = nprocs() == 1 ? myid() : myid() - 1
+    worker_id_str::String = lpad(worker_id, 3, "0")
 
-    trajFile = "mctraj-p$(idString).xtc"
-    pdbFile = "confin-p$(idString).pdb"
+    traj_file::String = "mctraj-p$(worker_id_str).xtc"
+    pdb_file::String = "confin-p$(worker_id_str).pdb"
 
     # Initialize RNG
-    rngXor = RandomNumbers.Xorshifts.Xoroshiro128Plus()
+    rng::Xoroshiro128Plus = Xoroshiro128Plus()
 
-    if globalParms.mode == "training"
-        # Take a random frame from the equilibrated trajectory
-        traj = read_xtc(systemParms)
-        nframes = Int(size(traj)) - 1
-        frameId = rand(rngXor, 1:nframes) # Don't take the first frame
-        frame = deepcopy(read_step(traj, frameId))
+    # Initialize frame based on mode
+    frame::Frame = if global_params.mode == "training"
+        trajectory = read_xtc(system_params)
+        n_frames::Int = Int(size(trajectory)) - 1
+        frame_id::Int = rand(rng, 1:n_frames)
+        deepcopy(read_step(trajectory, frame_id))
     else
-        # Read PDB data from the system.in file
-        pdb = read_pdb(systemParms)
-        frame = deepcopy(read_step(pdb, 0))
+        pdb = read_pdb(system_params)
+        deepcopy(read_step(pdb, 0))
     end
 
-    # Get current box vectors
-    box = lengths(UnitCell(frame))
+    # Get simulation box parameters
+    box::Vector{Float64} = lengths(UnitCell(frame))
 
-    # Start writing MC trajectory
-    if globalParms.output_mode == "verbose"
-        write_trajectory(positions(frame), box, systemParms, trajFile, 'w')
-        write_trajectory(positions(frame), box, systemParms, pdbFile, 'w')
+    # Initialize trajectory output if verbose mode
+    if global_params.output_mode == "verbose"
+        write_trajectory(positions(frame), box, system_params, traj_file, 'w')
+        write_trajectory(positions(frame), box, system_params, pdb_file, 'w')
     end
 
-    # Get the number of data points
-    totalDataPoints = Int(MCParms.steps / MCParms.output_frequency)
-    prodDataPoints = Int((MCParms.steps - MCParms.equilibration_steps) / MCParms.output_frequency)
+    # Calculate data collection parameters
+    total_points::Int = Int(mc_params.steps / mc_params.output_frequency)
+    production_points::Int = Int((mc_params.steps - mc_params.equilibration_steps) / mc_params.output_frequency)
 
-    # Build the distance matrix
-    distanceMatrix = build_distance_matrix(frame)
+    # Initialize distance and symmetry matrices
+    distance_matrix::Matrix{Float64} = build_distance_matrix(frame)
+    g2_matrix::Matrix{Float64} = build_g2_matrix(distance_matrix, nn_params)
 
-    # Build the symmetry function matrices
-    G2Matrix = build_g2_matrix(distanceMatrix, NNParms)
-
-    G3Matrix = []
-    if length(NNParms.g3_functions) > 0
-        G3Matrix = build_g3_matrix(distanceMatrix, positions(frame), box, NNParms)
+    g3_matrix::Union{Matrix{Float64}, Vector{Float64}} = if !isempty(nn_params.g3_functions)
+        build_g3_matrix(distance_matrix, positions(frame), box, nn_params)
+    else
+        Float64[]
     end
 
-    G9Matrix = []
-    if length(NNParms.g9_functions) > 0
-        G9Matrix = build_g9_matrix(distanceMatrix, positions(frame), box, NNParms)
+    g9_matrix::Union{Matrix{Float64}, Vector{Float64}} = if !isempty(nn_params.g9_functions)
+        build_g9_matrix(distance_matrix, positions(frame), box, nn_params)
+    else
+        Float64[]
     end
 
-    # Prepare a tuple of arrays that change duing the mcmove!
-    mcarrays = (frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix)
+    # Create MC arrays tuple
+    mc_arrays::Tuple = (frame, distance_matrix, g2_matrix, g3_matrix, g9_matrix)
 
-    # Initialize the distance histogram accumulator
-    histAccumulator = zeros(Float64, systemParms.n_bins)
+    # Initialize histogram accumulator
+    hist_accumulator::Vector{Float64} = zeros(Float64, system_params.n_bins)
 
-    # Build the cross correlation arrays for training,
-    # an additional distance histogram array
-    # and the symmetry function matrix accumulator
-    if globalParms.mode == "training"
-        hist = zeros(Float64, systemParms.n_bins)
-        G2MatrixAccumulator = zeros(size(G2Matrix))
-        G3MatrixAccumulator = zeros(size(G3Matrix))
-        G9MatrixAccumulator = zeros(size(G9Matrix))
-        crossAccumulators = initialize_cross_accumulators(NNParms, systemParms)
+    # Initialize training-specific arrays if in training mode
+    if global_params.mode == "training"
+        hist::Vector{Float64} = zeros(Float64, system_params.n_bins)
+        g2_accumulator::Matrix{Float64} = zeros(size(g2_matrix))
+        g3_accumulator::Union{Matrix{Float64}, Vector{Float64}} = zeros(size(g3_matrix))
+        g9_accumulator::Union{Matrix{Float64}, Vector{Float64}} = zeros(size(g9_matrix))
+        cross_accumulators::Vector{Matrix{Float64}} = initialize_cross_accumulators(nn_params, system_params)
     end
 
-    # Combine symmetry function matrices
-    symmFuncMatrix = combine_symmetry_matrices(G2Matrix, G3Matrix, G9Matrix)
+    # Initialize energy calculations
+    symm_func_matrix::Matrix{Float64} = combine_symmetry_matrices(g2_matrix, g3_matrix, g9_matrix)
+    energy_vector::Vector{Float64} = init_system_energies_vector(symm_func_matrix, model)
+    total_energy::Float64 = sum(energy_vector)
+    energies::Vector{Float64} = zeros(total_points + 1)
+    energies[1] = total_energy
 
-    # Initialize the starting energy and the energy array
-    EpreviousVector = init_system_energies_vector(symmFuncMatrix, model)
-    E = sum(EpreviousVector)
-    energies = zeros(totalDataPoints + 1)
-    energies[1] = E
+    # Initialize acceptance counters
+    accepted_total::Int = 0
+    accepted_intermediate::Int = 0
 
-    # Acceptance counters
-    acceptedTotal = 0
-    acceptedIntermediate = 0
+    # Main Monte Carlo loop
+    @fastmath for step in 1:(mc_params.steps)
+        mc_arrays, total_energy, energy_vector, accepted = mcmove!(mc_arrays, total_energy, energy_vector, model,
+                                                                   nn_params, system_params, box, rng, step_size)
+        accepted_total += accepted
+        accepted_intermediate += accepted
 
-    # Run MC simulation
-    @fastmath for step in 1:(MCParms.steps)
-        mcarrays, E, EpreviousVector, accepted = mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
-                                                         rngXor, mutatedStepAdjust)
-        acceptedTotal += accepted
-        acceptedIntermediate += accepted
-
-        # Perform MC step adjustment during the equilibration
-        if MCParms.step_adjust_frequency > 0 && step % MCParms.step_adjust_frequency == 0 &&
-           step < MCParms.equilibration_steps
-            mutatedStepAdjust = adjust_monte_carlo_step!(mutatedStepAdjust, systemParms, box, MCParms,
-                                                         acceptedIntermediate)
-            acceptedIntermediate = 0
+        # Adjust step size during equilibration
+        if mc_params.step_adjust_frequency > 0 &&
+           step % mc_params.step_adjust_frequency == 0 &&
+           step < mc_params.equilibration_steps
+            step_size = adjust_monte_carlo_step!(step_size, system_params, box, mc_params, accepted_intermediate)
+            accepted_intermediate = 0
         end
 
-        # Collect the output energies
-        if step % MCParms.output_frequency == 0
-            energies[Int(step / MCParms.output_frequency) + 1] = E
+        # Store energy data
+        if step % mc_params.output_frequency == 0
+            energies[Int(step / mc_params.output_frequency) + 1] = total_energy
         end
 
-        # MC trajectory output
-        if globalParms.output_mode == "verbose"
-            if step % MCParms.trajectory_output_frequency == 0
-                write_trajectory(positions(mcarrays[1]), box, systemParms, trajFile, 'a')
-            end
+        # Write trajectory if in verbose mode
+        if global_params.output_mode == "verbose" &&
+           step % mc_params.trajectory_output_frequency == 0
+            write_trajectory(positions(mc_arrays[1]), box, system_params, traj_file, 'a')
         end
 
-        # Accumulate the distance histogram
-        if step % MCParms.output_frequency == 0 && step > MCParms.equilibration_steps
-            frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix = mcarrays
-            # Update the cross correlation array during the training
-            if globalParms.mode == "training"
-                hist = update_distance_histogram!(distanceMatrix, hist, systemParms)
-                histAccumulator .+= hist
-                G2MatrixAccumulator .+= G2Matrix
-                if G3Matrix != []
-                    G3MatrixAccumulator .+= G3Matrix
+        # Update histograms and accumulators in production phase
+        if step % mc_params.output_frequency == 0 && step > mc_params.equilibration_steps
+            frame, distance_matrix, g2_matrix, g3_matrix, g9_matrix = mc_arrays
+
+            if global_params.mode == "training"
+                hist = update_distance_histogram!(distance_matrix, hist, system_params)
+                hist_accumulator .+= hist
+                g2_accumulator .+= g2_matrix
+
+                if !isempty(g3_matrix)
+                    g3_accumulator .+= g3_matrix
                 end
-                if G9Matrix != []
-                    G9MatrixAccumulator .+= G9Matrix
+                if !isempty(g9_matrix)
+                    g9_accumulator .+= g9_matrix
                 end
-                # Normalize the histogram to RDF
-                normalize_hist_to_rdf!(hist, systemParms, box)
 
-                # Combine symmetry function matrices
-                symmFuncMatrix = combine_symmetry_matrices(G2Matrix, G3Matrix, G9Matrix)
-
-                update_cross_accumulators!(crossAccumulators, symmFuncMatrix, hist, model, NNParms)
-                # Nullify the hist array for the next training iteration
-                hist = zeros(Float64, systemParms.n_bins)
+                normalize_hist_to_rdf!(hist, system_params, box)
+                symm_func_matrix = combine_symmetry_matrices(g2_matrix, g3_matrix, g9_matrix)
+                update_cross_accumulators!(cross_accumulators, symm_func_matrix, hist, model, nn_params)
+                hist = zeros(Float64, system_params.n_bins)
             else
-                histAccumulator = update_distance_histogram!(distanceMatrix, histAccumulator, systemParms)
+                hist_accumulator = update_distance_histogram!(distance_matrix, hist_accumulator, system_params)
             end
         end
     end
-    # Compute and report the final acceptance ratio
-    acceptanceRatio = acceptedTotal / MCParms.steps
 
-    # Unpack mcarrays and optionally normalize cross and G2Matrix accumulators
-    frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix = mcarrays # might remove this line
-    if globalParms.mode == "training"
-        # Normalize the cross correlation arrays
-        for cross in crossAccumulators
-            cross ./= prodDataPoints
+    # Calculate final acceptance ratio
+    acceptance_ratio::Float64 = accepted_total / mc_params.steps
+
+    # Process final results
+    if global_params.mode == "training"
+        # Normalize accumulators
+        for cross in cross_accumulators
+            cross ./= production_points
         end
-        G2MatrixAccumulator ./= prodDataPoints
-        if G3Matrix != []
-            G3MatrixAccumulator ./= prodDataPoints
+
+        g2_accumulator ./= production_points
+        if !isempty(g3_matrix)
+            g3_accumulator ./= production_points
         end
-        if G9Matrix != []
-            G9MatrixAccumulator ./= prodDataPoints
+        if !isempty(g9_matrix)
+            g9_accumulator ./= production_points
         end
-        symmFuncMatrixAccumulator = combine_symmetry_matrices(G2MatrixAccumulator, G3MatrixAccumulator,
-                                                              G9MatrixAccumulator)
+
+        symm_func_accumulator = combine_symmetry_matrices(g2_accumulator, g3_accumulator, g9_accumulator)
     end
 
-    # Normalize the sampled distance histogram
-    histAccumulator ./= prodDataPoints
-    normalize_hist_to_rdf!(histAccumulator, systemParms, box)
+    # Normalize final histogram
+    hist_accumulator ./= production_points
+    normalize_hist_to_rdf!(hist_accumulator, system_params, box)
 
-    # Combine symmetry function matrices accumulators
-    if globalParms.mode == "training"
-        MCoutput = MonteCarloAverages(histAccumulator, energies, crossAccumulators, symmFuncMatrixAccumulator,
-                                      acceptanceRatio,
-                                      systemParms, mutatedStepAdjust)
-        return (MCoutput)
+    # Return results based on mode
+    if global_params.mode == "training"
+        return MonteCarloAverages(hist_accumulator,
+                                  energies,
+                                  cross_accumulators,
+                                  symm_func_accumulator,
+                                  acceptance_ratio,
+                                  system_params,
+                                  step_size)
     else
-        MCoutput = MonteCarloAverages(histAccumulator, energies, nothing, nothing, acceptanceRatio, systemParms,
-                                      mutatedStepAdjust)
-        return (MCoutput)
+        return MonteCarloAverages(hist_accumulator,
+                                  energies,
+                                  nothing,
+                                  nothing,
+                                  acceptance_ratio,
+                                  system_params,
+                                  step_size)
     end
 end
 
@@ -2058,7 +2071,7 @@ function compute_pretraining_gradient(energy_diff_nn::T,
 end
 
 function pretraining_move!(reference_data::ReferenceData, model::Flux.Chain, nn_params::NeuralNetParameters,
-                           system_params::SystemParameters, rng)
+                           system_params::SystemParameters, rng::Xoroshiro128Plus)
     # Pick a frame
     traj = read_xtc(system_params)
     nframes = Int(size(traj)) - 1 # Don't take the first frame
@@ -2126,18 +2139,18 @@ function pretraining_move!(reference_data::ReferenceData, model::Flux.Chain, nn_
     g3_matrix2 = []
     if !isempty(reference_data.g3_matrices)
         g3_matrix2 = copy(reference_data.g3_matrices[frame_id])
-        updateG3Matrix!(g3_matrix2, coordinates1, positions(frame), box, distance_vector1, distance_vector2,
-                        system_params,
-                        nn_params, point_index)
+        update_g3_matrix!(g3_matrix2, coordinates1, positions(frame), box, distance_vector1, distance_vector2,
+                          system_params,
+                          nn_params, point_index)
     end
 
     # Make a copy of the original angular matrices and update them
     g9_matrix2 = []
     if !isempty(reference_data.g9_matrices)
         g9_matrix2 = copy(reference_data.g9_matrices[frame_id])
-        updateG9Matrix!(g9_matrix2, coordinates1, positions(frame), box, distance_vector1, distance_vector2,
-                        system_params,
-                        nn_params, point_index)
+        update_g9_matrix!(g9_matrix2, coordinates1, positions(frame), box, distance_vector1, distance_vector2,
+                          system_params,
+                          nn_params, point_index)
     end
 
     # Combine symmetry function matrices accumulators
