@@ -1,0 +1,50 @@
+# Configuration file for ML-IMC
+
+[global]
+# Input files and system configuration
+system_files = ["100CH3OH-CG.toml", "60CH3OH-CG.toml"]
+symmetry_function_file = "symmetry-functions.toml"
+
+# Operation mode settings
+mode = "training"  # Options: "training", "simulation"
+output_mode = "default"  # Options: "default", "verbose"
+
+# Model and optimization files
+model_file = "none"
+gradients_file = "none"
+optimizer_file = "none"
+adaptive_scaling = false
+
+[monte_carlo]
+steps = 50  # Total MC steps
+equilibration_steps = 10  # Steps before data collection
+step_adjust_frequency = 50  # Frequency for MC displacement adjustment
+trajectory_output_frequency = 50  # Frequency for trajectory writing
+output_frequency = 10  # Frequency for data output
+
+[neural_network]
+# Network architecture
+neurons = [10, 10, 1]  # Layer sizes including output
+bias = false
+activations = ["identity", "relu", "identity"]
+
+# Training parameters
+iterations = 2
+regularization = 0.0  # L2 regularization parameter
+
+# Optimizer configuration
+optimizer = "AMSGrad"
+learning_rate = 0.0001
+momentum = 0.9
+decay_rates = [0.9, 0.999]  # [decay1, decay2]
+
+[pretraining]
+steps = 5
+output_frequency = 1
+regularization = 0.0
+
+# Optimizer configuration
+optimizer = "AMSGrad"
+learning_rate = 0.0005
+momentum = 0.9
+decay_rates = [0.9, 0.999]  # [decay1, decay2]

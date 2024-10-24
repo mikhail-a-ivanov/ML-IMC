@@ -1,0 +1,82 @@
+# Global scaling factor (1.0 means no scaling)
+scaling = 1.0
+
+# G2 symmetry functions (radial symmetry)
+# Parameters: eta (Å^-2), rcutoff (Å), rshift (Å)
+
+[[G2]]
+# Repulsion G2
+eta = 0.125
+rcutoff = 10.0
+rshift = 0.0
+
+[[G2]]
+# Main G2 functions
+eta = 1.000
+rcutoff = 10.0
+rshift = 3.00
+
+[[G2]]
+eta = 1.000
+rcutoff = 10.0
+rshift = 4.00
+
+[[G2]]
+eta = 1.000
+rcutoff = 10.0
+rshift = 5.00
+
+# Commented out G2 functions
+# [[G2]]
+# eta = 4.000
+# rcutoff = 10.0
+# rshift = 4.50
+#
+# [[G2]]
+# eta = 4.000
+# rcutoff = 10.0
+# rshift = 5.00
+#
+# [[G2]]
+# eta = 4.000
+# rcutoff = 10.0
+# rshift = 5.50
+#
+# [[G2]]
+# eta = 4.000
+# rcutoff = 10.0
+# rshift = 6.00
+
+# G3 symmetry functions (narrow angular symmetry)
+# Parameters: eta (Å^-2), lambda (+1/-1), zeta, rcutoff (Å), rshift (Å)
+
+# [[G3]]
+# eta = 0.001
+# lambda = 1.0
+# zeta = 1.0
+# rcutoff = 5.0
+# rshift = 0.0
+#
+# [[G3]]
+# eta = 0.001
+# lambda = -1.0
+# zeta = 1.0
+# rcutoff = 5.0
+# rshift = 0.0
+
+# G9 symmetry functions (wide angular symmetry)
+# Parameters: eta (Å^-2), lambda (+1/-1), zeta, rcutoff (Å), rshift (Å)
+
+# [[G9]]
+# eta = 0.001
+# lambda = 1.0
+# zeta = 1.0
+# rcutoff = 5.0
+# rshift = 0.0
+#
+# [[G9]]
+# eta = 0.001
+# lambda = -1.0
+# zeta = 1.0
+# rcutoff = 5.0
+# rshift = 0.0

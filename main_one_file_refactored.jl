@@ -11,6 +11,7 @@ using Printf
 using RandomNumbers
 using RandomNumbers.Xorshifts
 using Statistics
+using TOML
 
 BLAS.set_num_threads(1)
 
@@ -40,99 +41,106 @@ struct G9
 end
 
 struct NeuralNetParameters
-    G2Functions::Vector{G2}
-    G3Functions::Vector{G3}
-    G9Functions::Vector{G9}
-    maxDistanceCutoff::Float64
-    symmFunctionScaling::Float64
+    # Symmetry functions
+    g2_functions::Vector{G2}
+    g3_functions::Vector{G3}
+    g9_functions::Vector{G9}
+    max_distance_cutoff::Float64
+    symm_function_scaling::Float64
+
+    # Architecture
     neurons::Vector{Int}
-    iters::Int
-    bias::Bool
     activations::Vector{String}
-    REGP::Float64
+    bias::Bool
+
+    # Training parameters
+    iterations::Int
+    regularization::Float64
+
+    # Optimizer settings
     optimizer::String
-    rate::Float64
+    learning_rate::Float64
     momentum::Float64
-    decay1::Float64
-    decay2::Float64
+    decay_1::Float64
+    decay_2::Float64
 end
 
 struct SystemParameters
-    systemName::String
-    trajfile::String
-    topname::String
-    N::Int
-    atomname::String
-    rdfname::String
-    Nbins::Int
-    binWidth::Float64
-    T::Float64
-    β::Float64
-    Δ::Float64
-    targetAR::Float64
+    system_name::String
+    topology_file::String
+    trajectory_file::String
+    rdf_file::String
+    n_atoms::Int
+    atom_name::String
+    n_bins::Int
+    bin_width::Float64
+    temperature::Float64
+    beta::Float64
+    max_displacement::Float64
+    target_acceptance_ratio::Float64
 end
 
 struct MonteCarloParameters
     steps::Int
-    Eqsteps::Int
-    stepAdjustFreq::Int
-    trajout::Int
-    outfreq::Int
+    equilibration_steps::Int
+    step_adjust_frequency::Int
+    trajectory_output_frequency::Int
+    output_frequency::Int
 end
 
 struct GlobalParameters
-    systemFiles::Vector{String}
-    symmetryFunctionFile::String
+    system_files::Vector{String}
+    symmetry_function_file::String
     mode::String
-    outputMode::String
-    modelFile::String
-    gradientsFile::String
-    optimizerFile::String
-    adaptiveScaling::Bool
+    output_mode::String
+    model_file::String
+    gradients_file::String
+    optimizer_file::String
+    adaptive_scaling::Bool
 end
 
 struct PreTrainingParameters
-    PTsteps::Int64
-    PToutfreq::Int64
-    PTREGP::Float64
-    PToptimizer::String
-    PTrate::Float64
-    PTmomentum::Float64
-    PTdecay1::Float64
-    PTdecay2::Float64
+    steps::Int
+    output_frequency::Int
+    regularization::Float64
+    optimizer::String
+    learning_rate::Float64
+    momentum::Float64
+    decay_1::Float64
+    decay_2::Float64
 end
 
 struct MonteCarloSampleInput
-    globalParms::GlobalParameters
-    MCParms::MonteCarloParameters
-    NNParms::NeuralNetParameters
-    systemParms::SystemParameters
+    global_params::GlobalParameters
+    mc_params::MonteCarloParameters
+    nn_params::NeuralNetParameters
+    system_params::SystemParameters
     model::Chain
 end
 
 struct PreComputedInput
-    NNParms::NeuralNetParameters
-    systemParms::SystemParameters
-    refRDF::Vector{Float64}
+    nn_params::NeuralNetParameters
+    system_params::SystemParameters
+    reference_rdf::Vector{Float64}
 end
 
 struct MonteCarloAverages
     descriptor::Vector{Float64}
     energies::Vector{Float64}
-    crossAccumulators::Union{Nothing, Vector{Matrix{Float64}}}
-    symmFuncMatrixAccumulator::Union{Nothing, Matrix{Float64}}
-    acceptanceRatio::Float64
-    systemParms::SystemParameters
-    mutatedStepAdjust::Float64
+    cross_accumulators::Union{Nothing, Vector{Matrix{Float64}}}
+    symmetry_matrix_accumulator::Union{Nothing, Matrix{Float64}}
+    acceptance_ratio::Float64
+    system_params::SystemParameters
+    step_size::Float64
 end
 
 struct ReferenceData
-    distanceMatrices::Vector{Matrix{Float64}}
+    distance_matrices::Vector{Matrix{Float64}}
     histograms::Vector{Vector{Float64}}
-    PMF::Vector{Float64}
-    G2Matrices::Vector{Matrix{Float64}}
-    G3Matrices::Vector{Matrix{Float64}}
-    G9Matrices::Vector{Matrix{Float64}}
+    pmf::Vector{Float64}
+    g2_matrices::Vector{Matrix{Float64}}
+    g3_matrices::Vector{Matrix{Float64}}
+    g9_matrices::Vector{Matrix{Float64}}
 end
 
 # -----------------------------------------------------------------------------
@@ -156,10 +164,10 @@ function report_optimizer(opt)
     end
 end
 
-function print_symmetry_function_info(nn_params)
-    for (func_type, functions) in [("G2", nn_params.G2Functions),
-        ("G3", nn_params.G3Functions),
-        ("G9", nn_params.G9Functions)]
+function print_symmetry_function_info(nn_params::NeuralNetParameters)
+    for (func_type, functions) in [("G2", nn_params.g2_functions),
+        ("G3", nn_params.g3_functions),
+        ("G9", nn_params.g9_functions)]
         if !isempty(functions)
             println("    $func_type symmetry functions:")
             println("    eta, Å^-2; rcutoff, Å; rshift, Å")
@@ -169,8 +177,8 @@ function print_symmetry_function_info(nn_params)
         end
     end
 
-    println("Maximum cutoff distance: $(nn_params.maxDistanceCutoff) Å")
-    println("Symmetry function scaling parameter: $(nn_params.symmFunctionScaling)")
+    println("Maximum cutoff distance: $(nn_params.max_distance_cutoff) Å")
+    println("Symmetry function scaling parameter: $(nn_params.symm_function_scaling)")
 end
 
 function print_model_summary(model::Chain, nn_params::NeuralNetParameters)
@@ -188,21 +196,21 @@ function check_file(filename::AbstractString)
 end
 
 function read_xtc(system_params::SystemParameters)
-    check_file(system_params.trajfile)
-    return Trajectory(system_params.trajfile)
+    check_file(system_params.trajectory_file)
+    return Trajectory(system_params.trajectory_file)
 end
 
 function read_pdb(system_params::SystemParameters)
-    check_file(system_params.topname)
-    return Trajectory(system_params.topname)
+    check_file(system_params.topology_file)
+    return Trajectory(system_params.topology_file)
 end
 
 function write_rdf(outname::AbstractString, rdf::Vector{Float64}, system_params::SystemParameters)
-    bins = [bin * system_params.binWidth for bin in 1:(system_params.Nbins)]
+    bins = [bin * system_params.bin_width for bin in 1:(system_params.n_bins)]
 
     open(outname, "w") do io
-        println(io, "# System: $(system_params.systemName)")
-        println(io, "# RDF data ($(system_params.atomname) - $(system_params.atomname))")
+        println(io, "# System: $(system_params.system_name)")
+        println(io, "# RDF data ($(system_params.atom_name) - $(system_params.atom_name))")
         println(io, "# r, Å; g(r);")
         for (bin, g) in zip(bins, rdf)
             println(io, @sprintf("%6.4f %12.4f", bin, g))
@@ -215,11 +223,11 @@ end
 function write_energies(outname::AbstractString, energies::Vector{Float64},
                         mc_params::MonteCarloParameters, system_params::SystemParameters,
                         slicing::Int=1)
-    steps = 0:(mc_params.outfreq * slicing):(mc_params.steps)
+    steps = 0:(mc_params.output_frequency * slicing):(mc_params.steps)
     sliced_energies = energies[1:slicing:end]
 
     open(outname, "w") do io
-        println(io, "# System: $(system_params.systemName)")
+        println(io, "# System: $(system_params.system_name)")
         println(io, @sprintf("# %8s %22s", "Step", "Total energy, kJ/mol"))
         for (step, energy) in zip(steps, sliced_energies)
             println(io, @sprintf("%9d %10.4f", step, energy))
@@ -236,9 +244,9 @@ function write_trajectory(conf::Matrix{Float64}, box::Vector{Float64},
     box_center = box ./ 2
     set_cell!(frame, UnitCell(box))
 
-    for i in 1:(system_params.N)
+    for i in 1:(system_params.n_atoms)
         wrapped_atom_coords = wrap!(UnitCell(frame), view(conf, :, i)) .+ box_center
-        add_atom!(frame, Atom(system_params.atomname), wrapped_atom_coords)
+        add_atom!(frame, Atom(system_params.atom_name), wrapped_atom_coords)
     end
 
     Trajectory(outname, string(mode)) do traj
@@ -354,267 +362,189 @@ end
 # -----------------------------------------------------------------------------
 # --- Initialization
 
-function parameters_init()
-    # NOTE: Not refactored!!!
-    # Read the input name from the command line argument
-    if length(ARGS) > 0
-        inputname = ARGS[1]
-        # Check if no input file is provided
-        # or if ML-IMC is started from jupyter
-        # in the latter case the first argument has "json" extension
-    end
-    if length(ARGS) == 0 || occursin("json", ARGS[1])
-        println("No input file was provided!")
-        println("Trying to read input data from ML-IMC-init.in")
-        inputname = "ML-IMC-init.in"
+function parse_symmetry_functions(filename::String)
+    symm_data = TOML.parsefile(filename)
+
+    g2_functions = Vector{G2}()
+    g3_functions = Vector{G3}()
+    g9_functions = Vector{G9}()
+    scaling_factor = get(symm_data, "scaling", 1.0)
+    max_cutoff = 0.0
+
+    # Parse G2 functions
+    if haskey(symm_data, "G2")
+        for g2_params in symm_data["G2"]
+            g2 = G2(g2_params["eta"],
+                    g2_params["rcutoff"],
+                    g2_params["rshift"])
+            push!(g2_functions, g2)
+            max_cutoff = max(max_cutoff, g2.rcutoff)
+        end
     end
 
+    # Parse G3 functions
+    if haskey(symm_data, "G3")
+        for g3_params in symm_data["G3"]
+            g3 = G3(g3_params["eta"],
+                    g3_params["lambda"],
+                    g3_params["zeta"],
+                    g3_params["rcutoff"],
+                    g3_params["rshift"])
+            push!(g3_functions, g3)
+            max_cutoff = max(max_cutoff, g3.rcutoff)
+        end
+    end
+
+    # Parse G9 functions
+    if haskey(symm_data, "G9")
+        for g9_params in symm_data["G9"]
+            g9 = G9(g9_params["eta"],
+                    g9_params["lambda"],
+                    g9_params["zeta"],
+                    g9_params["rcutoff"],
+                    g9_params["rshift"])
+            push!(g9_functions, g9)
+            max_cutoff = max(max_cutoff, g9.rcutoff)
+        end
+    end
+
+    return g2_functions, g3_functions, g9_functions, max_cutoff, scaling_factor
+end
+
+function parse_system_parameters(filename::String)
     # Constants
-    NA::Float64 = 6.02214076 # [mol-1] * 10^-23
-    kB::Float64 = 1.38064852 * NA / 1000 # [kJ/(mol*K)]
+    NA = 6.02214076e23  # Avogadro constant
+    kB = 1.38064852e-23 * NA / 1000  # Boltzmann constant in kJ/(mol·K)
 
-    # Read the input file
-    check_file(inputname)
-    file = open(inputname, "r")
-    lines = readlines(file)
-    splittedLines = [split(line) for line in lines]
+    system_data = TOML.parsefile(filename)["system"]
 
-    # Make a list of field names
-    globalFields = [String(field) for field in fieldnames(GlobalParameters)]
-    MCFields = [String(field) for field in fieldnames(MonteCarloParameters)]
-    NNFields = [String(field) for field in fieldnames(NeuralNetParameters)]
-    preTrainFields = [String(field) for field in fieldnames(PreTrainingParameters)]
+    # Read and validate topology file
+    pdb = Trajectory(system_data["topology_file_path"])
+    frame = read(pdb)
+    n_atoms = length(frame)
+    atom_name = name(Atom(frame, 1))
 
-    # Input variable arrays
-    globalVars = []
-    MCVars = []
-    NNVars = []
-    preTrainVars = []
-    G2s = []
-    G3s = []
-    G9s = []
+    # Read RDF data
+    bins, rdf = read_rdf(system_data["rdf_file_path"])
+    n_bins = length(bins)
+    bin_width = bins[1]
 
-    # Loop over fieldnames and fieldtypes and over splitted lines
-    # Global parameters
-    for (field, fieldtype) in zip(globalFields, fieldtypes(GlobalParameters))
-        for line in splittedLines
-            if length(line) != 0 && field == line[1]
-                if field == "systemFiles"
-                    systemFiles = []
-                    for (elementId, element) in enumerate(line)
-                        if elementId > 2 && element != "#"
-                            append!(systemFiles, [strip(element, ',')])
-                        elseif element == "#"
-                            break
-                        end
-                    end
-                    append!(globalVars, [systemFiles])
-                else
-                    if fieldtype != String
-                        append!(globalVars, parse(fieldtype, line[3]))
-                    else
-                        append!(globalVars, [line[3]])
-                    end
-                end
-            end
-        end
-    end
-    globalParms = GlobalParameters(globalVars...)
+    # Calculate beta from temperature
+    temperature = system_data["temperature"]
+    beta = 1 / (kB * temperature)
 
-    # Symmetry functions
-    maxDistanceCutoff = 0.0
-    scalingFactor = 1.0
-    check_file(globalParms.symmetryFunctionFile)
-    symmetryFunctionFile = open(globalParms.symmetryFunctionFile, "r")
-    symmetryFunctionLines = readlines(symmetryFunctionFile)
-    splittedSymmetryFunctionLines = [split(line) for line in symmetryFunctionLines]
-    for line in splittedSymmetryFunctionLines
-        if length(line) != 0 && line[1] == "G2"
-            G2Parameters = []
-            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G2))
-                append!(G2Parameters, parse(fieldtype, line[fieldIndex + 1]))
-            end
-            append!(G2s, [G2(G2Parameters...)])
-        end
-        if length(line) != 0 && line[1] == "G3"
-            G3Parameters = []
-            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G3))
-                append!(G3Parameters, parse(fieldtype, line[fieldIndex + 1]))
-            end
-            append!(G3s, [G3(G3Parameters...)])
-        end
-        if length(line) != 0 && line[1] == "G9"
-            G9Parameters = []
-            for (fieldIndex, fieldtype) in enumerate(fieldtypes(G9))
-                append!(G9Parameters, parse(fieldtype, line[fieldIndex + 1]))
-            end
-            append!(G9s, [G9(G9Parameters...)])
-        end
-        if length(line) != 0 && line[1] == "scaling"
-            scalingFactor = parse(Float64, line[3])
-        end
-    end
-    # Set maximum distance cutoff
-    for G2Function in G2s
-        if maxDistanceCutoff < G2Function.rcutoff
-            maxDistanceCutoff = G2Function.rcutoff
-        end
-    end
-    for G3Function in G3s
-        if maxDistanceCutoff < G3Function.rcutoff
-            maxDistanceCutoff = G3Function.rcutoff
-        end
-    end
-    for G9Function in G9s
-        if maxDistanceCutoff < G9Function.rcutoff
-            maxDistanceCutoff = G9Function.rcutoff
-        end
-    end
+    return SystemParameters(system_data["system_name"],
+                            system_data["topology_file_path"],
+                            system_data["trajectory_file_path"],
+                            system_data["rdf_file_path"],
+                            n_atoms,
+                            atom_name,
+                            n_bins,
+                            bin_width,
+                            temperature,
+                            beta,
+                            system_data["max_displacement"],
+                            system_data["target_acceptance_ratio"])
+end
 
-    # MC parameters
-    for (field, fieldtype) in zip(MCFields, fieldtypes(MonteCarloParameters))
-        for line in splittedLines
-            if length(line) != 0 && field == line[1]
-                if fieldtype != String
-                    append!(MCVars, parse(fieldtype, line[3]))
-                else
-                    append!(MCVars, [line[3]])
-                end
-            end
-        end
-    end
-    MCParms = MonteCarloParameters(MCVars...)
-
-    # Loop over fieldnames and fieldtypes and over splitted lines
-    for (field, fieldtype) in zip(NNFields, fieldtypes(NeuralNetParameters))
-        for line in splittedLines
-            if length(line) != 0 && field == line[1]
-                if field == "neurons"
-                    inputNeurons = length(G2s) + length(G3s) + length(G9s)
-                    neurons = [inputNeurons]
-                    for (elementId, element) in enumerate(line)
-                        if elementId > 2 && element != "#"
-                            append!(neurons, parse(Int, strip(element, ',')))
-                        elseif element == "#"
-                            break
-                        end
-                    end
-                    append!(NNVars, [neurons])
-                elseif field == "activations"
-                    activations = []
-                    for (elementId, element) in enumerate(line)
-                        if elementId > 2 && element != "#"
-                            append!(activations, [strip(element, ',')])
-                        elseif element == "#"
-                            break
-                        end
-                    end
-                    append!(NNVars, [activations])
-                else
-                    if fieldtype != String
-                        append!(NNVars, parse(fieldtype, line[3]))
-                    else
-                        append!(NNVars, [line[3]])
-                    end
-                end
-            end
-        end
-    end
-    NNParms = NeuralNetParameters(G2s, G3s, G9s, maxDistanceCutoff, scalingFactor, NNVars...)
-
-    # Pre-training parameters
-    for (field, fieldtype) in zip(preTrainFields, fieldtypes(PreTrainingParameters))
-        for line in splittedLines
-            if length(line) != 0 && field == line[1]
-                if fieldtype != String
-                    append!(preTrainVars, parse(fieldtype, line[3]))
-                else
-                    append!(preTrainVars, [line[3]])
-                end
-            end
-        end
-    end
-    preTrainParms = PreTrainingParameters(preTrainVars...)
-
-    # Read system input files
-    systemParmsList = [] # list of systemParameters structs
-    systemFields = [String(field) for field in fieldnames(SystemParameters)]
-    for inputname in globalParms.systemFiles
-        systemVars = []
-        check_file(inputname)
-        file = open(inputname, "r")
-        lines = readlines(file)
-        splittedLines = [split(line) for line in lines]
-        for (field, fieldtype) in zip(systemFields, fieldtypes(SystemParameters))
-            for line in splittedLines
-                if length(line) != 0 && field == line[1]
-                    if field == "T"
-                        T = parse(fieldtype, line[3])
-                        β = 1 / (kB * T)
-                        append!(systemVars, T)
-                        append!(systemVars, β)
-                    elseif field == "topname"
-                        topname = [line[3]]
-                        check_file(topname[1])
-                        pdb = Trajectory("$(topname[1])")
-                        pdbFrame = read(pdb)
-                        N = length(pdbFrame)
-                        atomname = name(Atom(pdbFrame, 1))
-                        append!(systemVars, topname)
-                        append!(systemVars, N)
-                        append!(systemVars, [atomname])
-                    elseif field == "rdfname"
-                        rdfname = [line[3]]
-                        bins, rdf = read_rdf("$(rdfname[1])")
-                        Nbins = length(bins)
-                        binWidth = bins[1]
-                        append!(systemVars, [rdfname[1]])
-                        append!(systemVars, Nbins)
-                        append!(systemVars, binWidth)
-                    else
-                        if fieldtype != String
-                            append!(systemVars, parse(fieldtype, line[3]))
-                        else
-                            append!(systemVars, [line[3]])
-                        end
-                    end
-                end
-            end
-        end
-        systemParms = SystemParameters(systemVars...)
-        append!(systemParmsList, [systemParms])
-    end
-
-    if globalParms.mode == "training"
-        println("Running ML-IMC in the training mode.")
+function parameters_init()
+    # Handle command line arguments
+    inputname = if length(ARGS) > 0 && !occursin("json", ARGS[1])
+        ARGS[1]
     else
-        println("Running ML-IMC in the simulation mode.")
+        println("No input file was provided!")
+        println("Trying to read input data from ML-IMC-init.toml")
+        "ML-IMC-init.toml"
     end
 
-    return (globalParms, MCParms, NNParms, preTrainParms, systemParmsList)
+    # Read and parse main configuration file
+    config = TOML.parsefile(inputname)
+
+    # Parse global parameters
+    global_params = GlobalParameters(config["global"]["system_files"],
+                                     config["global"]["symmetry_function_file"],
+                                     config["global"]["mode"],
+                                     config["global"]["output_mode"],
+                                     config["global"]["model_file"],
+                                     config["global"]["gradients_file"],
+                                     config["global"]["optimizer_file"],
+                                     config["global"]["adaptive_scaling"])
+
+    # Parse Monte Carlo parameters
+    mc_params = MonteCarloParameters(config["monte_carlo"]["steps"],
+                                     config["monte_carlo"]["equilibration_steps"],
+                                     config["monte_carlo"]["step_adjust_frequency"],
+                                     config["monte_carlo"]["trajectory_output_frequency"],
+                                     config["monte_carlo"]["output_frequency"])
+
+    # Parse symmetry functions
+    g2_funcs, g3_funcs, g9_funcs, max_cutoff, scaling = parse_symmetry_functions(global_params.symmetry_function_file)
+
+    # Calculate input layer size based on total number of symmetry functions
+    input_layer_size = length(g2_funcs) + length(g3_funcs) + length(g9_funcs)
+
+    # Parse neural network parameters
+    nn_section = config["neural_network"]
+
+    # Prepend input layer size to existing neurons array
+    neurons = [input_layer_size; nn_section["neurons"]]
+
+    nn_params = NeuralNetParameters(g2_funcs,
+                                    g3_funcs,
+                                    g9_funcs,
+                                    max_cutoff,
+                                    scaling,
+                                    neurons,
+                                    nn_section["activations"],
+                                    nn_section["bias"],
+                                    nn_section["iterations"],
+                                    nn_section["regularization"],
+                                    nn_section["optimizer"],
+                                    nn_section["learning_rate"],
+                                    nn_section["momentum"],
+                                    nn_section["decay_rates"][1],
+                                    nn_section["decay_rates"][2])
+
+    # Parse pre-training parameters
+    pt_section = config["pretraining"]
+    pretrain_params = PreTrainingParameters(pt_section["steps"],
+                                            pt_section["output_frequency"],
+                                            pt_section["regularization"],
+                                            pt_section["optimizer"],
+                                            pt_section["learning_rate"],
+                                            pt_section["momentum"],
+                                            pt_section["decay_rates"][1],
+                                            pt_section["decay_rates"][2])
+
+    # Parse system parameters for each system file
+    system_params_list = [parse_system_parameters(system_file) for system_file in global_params.system_files]
+
+    # Print mode information
+    println("Running ML-IMC in the $(global_params.mode) mode.")
+
+    return global_params, mc_params, nn_params, pretrain_params, system_params_list
 end
 
 function input_init(global_params::GlobalParameters, nn_params::NeuralNetParameters,
                     pretrain_params::PreTrainingParameters, system_params_list)
-    # NOTE: Not refactored!!!
     # Read reference data
-    refRDFs = []
-    for systemParms in system_params_list
-        bins, refRDF = read_rdf(systemParms.rdfname)
-        append!(refRDFs, [refRDF])
+    ref_rdfs = []
+    for system_params in system_params_list
+        bins, ref_rdf = read_rdf(system_params.rdf_file)
+        append!(ref_rdfs, [ref_rdf])
     end
 
     # Initialize the model and the optimizer
-    if global_params.modelFile == "none"
+    if global_params.model_file == "none"
         # Initialize the model
-        println("Initializing a new neural network with random weigths")
+        println("Initializing a new neural network with random weights")
 
         model = model_init(nn_params)
 
-        if global_params.optimizerFile != "none"
+        if global_params.optimizer_file != "none"
             println("Ignoring given optimizer filename...")
         end
-        if global_params.gradientsFile != "none"
+        if global_params.gradients_file != "none"
             println("Ignoring given gradients filename...")
         end
         # Run pre-training if no initial model is given
@@ -622,39 +552,42 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
         # Restart the training
     else
         # Loading the model
-        check_file(global_params.modelFile)
-        println("Reading model from $(global_params.modelFile)")
-        @load global_params.modelFile model
+        check_file(global_params.model_file)
+        println("Reading model from $(global_params.model_file)")
+        @load global_params.model_file model
+
         if global_params.mode == "training"
             # Either initialize the optimizer or read from a file
-            if global_params.optimizerFile != "none"
-                check_file(global_params.optimizerFile)
-                println("Reading optimizer state from $(global_params.optimizerFile)")
-                @load global_params.optimizerFile opt
+            if global_params.optimizer_file != "none"
+                check_file(global_params.optimizer_file)
+                println("Reading optimizer state from $(global_params.optimizer_file)")
+                @load global_params.optimizer_file opt
             else
                 opt = init_optimizer(nn_params)
             end
+
             # Optionally read gradients from a file
-            if global_params.gradientsFile != "none"
-                check_file(global_params.gradientsFile)
-                println("Reading gradients from $(global_params.gradientsFile)")
-                @load global_params.gradientsFile meanLossGradients
+            if global_params.gradients_file != "none"
+                check_file(global_params.gradients_file)
+                println("Reading gradients from $(global_params.gradients_file)")
+                @load global_params.gradients_file mean_loss_gradients
             end
+
             # Update the model if both opt and gradients are restored
-            if global_params.optimizerFile != "none" && global_params.gradientsFile != "none"
+            if global_params.optimizer_file != "none" && global_params.gradients_file != "none"
                 println("\nUsing the restored gradients and optimizer to update the current model...\n")
-                update_model!(model, opt, meanLossGradients)
+                update_model!(model, opt, mean_loss_gradients)
 
                 # Skip updating if no gradients are provided
-            elseif global_params.optimizerFile != "none" && global_params.gradientsFile == "none"
+            elseif global_params.optimizer_file != "none" && global_params.gradients_file == "none"
                 println("\nNo gradients were provided, rerunning the training iteration with the current model and restored optimizer...\n")
 
                 # Update the model if gradients are provided without the optimizer:
                 # valid for optimizer that do not save their state, e.g. Descent,
                 # otherwise might produce unexpected results
-            elseif global_params.optimizerFile == "none" && global_params.gradientsFile != "none"
+            elseif global_params.optimizer_file == "none" && global_params.gradients_file != "none"
                 println("\nUsing the restored gradients with reinitialized optimizer to update the current model...\n")
-                update_model!(model, opt, meanLossGradients)
+                update_model!(model, opt, mean_loss_gradients)
             else
                 println("\nNeither gradients nor optimizer were provided, rerunning the training iteration with the current model...\n")
             end
@@ -662,7 +595,7 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
     end
 
     if global_params.mode == "training"
-        return (model, opt, refRDFs)
+        return (model, opt, ref_rdfs)
     else
         return (model)
     end
@@ -670,19 +603,19 @@ end
 
 function init_optimizer(params::Union{NeuralNetParameters, PreTrainingParameters})
     function get_rate(params::Union{NeuralNetParameters, PreTrainingParameters})
-        return params isa NeuralNetParameters ? params.rate : params.PTrate
+        return params isa NeuralNetParameters ? params.learning_rate : params.learning_rate
     end
 
     function get_momentum(params::Union{NeuralNetParameters, PreTrainingParameters})
-        return params isa NeuralNetParameters ? params.momentum : params.PTmomentum
+        return params isa NeuralNetParameters ? params.momentum : params.momentum
     end
 
     function get_decay1(params::Union{NeuralNetParameters, PreTrainingParameters})
-        return params isa NeuralNetParameters ? params.decay1 : params.PTdecay1
+        return params isa NeuralNetParameters ? params.decay_1 : params.decay_1
     end
 
     function get_decay2(params::Union{NeuralNetParameters, PreTrainingParameters})
-        return params isa NeuralNetParameters ? params.decay2 : params.PTdecay2
+        return params isa NeuralNetParameters ? params.decay_2 : params.decay_2
     end
 
     OPTIMIZER_MAP = Dict("Momentum" => Momentum,
@@ -700,7 +633,7 @@ function init_optimizer(params::Union{NeuralNetParameters, PreTrainingParameters
                          "OAdam" => OAdam,
                          "AdaBelief" => AdaBelief)
 
-    optimizer_name = params isa NeuralNetParameters ? params.optimizer : params.PToptimizer
+    optimizer_name = params isa NeuralNetParameters ? params.optimizer : params.optimizer
     optimizer_func = get(OPTIMIZER_MAP, optimizer_name, Descent)
 
     if optimizer_func in (Momentum, Nesterov, RMSProp)
@@ -740,8 +673,8 @@ function update_system_energies_vector(symm_func_matrix::AbstractMatrix{T},
 end
 
 function get_energies_update_mask(distance_vector::AbstractVector{T},
-                                  nn_params)::Vector{Bool} where {T <: AbstractFloat}
-    return distance_vector .< nn_params.maxDistanceCutoff
+                                  nn_params::NeuralNetParameters)::Vector{Bool} where {T <: AbstractFloat}
+    return distance_vector .< nn_params.max_distance_cutoff
 end
 
 function init_system_energies_vector(symm_func_matrix::AbstractMatrix{T}, model::Flux.Chain) where {T <: AbstractFloat}
@@ -782,11 +715,11 @@ function initialize_cross_accumulators(nn_params::NeuralNetParameters,
     cross_accumulators = Vector{Matrix{Float64}}()
 
     for layer_id in 2:n_layers
-        weights_shape = (system_params.Nbins, nn_params.neurons[layer_id - 1] * nn_params.neurons[layer_id])
+        weights_shape = (system_params.n_bins, nn_params.neurons[layer_id - 1] * nn_params.neurons[layer_id])
         push!(cross_accumulators, zeros(weights_shape))
 
         if nn_params.bias
-            bias_shape = (system_params.Nbins, nn_params.neurons[layer_id])
+            bias_shape = (system_params.n_bins, nn_params.neurons[layer_id])
             push!(cross_accumulators, zeros(bias_shape))
         end
     end
@@ -823,7 +756,7 @@ function compute_descriptor_gradients(cross_accumulators::Vector{Matrix{T}},
                                       system_params::SystemParameters)::Vector{Matrix{T}} where {T <: AbstractFloat}
     descriptor_gradients = Vector{Matrix{T}}(undef, length(cross_accumulators))
     for i in eachindex(cross_accumulators, ensemble_correlations)
-        descriptor_gradients[i] = -system_params.β .* (cross_accumulators[i] - ensemble_correlations[i])
+        descriptor_gradients[i] = -system_params.beta .* (cross_accumulators[i] - ensemble_correlations[i])
     end
     return descriptor_gradients
 end
@@ -844,7 +777,7 @@ function compute_loss_gradients(cross_accumulators::Vector{Matrix{T}},
 
     for (i, (gradient, parameters)) in enumerate(zip(descriptor_gradients, Flux.params(model)))
         loss_gradient = reshape(dLdS' * gradient, size(parameters))
-        reg_loss_gradient = @. 2 * nn_params.REGP * parameters
+        reg_loss_gradient = @. 2 * nn_params.regularization * parameters
         loss_gradients[i] = loss_gradient .+ reg_loss_gradient
     end
 
@@ -875,8 +808,8 @@ function compute_training_loss(descriptor_nn::AbstractVector{T},
 
     # Compute L2 regularization loss if regularization parameter is positive
     reg_loss = zero(T)
-    if nn_params.REGP > zero(T)
-        reg_loss = nn_params.REGP * sum(sum(abs2, p) for p in Flux.params(model))
+    if nn_params.regularization > zero(T)
+        reg_loss = nn_params.regularization * sum(sum(abs2, p) for p in Flux.params(model))
     end
 
     total_loss = descriptor_loss + reg_loss
@@ -956,14 +889,16 @@ function prepare_monte_carlo_inputs(global_params::GlobalParameters,
     return repeat(reference_inputs, sets_per_system)
 end
 
-function collect_system_averages(outputs, ref_rdfs, system_params_list, global_params, nn_params, model)
+function collect_system_averages(outputs::Vector{MonteCarloAverages}, ref_rdfs,
+                                 system_params_list::Vector{SystemParameters},
+                                 global_params::GlobalParameters, nn_params::NeuralNetParameters, model)
     meanLoss = 0.0
-    systemOutputs = []
+    system_outputs = []
 
     systemLosses = []
 
-    for (systemId, systemParms) in enumerate(system_params_list)
-        println("   System $(systemParms.systemName):")
+    for (systemId, system_params) in enumerate(system_params_list)
+        println("   System $(system_params.system_name):")
         systemLoss = 0.0
 
         meanDescriptor = []
@@ -974,18 +909,19 @@ function collect_system_averages(outputs, ref_rdfs, system_params_list, global_p
         end
         meanAcceptanceRatio = []
         meanMaxDisplacement = []
+
         # Find the corresponding outputs
         for outputID in eachindex(outputs)
             # Save the outputID if the system names from input and output match
-            if systemParms.systemName == outputs[outputID].systemParms.systemName
+            if system_params.system_name == outputs[outputID].system_params.system_name
                 append!(meanDescriptor, [outputs[outputID].descriptor])
                 append!(meanEnergies, [outputs[outputID].energies])
                 if global_params.mode == "training"
-                    append!(meanCrossAccumulators, [outputs[outputID].crossAccumulators])
-                    append!(meansymmFuncMatrixAccumulator, [outputs[outputID].symmFuncMatrixAccumulator])
+                    append!(meanCrossAccumulators, [outputs[outputID].cross_accumulators])
+                    append!(meansymmFuncMatrixAccumulator, [outputs[outputID].symmetry_matrix_accumulator])
                 end
-                append!(meanAcceptanceRatio, [outputs[outputID].acceptanceRatio])
-                append!(meanMaxDisplacement, [outputs[outputID].mutatedStepAdjust])
+                append!(meanAcceptanceRatio, [outputs[outputID].acceptance_ratio])
+                append!(meanMaxDisplacement, [outputs[outputID].step_size])
             end
         end
         # Take averages from each worker
@@ -998,31 +934,33 @@ function collect_system_averages(outputs, ref_rdfs, system_params_list, global_p
         meanAcceptanceRatio = mean(meanAcceptanceRatio)
         meanMaxDisplacement = mean(meanMaxDisplacement)
         if global_params.mode == "training"
-            systemOutput = MonteCarloAverages(meanDescriptor, meanEnergies, meanCrossAccumulators,
-                                              meansymmFuncMatrixAccumulator, meanAcceptanceRatio, systemParms,
-                                              meanMaxDisplacement)
+            system_output = MonteCarloAverages(meanDescriptor, meanEnergies, meanCrossAccumulators,
+                                               meansymmFuncMatrixAccumulator, meanAcceptanceRatio,
+                                               system_params,
+                                               meanMaxDisplacement)
         else
-            systemOutput = MonteCarloAverages(meanDescriptor, meanEnergies, nothing, nothing, meanAcceptanceRatio,
-                                              systemParms,
-                                              meanMaxDisplacement)
+            system_output = MonteCarloAverages(meanDescriptor, meanEnergies, nothing, nothing,
+                                               meanAcceptanceRatio,
+                                               system_params,
+                                               meanMaxDisplacement)
         end
         # Compute loss and print some output info
         println("       Acceptance ratio = ", round(meanAcceptanceRatio; digits=4))
         println("       Max displacement = ", round(meanMaxDisplacement; digits=4))
         if global_params.mode == "training"
-            systemLoss = compute_training_loss(systemOutput.descriptor, ref_rdfs[systemId], model, nn_params,
+            systemLoss = compute_training_loss(system_output.descriptor, ref_rdfs[systemId], model, nn_params,
                                                meanMaxDisplacement)
             meanLoss += systemLoss
             append!(systemLosses, systemLoss)
         end
 
-        append!(systemOutputs, [systemOutput])
+        append!(system_outputs, [system_output])
     end
     if global_params.mode == "training"
         meanLoss /= length(system_params_list)
         println("   \nTotal Average Loss = ", round(meanLoss; digits=8))
     end
-    return (systemOutputs, systemLosses)
+    return (system_outputs, systemLosses)
 end
 
 function compute_adaptive_gradient_coefficients(system_losses::AbstractVector{T})::Vector{T} where {T <: AbstractFloat}
@@ -1043,11 +981,12 @@ function compute_adaptive_gradient_coefficients(system_losses::AbstractVector{T}
     return relative_coefficients .* normalization_factor
 end
 
-function train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
+function train!(global_params::GlobalParameters, mc_params::MonteCarloParameters, nn_params::NeuralNetParameters,
+                system_params_list, model::Flux.Chain, optimizer, ref_rdfs)
     # Run training iterations
     iteration = 1
 
-    while iteration <= nn_params.iters
+    while iteration <= nn_params.iterations
         iterString = lpad(iteration, 2, '0')
         println("\nIteration $(iteration)...")
 
@@ -1065,29 +1004,30 @@ function train!(global_params, mc_params, nn_params, system_params_list, model, 
         # Compute loss and the gradients
         lossGradients = []
         for (systemId, systemOutput) in enumerate(systemOutputs)
-            systemParms = system_params_list[systemId]
-            lossGradient = compute_loss_gradients(systemOutput.crossAccumulators,
-                                                  systemOutput.symmFuncMatrixAccumulator,
-                                                  systemOutput.descriptor, ref_rdfs[systemId], model, systemParms,
+            system_params = system_params_list[systemId]
+            lossGradient = compute_loss_gradients(systemOutput.cross_accumulators,
+                                                  systemOutput.symmetry_matrix_accumulator,
+                                                  systemOutput.descriptor, ref_rdfs[systemId], model, system_params,
                                                   nn_params)
 
             append!(lossGradients, [lossGradient])
             # Write descriptors and energies
-            name = systemParms.systemName
-            write_rdf("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, systemParms)
-            write_energies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, mc_params, systemParms, 1)
+            name = system_params.system_name
+            write_rdf("RDFNN-$(name)-iter-$(iterString).dat", systemOutput.descriptor, system_params)
+            write_energies("energies-$(name)-iter-$(iterString).dat", systemOutput.energies, mc_params, system_params,
+                           1)
         end
         # Average the gradients
-        if global_params.adaptiveScaling
+        if global_params.adaptive_scaling
             gradientCoeffs = compute_adaptive_gradient_coefficients(systemLosses)
             println("\nGradient scaling: \n")
-            for (gradientCoeff, systemParms) in zip(gradientCoeffs, system_params_list)
-                println("   System $(systemParms.systemName): $(round(gradientCoeff, digits=8))")
+            for (gradientCoeff, system_params) in zip(gradientCoeffs, system_params_list)
+                println("   System $(system_params.system_name): $(round(gradientCoeff, digits=8))")
             end
 
-            meanLossGradients = sum(lossGradients .* gradientCoeffs)
+            mean_loss_gradients = sum(lossGradients .* gradientCoeffs)
         else
-            meanLossGradients = mean([lossGradient for lossGradient in lossGradients])
+            mean_loss_gradients = mean([lossGradient for lossGradient in lossGradients])
         end
 
         # Write the model and opt (before training!) and the gradients
@@ -1097,11 +1037,11 @@ function train!(global_params, mc_params, nn_params, system_params_list, model, 
         @save "opt-iter-$(iterString).bson" optimizer
         check_file("opt-iter-$(iterString).bson")
 
-        @save "gradients-iter-$(iterString).bson" meanLossGradients
+        @save "gradients-iter-$(iterString).bson" mean_loss_gradients
         check_file("gradients-iter-$(iterString).bson")
 
         # Update the model
-        update_model!(model, optimizer, meanLossGradients)
+        update_model!(model, optimizer, mean_loss_gradients)
 
         # Move on to the next iteration
         iteration += 1
@@ -1125,7 +1065,7 @@ function simulate!(model, global_params, mc_params, nn_params, system_params)
                                                           nothing)
 
     # Write descriptors and energies
-    name = system_params.systemName
+    name = system_params.system_name
     write_rdf("RDFNN-$(name).dat", systemOutputs[1].descriptor, system_params)
     write_energies("energies-$(name).dat", systemOutputs[1].energies, mc_params, system_params, 1)
     return
@@ -1170,12 +1110,12 @@ end
 function build_g2_matrix(distance_matrix::AbstractMatrix{T},
                          nn_params::NeuralNetParameters)::Matrix{T} where {T <: AbstractFloat}
     n_atoms = size(distance_matrix, 1)
-    n_g2_functions = length(nn_params.G2Functions)
+    n_g2_functions = length(nn_params.g2_functions)
     g2_matrix = Matrix{T}(undef, n_atoms, n_g2_functions)
 
     for i in 1:n_atoms
         distance_vector = @view distance_matrix[i, :]
-        for (j, g2_func) in enumerate(nn_params.G2Functions)
+        for (j, g2_func) in enumerate(nn_params.g2_functions)
             g2_matrix[i, j] = compute_g2(distance_vector,
                                          g2_func.eta,
                                          g2_func.rcutoff,
@@ -1183,8 +1123,8 @@ function build_g2_matrix(distance_matrix::AbstractMatrix{T},
         end
     end
 
-    return nn_params.symmFunctionScaling == one(T) ? g2_matrix :
-           g2_matrix .* nn_params.symmFunctionScaling
+    return nn_params.symm_function_scaling == one(T) ? g2_matrix :
+           g2_matrix .* nn_params.symm_function_scaling
 end
 
 function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
@@ -1193,10 +1133,10 @@ function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
                            system_params::SystemParameters,
                            nn_params::NeuralNetParameters,
                            point_index::Integer)::AbstractMatrix{T} where {T <: AbstractFloat}
-    scaling = nn_params.symmFunctionScaling
+    scaling = nn_params.symm_function_scaling
 
     # Update displaced particle row
-    @inbounds for (j, g2_func) in enumerate(nn_params.G2Functions)
+    @inbounds for (j, g2_func) in enumerate(nn_params.g2_functions)
         g2_matrix[point_index, j] = compute_g2(distance_vector2,
                                                g2_func.eta,
                                                g2_func.rcutoff,
@@ -1204,10 +1144,10 @@ function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
     end
 
     # Update affected atoms
-    @inbounds for i in 1:(system_params.N)
+    @inbounds for i in 1:(system_params.n_atoms)
         i == point_index && continue
 
-        for (j, g2_func) in enumerate(nn_params.G2Functions)
+        for (j, g2_func) in enumerate(nn_params.g2_functions)
             r_cutoff = g2_func.rcutoff
             dist1, dist2 = distance_vector1[i], distance_vector2[i]
 
@@ -1332,13 +1272,13 @@ function build_g3_matrix(distance_matrix::AbstractMatrix{T},
                          box::AbstractVector{T},
                          nn_params::NeuralNetParameters)::Matrix{T} where {T <: AbstractFloat}
     n_atoms = size(distance_matrix, 1)
-    n_g3_functions = length(nn_params.G3Functions)
+    n_g3_functions = length(nn_params.g3_functions)
     g3_matrix = Matrix{T}(undef, n_atoms, n_g3_functions)
 
     @inbounds for i in 1:n_atoms
         distance_vector = @view distance_matrix[i, :]
 
-        for (j, g3_func) in enumerate(nn_params.G3Functions)
+        for (j, g3_func) in enumerate(nn_params.g3_functions)
             g3_matrix[i, j] = compute_g3(i, coordinates, box, distance_vector,
                                          g3_func.rcutoff, g3_func.eta,
                                          g3_func.zeta, g3_func.lambda,
@@ -1346,16 +1286,17 @@ function build_g3_matrix(distance_matrix::AbstractMatrix{T},
         end
     end
 
-    scaling = nn_params.symmFunctionScaling
+    scaling = nn_params.symm_function_scaling
     return scaling == one(T) ? g3_matrix : rmul!(g3_matrix, scaling)
 end
 
-function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2, systemParms,
-                         NNParms, displacedAtomIndex)
-    for selectedAtomIndex in 1:(systemParms.N)
+function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2,
+                         systemParms::SystemParameters,
+                         NNParms::NeuralNetParameters, displacedAtomIndex)
+    for selectedAtomIndex in 1:(systemParms.n_atoms)
         # Rebuild the whole G3 matrix column for the displaced atom
         if selectedAtomIndex == displacedAtomIndex
-            for (G3Index, G3Function) in enumerate(NNParms.G3Functions)
+            for (G3Index, G3Function) in enumerate(NNParms.g3_functions)
                 eta = G3Function.eta
                 lambda = G3Function.lambda
                 zeta = G3Function.zeta
@@ -1364,7 +1305,7 @@ function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVect
                 G3Matrix[selectedAtomIndex, G3Index] = compute_g3(displacedAtomIndex, coordinates2, box,
                                                                   distanceVector2,
                                                                   rcutoff, eta, zeta, lambda, rshift) *
-                                                       NNParms.symmFunctionScaling
+                                                       NNParms.symm_function_scaling
             end
             # Compute the change in G3 caused by the displacement of an atom
             # New ijk triplet description
@@ -1372,7 +1313,7 @@ function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVect
             # Second atom (j): displacedAtomIndex
             # Third atom (k): thirdAtomIndex
         else
-            for (G3Index, G3Function) in enumerate(NNParms.G3Functions)
+            for (G3Index, G3Function) in enumerate(NNParms.g3_functions)
                 rcutoff = G3Function.rcutoff
                 distance_ij_1 = distanceVector1[selectedAtomIndex]
                 distance_ij_2 = distanceVector2[selectedAtomIndex]
@@ -1386,7 +1327,7 @@ function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVect
                     # over all third atoms
                     ΔG3 = 0.0
                     # Loop over all ik pairs
-                    for thirdAtomIndex in 1:(systemParms.N)
+                    for thirdAtomIndex in 1:(systemParms.n_atoms)
                         # Make sure i != j != k
                         if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
                             # It does not make a difference whether
@@ -1426,7 +1367,7 @@ function updateG3Matrix!(G3Matrix, coordinates1, coordinates2, box, distanceVect
                         end
                     end
                     # Apply the computed differences
-                    G3Matrix[selectedAtomIndex, G3Index] += ΔG3 * NNParms.symmFunctionScaling
+                    G3Matrix[selectedAtomIndex, G3Index] += ΔG3 * NNParms.symm_function_scaling
                 end
             end
         end
@@ -1508,13 +1449,13 @@ function build_g9_matrix(distance_matrix::AbstractMatrix{T},
                          box::AbstractVector{T},
                          nn_params::NeuralNetParameters)::Matrix{T} where {T <: AbstractFloat}
     n_atoms = size(distance_matrix, 1)
-    n_g9_functions = length(nn_params.G9Functions)
+    n_g9_functions = length(nn_params.g9_functions)
     g9_matrix = Matrix{T}(undef, n_atoms, n_g9_functions)
 
     @inbounds for i in 1:n_atoms
         distance_vector = @view distance_matrix[i, :]
 
-        for (j, g9_func) in enumerate(nn_params.G9Functions)
+        for (j, g9_func) in enumerate(nn_params.g9_functions)
             g9_matrix[i, j] = compute_g9(i, coordinates, box, distance_vector,
                                          g9_func.rcutoff, g9_func.eta,
                                          g9_func.zeta, g9_func.lambda,
@@ -1522,16 +1463,17 @@ function build_g9_matrix(distance_matrix::AbstractMatrix{T},
         end
     end
 
-    scaling = nn_params.symmFunctionScaling
+    scaling = nn_params.symm_function_scaling
     return scaling == one(T) ? g9_matrix : rmul!(g9_matrix, scaling)
 end
 
-function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2, systemParms,
-                         NNParms, displacedAtomIndex)
-    for selectedAtomIndex in 1:(systemParms.N)
+function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVector1, distanceVector2,
+                         systemParms::SystemParameters,
+                         NNParms::NeuralNetParameters, displacedAtomIndex)
+    for selectedAtomIndex in 1:(systemParms.n_atoms)
         # Rebuild the whole G9 matrix column for the displaced atom
         if selectedAtomIndex == displacedAtomIndex
-            for (G9Index, G9Function) in enumerate(NNParms.G9Functions)
+            for (G9Index, G9Function) in enumerate(NNParms.g9_functions)
                 eta = G9Function.eta
                 lambda = G9Function.lambda
                 zeta = G9Function.zeta
@@ -1540,7 +1482,7 @@ function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVect
                 G9Matrix[selectedAtomIndex, G9Index] = compute_g9(displacedAtomIndex, coordinates2, box,
                                                                   distanceVector2,
                                                                   rcutoff, eta, zeta, lambda, rshift) *
-                                                       NNParms.symmFunctionScaling
+                                                       NNParms.symm_function_scaling
             end
             # Compute the change in G9 caused by the displacement of an atom
             # New ijk triplet description
@@ -1548,7 +1490,7 @@ function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVect
             # Second atom (j): displacedAtomIndex
             # Third atom (k): thirdAtomIndex
         else
-            for (G9Index, G9Function) in enumerate(NNParms.G9Functions)
+            for (G9Index, G9Function) in enumerate(NNParms.g9_functions)
                 rcutoff = G9Function.rcutoff
                 distance_ij_1 = distanceVector1[selectedAtomIndex]
                 distance_ij_2 = distanceVector2[selectedAtomIndex]
@@ -1562,7 +1504,7 @@ function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVect
                     # over all third atoms
                     ΔG9 = 0.0
                     # Loop over all ik pairs
-                    for thirdAtomIndex in 1:(systemParms.N)
+                    for thirdAtomIndex in 1:(systemParms.n_atoms)
                         # Make sure i != j != k
                         if thirdAtomIndex != displacedAtomIndex && thirdAtomIndex != selectedAtomIndex
                             # It does not make a difference whether
@@ -1598,7 +1540,7 @@ function updateG9Matrix!(G9Matrix, coordinates1, coordinates2, box, distanceVect
                         end
                     end
                     # Apply the computed differences
-                    G9Matrix[selectedAtomIndex, G9Index] += ΔG9 * NNParms.symmFunctionScaling
+                    G9Matrix[selectedAtomIndex, G9Index] += ΔG9 * NNParms.symm_function_scaling
                 end
             end
         end
@@ -1609,10 +1551,10 @@ end
 # -----------------------------------------------------------------------------
 # --- Monte Carlo
 
-function update_distance_histogram!(distance_matrix, histogram, system_params)
-    n_atoms = system_params.N
-    bin_width = system_params.binWidth
-    n_bins = system_params.Nbins
+function update_distance_histogram!(distance_matrix, histogram, system_params::SystemParameters)
+    n_atoms = system_params.n_atoms
+    bin_width = system_params.bin_width
+    n_bins = system_params.n_bins
 
     @inbounds for i in 1:n_atoms
         @fastmath for j in 1:(i - 1)
@@ -1626,10 +1568,10 @@ function update_distance_histogram!(distance_matrix, histogram, system_params)
     return histogram
 end
 
-function update_distance_histogram_vectors!(histogram, old_distances, new_distances, system_params)
-    n_atoms = system_params.N
-    bin_width = system_params.binWidth
-    n_bins = system_params.Nbins
+function update_distance_histogram_vectors!(histogram, old_distances, new_distances, system_params::SystemParameters)
+    n_atoms = system_params.n_atoms
+    bin_width = system_params.bin_width
+    n_bins = system_params.n_bins
 
     @inbounds @fastmath for i in 1:n_atoms
         # Remove old distance contribution
@@ -1653,15 +1595,15 @@ function normalize_hist_to_rdf!(histogram::AbstractVector{T},
                                 box::AbstractVector{T})::AbstractVector{T} where {T <: AbstractFloat}
     # Calculate system volumes and pair count
     box_volume = prod(box)
-    n_pairs = system_params.N * (system_params.N - 1) ÷ 2
+    n_pairs = system_params.n_atoms * (system_params.n_atoms - 1) ÷ 2
 
     # Pre-calculate bin radii and shell volumes
-    bin_width = system_params.binWidth
-    bins = [(i * bin_width) for i in 1:(system_params.Nbins)]
-    shell_volumes = [4 * π * system_params.binWidth * bins[i]^2 for i in eachindex(bins)]
+    bin_width = system_params.bin_width
+    bins = [(i * bin_width) for i in 1:(system_params.n_bins)]
+    shell_volumes = [4 * π * system_params.bin_width * bins[i]^2 for i in eachindex(bins)]
 
     # Calculate normalization factors
-    normalization_factors = fill(box_volume / n_pairs, system_params.Nbins) ./ shell_volumes
+    normalization_factors = fill(box_volume / n_pairs, system_params.n_bins) ./ shell_volumes
 
     # Apply normalization in-place
     histogram .*= normalization_factors
@@ -1688,16 +1630,17 @@ function apply_periodic_boundaries!(frame::Frame,
     return frame
 end
 
-function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box, rng, mutatedStepAdjust)
+function mcmove!(mc_arrays, E, energy_prev_vec, model::Flux.Chain, nn_params::NeuralNetParameters,
+                 system_params::SystemParameters, box, rng, mutatedStepAdjust)
     # Unpack mcarrays
-    frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1 = mcarrays
+    frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1 = mc_arrays
     # Optionally make a copy of the original coordinates
     if G3Matrix1 != [] || G9Matrix1 != []
         coordinates1 = copy(positions(frame))
     end
 
     # Pick a particle
-    pointIndex = rand(rng, Int32(1):Int32(systemParms.N))
+    pointIndex = rand(rng, Int32(1):Int32(system_params.n_atoms))
 
     # Allocate the distance vector
     distanceVector1 = distanceMatrix[:, pointIndex]
@@ -1721,23 +1664,23 @@ function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
     accepted = 0
 
     # Get indexes of atoms for energy contribution update
-    indexesForUpdate = get_energies_update_mask(distanceVector2, NNParms)
+    indexesForUpdate = get_energies_update_mask(distanceVector2, nn_params)
 
     # Make a copy of the original G2 matrix and update it
     G2Matrix2 = copy(G2Matrix1)
-    update_g2_matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+    update_g2_matrix!(G2Matrix2, distanceVector1, distanceVector2, system_params, nn_params, pointIndex)
 
     # Make a copy of the original angular matrices and update them
     G3Matrix2 = copy(G3Matrix1)
     if G3Matrix1 != []
-        updateG3Matrix!(G3Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
-                        NNParms, pointIndex)
+        updateG3Matrix!(G3Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, system_params,
+                        nn_params, pointIndex)
     end
 
     G9Matrix2 = copy(G9Matrix1)
     if G9Matrix1 != []
-        updateG9Matrix!(G9Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
-                        NNParms, pointIndex)
+        updateG9Matrix!(G9Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, system_params,
+                        nn_params, pointIndex)
     end
 
     # Combine symmetry function matrices accumulators
@@ -1745,22 +1688,22 @@ function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
 
     # Compute the energy again
     # E2 = totalEnergyScalar(G2Matrix2, model)
-    newEnergyVector = update_system_energies_vector(symmFuncMatrix2, model, indexesForUpdate, EpreviousVector)
+    newEnergyVector = update_system_energies_vector(symmFuncMatrix2, model, indexesForUpdate, energy_prev_vec)
     E2 = sum(newEnergyVector)
 
     # Get energy difference
     ΔE = E2 - E1
 
     # Accept or reject the move
-    if rand(rng, Float64) < exp(-ΔE * systemParms.β)
+    if rand(rng, Float64) < exp(-ΔE * system_params.beta)
         accepted += 1
         E += ΔE
         # Update distance matrix
         distanceMatrix[pointIndex, :] = distanceVector2
         distanceMatrix[:, pointIndex] = distanceVector2
         # Pack mcarrays
-        mcarrays = (frame, distanceMatrix, G2Matrix2, G3Matrix2, G9Matrix2)
-        return (mcarrays, E, newEnergyVector, accepted)
+        mc_arrays = (frame, distanceMatrix, G2Matrix2, G3Matrix2, G9Matrix2)
+        return (mc_arrays, E, newEnergyVector, accepted)
     else
         positions(frame)[:, pointIndex] .-= dr
 
@@ -1768,20 +1711,20 @@ function mcmove!(mcarrays, E, EpreviousVector, model, NNParms, systemParms, box,
         apply_periodic_boundaries!(frame, box, pointIndex)
 
         # Pack mcarrays
-        mcarrays = (frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1)
-        return (mcarrays, E, EpreviousVector, accepted)
+        mc_arrays = (frame, distanceMatrix, G2Matrix1, G3Matrix1, G9Matrix1)
+        return (mc_arrays, E, energy_prev_vec, accepted)
     end
 end
 
-function mcsample!(input)
+function mcsample!(input::MonteCarloSampleInput)
     # Unpack the inputs
     model = input.model
-    globalParms = input.globalParms
-    MCParms = input.MCParms
-    NNParms = input.NNParms
-    systemParms = input.systemParms
+    globalParms = input.global_params
+    MCParms = input.mc_params
+    NNParms = input.nn_params
+    systemParms = input.system_params
 
-    mutatedStepAdjust = copy(systemParms.Δ)
+    mutatedStepAdjust = copy(systemParms.max_displacement)
 
     # Get the worker id and the output filenames
     if nprocs() == 1
@@ -1813,14 +1756,14 @@ function mcsample!(input)
     box = lengths(UnitCell(frame))
 
     # Start writing MC trajectory
-    if globalParms.outputMode == "verbose"
+    if globalParms.output_mode == "verbose"
         write_trajectory(positions(frame), box, systemParms, trajFile, 'w')
         write_trajectory(positions(frame), box, systemParms, pdbFile, 'w')
     end
 
     # Get the number of data points
-    totalDataPoints = Int(MCParms.steps / MCParms.outfreq)
-    prodDataPoints = Int((MCParms.steps - MCParms.Eqsteps) / MCParms.outfreq)
+    totalDataPoints = Int(MCParms.steps / MCParms.output_frequency)
+    prodDataPoints = Int((MCParms.steps - MCParms.equilibration_steps) / MCParms.output_frequency)
 
     # Build the distance matrix
     distanceMatrix = build_distance_matrix(frame)
@@ -1829,12 +1772,12 @@ function mcsample!(input)
     G2Matrix = build_g2_matrix(distanceMatrix, NNParms)
 
     G3Matrix = []
-    if length(NNParms.G3Functions) > 0
+    if length(NNParms.g3_functions) > 0
         G3Matrix = build_g3_matrix(distanceMatrix, positions(frame), box, NNParms)
     end
 
     G9Matrix = []
-    if length(NNParms.G9Functions) > 0
+    if length(NNParms.g9_functions) > 0
         G9Matrix = build_g9_matrix(distanceMatrix, positions(frame), box, NNParms)
     end
 
@@ -1842,13 +1785,13 @@ function mcsample!(input)
     mcarrays = (frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix)
 
     # Initialize the distance histogram accumulator
-    histAccumulator = zeros(Float64, systemParms.Nbins)
+    histAccumulator = zeros(Float64, systemParms.n_bins)
 
     # Build the cross correlation arrays for training,
     # an additional distance histogram array
     # and the symmetry function matrix accumulator
     if globalParms.mode == "training"
-        hist = zeros(Float64, systemParms.Nbins)
+        hist = zeros(Float64, systemParms.n_bins)
         G2MatrixAccumulator = zeros(size(G2Matrix))
         G3MatrixAccumulator = zeros(size(G3Matrix))
         G9MatrixAccumulator = zeros(size(G9Matrix))
@@ -1876,26 +1819,27 @@ function mcsample!(input)
         acceptedIntermediate += accepted
 
         # Perform MC step adjustment during the equilibration
-        if MCParms.stepAdjustFreq > 0 && step % MCParms.stepAdjustFreq == 0 && step < MCParms.Eqsteps
+        if MCParms.step_adjust_frequency > 0 && step % MCParms.step_adjust_frequency == 0 &&
+           step < MCParms.equilibration_steps
             mutatedStepAdjust = adjust_monte_carlo_step!(mutatedStepAdjust, systemParms, box, MCParms,
                                                          acceptedIntermediate)
             acceptedIntermediate = 0
         end
 
         # Collect the output energies
-        if step % MCParms.outfreq == 0
-            energies[Int(step / MCParms.outfreq) + 1] = E
+        if step % MCParms.output_frequency == 0
+            energies[Int(step / MCParms.output_frequency) + 1] = E
         end
 
         # MC trajectory output
-        if globalParms.outputMode == "verbose"
-            if step % MCParms.trajout == 0
+        if globalParms.output_mode == "verbose"
+            if step % MCParms.trajectory_output_frequency == 0
                 write_trajectory(positions(mcarrays[1]), box, systemParms, trajFile, 'a')
             end
         end
 
         # Accumulate the distance histogram
-        if step % MCParms.outfreq == 0 && step > MCParms.Eqsteps
+        if step % MCParms.output_frequency == 0 && step > MCParms.equilibration_steps
             frame, distanceMatrix, G2Matrix, G3Matrix, G9Matrix = mcarrays
             # Update the cross correlation array during the training
             if globalParms.mode == "training"
@@ -1916,7 +1860,7 @@ function mcsample!(input)
 
                 update_cross_accumulators!(crossAccumulators, symmFuncMatrix, hist, model, NNParms)
                 # Nullify the hist array for the next training iteration
-                hist = zeros(Float64, systemParms.Nbins)
+                hist = zeros(Float64, systemParms.n_bins)
             else
                 histAccumulator = update_distance_histogram!(distanceMatrix, histAccumulator, systemParms)
             end
@@ -1966,10 +1910,10 @@ function adjust_monte_carlo_step!(current_step_size::T,
                                   mc_params::MonteCarloParameters,
                                   accepted_moves::Integer)::T where {T <: AbstractFloat}
     # Calculate current acceptance ratio
-    acceptance_ratio = accepted_moves / mc_params.stepAdjustFreq
+    acceptance_ratio = accepted_moves / mc_params.step_adjust_frequency
 
     # Adjust step size based on target acceptance ratio
-    current_step_size = (acceptance_ratio / system_params.targetAR) * current_step_size
+    current_step_size = (acceptance_ratio / system_params.target_acceptance_ratio) * current_step_size
 
     # Limit maximum step size to half of smallest box dimension
     max_step_size = minimum(box) / 2
@@ -1985,8 +1929,8 @@ end
 
 function compute_pmf(rdf::AbstractVector{T},
                      system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
-    n_bins = system_params.Nbins
-    β = system_params.β
+    n_bins = system_params.n_bins
+    β = system_params.beta
 
     # Initialize PMF array and identify repulsive regions
     pmf = Vector{T}(undef, n_bins)
@@ -2015,11 +1959,11 @@ end
 
 function precompute_reference_data(input::PreComputedInput;)::ReferenceData
     # Unpack input parameters
-    nn_params = input.NNParms
-    system_params = input.systemParms
-    ref_rdf = input.refRDF
+    nn_params = input.nn_params
+    system_params = input.system_params
+    ref_rdf = input.reference_rdf
 
-    println("Pre-computing data for $(system_params.systemName)...")
+    println("Pre-computing data for $(system_params.system_name)...")
 
     # Compute potential of mean force
     pmf = compute_pmf(ref_rdf, system_params)
@@ -2032,8 +1976,8 @@ function precompute_reference_data(input::PreComputedInput;)::ReferenceData
     distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
     histograms = Vector{Vector{Float64}}(undef, n_frames)
     g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-    g3_matrices = Vector{Matrix{Float64}}(undef, n_frames * (length(nn_params.G3Functions) > 0))
-    g9_matrices = Vector{Matrix{Float64}}(undef, n_frames * (length(nn_params.G9Functions) > 0))
+    g3_matrices = Vector{Matrix{Float64}}(undef, n_frames * (length(nn_params.g3_functions) > 0))
+    g9_matrices = Vector{Matrix{Float64}}(undef, n_frames * (length(nn_params.g9_functions) > 0))
 
     # Process each frame
     for frame_id in 1:n_frames
@@ -2043,17 +1987,17 @@ function precompute_reference_data(input::PreComputedInput;)::ReferenceData
 
         # Compute distance matrix and histogram
         distance_matrices[frame_id] = build_distance_matrix(frame)
-        histograms[frame_id] = zeros(Float64, system_params.Nbins)
+        histograms[frame_id] = zeros(Float64, system_params.n_bins)
         update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], system_params)
 
         # Compute symmetry function matrices
         g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
 
-        if !isempty(nn_params.G3Functions)
+        if !isempty(nn_params.g3_functions)
             g3_matrices[frame_id] = build_g3_matrix(distance_matrices[frame_id], coords, box, nn_params)
         end
 
-        if !isempty(nn_params.G9Functions)
+        if !isempty(nn_params.g9_functions)
             g9_matrices[frame_id] = build_g9_matrix(distance_matrices[frame_id], coords, box, nn_params)
         end
     end
@@ -2089,7 +2033,7 @@ function compute_pretraining_gradient(energy_diff_nn::T,
 
     # Calculate regularization loss
     model_params = Flux.params(model)
-    reg_loss = pretrain_params.PTREGP * sum(abs2, model_params[1])
+    reg_loss = pretrain_params.regularization * sum(abs2, model_params[1])
 
     # Print detailed loss information if requested
     if verbose
@@ -2108,104 +2052,111 @@ function compute_pretraining_gradient(energy_diff_nn::T,
     # Calculate loss gradients with regularization
     gradient_scale = 2 * (energy_diff_nn - energy_diff_pmf)
     loss_gradient = @. gradient_scale * (grad2 - grad1)
-    reg_gradient = @. model_params * 2 * pretrain_params.PTREGP
+    reg_gradient = @. model_params * 2 * pretrain_params.regularization
 
     return loss_gradient + reg_gradient
 end
 
-function pretraining_move!(refData::ReferenceData, model, NNParms, systemParms, rng)
+function pretraining_move!(reference_data::ReferenceData, model::Flux.Chain, nn_params::NeuralNetParameters,
+                           system_params::SystemParameters, rng)
     # Pick a frame
-    traj = read_xtc(systemParms)
+    traj = read_xtc(system_params)
     nframes = Int(size(traj)) - 1 # Don't take the first frame
-    frameId::Int = rand(rng, 1:nframes)
-    frame = read_step(traj, frameId)
+    frame_id::Int = rand(rng, 1:nframes)
+    frame = read_step(traj, frame_id)
     box = lengths(UnitCell(frame))
     # Pick a particle
-    pointIndex::Int = rand(rng, 1:(systemParms.N))
+    point_index::Int = rand(rng, 1:(system_params.n_atoms))
 
     # Read reference data
-    distanceMatrix = refData.distanceMatrices[frameId]
-    hist = refData.histograms[frameId]
-    PMF = refData.PMF
+    distance_matrix = reference_data.distance_matrices[frame_id]
+    hist = reference_data.histograms[frame_id]
+    pmf = reference_data.pmf
 
     # If no angular symmetry functions are provided, use G2 only
-    if refData.G3Matrices == [] && refData.G9Matrices == []
-        symmFuncMatrix1 = refData.G2Matrices[frameId]
+    if isempty(reference_data.g3_matrices) && isempty(reference_data.g9_matrices)
+        symm_func_matrix1 = reference_data.g2_matrices[frame_id]
     else
         # Make a copy of the original coordinates
         coordinates1 = copy(positions(frame))
         # Combine symmetry function matrices
-        if refData.G3Matrices == []
-            symmFuncMatrices = [refData.G2Matrices[frameId], refData.G9Matrices[frameId]]
-        elseif refData.G9Matrices == []
-            symmFuncMatrices = [refData.G2Matrices[frameId], refData.G3Matrices[frameId]]
+        if isempty(reference_data.g3_matrices)
+            symm_func_matrices = [reference_data.g2_matrices[frame_id], reference_data.g9_matrices[frame_id]]
+        elseif isempty(reference_data.g9_matrices)
+            symm_func_matrices = [reference_data.g2_matrices[frame_id], reference_data.g3_matrices[frame_id]]
         else
-            symmFuncMatrices = [refData.G2Matrices[frameId], refData.G3Matrices[frameId], refData.G9Matrices[frameId]]
+            symm_func_matrices = [
+                reference_data.g2_matrices[frame_id],
+                reference_data.g3_matrices[frame_id],
+                reference_data.g9_matrices[frame_id]
+            ]
         end
         # Unpack symmetry functions and concatenate horizontally into a single matrix
-        symmFuncMatrix1 = hcat(symmFuncMatrices...)
+        symm_func_matrix1 = hcat(symm_func_matrices...)
     end
 
     # Compute energy of the initial configuration
-    ENN1Vector = init_system_energies_vector(symmFuncMatrix1, model)
-    ENN1 = sum(ENN1Vector)
-    EPMF1 = sum(hist .* PMF)
+    e_nn1_vector = init_system_energies_vector(symm_func_matrix1, model)
+    e_nn1 = sum(e_nn1_vector)
+    e_pmf1 = sum(hist .* pmf)
 
     # Allocate the distance vector
-    distanceVector1 = distanceMatrix[:, pointIndex]
+    distance_vector1 = distance_matrix[:, point_index]
 
     # Displace the particle
-    dr = systemParms.Δ * (rand(rng, Float64, 3) .- 0.5)
+    dr = system_params.max_displacement * (rand(rng, Float64, 3) .- 0.5)
 
-    positions(frame)[:, pointIndex] .+= dr
+    positions(frame)[:, point_index] .+= dr
 
     # Compute the updated distance vector
-    point = positions(frame)[:, pointIndex]
-    distanceVector2 = compute_distance_vector(point, positions(frame), box)
+    point = positions(frame)[:, point_index]
+    distance_vector2 = compute_distance_vector(point, positions(frame), box)
 
     # Update the histogram
-    hist = update_distance_histogram_vectors!(hist, distanceVector1, distanceVector2, systemParms)
+    hist = update_distance_histogram_vectors!(hist, distance_vector1, distance_vector2, system_params)
 
     # Get indexes for updating ENN
-    indexesForUpdate = get_energies_update_mask(distanceVector2, NNParms)
+    indexes_for_update = get_energies_update_mask(distance_vector2, nn_params)
 
     # Make a copy of the original G2 matrix and update it
-    G2Matrix2 = copy(refData.G2Matrices[frameId])
-    update_g2_matrix!(G2Matrix2, distanceVector1, distanceVector2, systemParms, NNParms, pointIndex)
+    g2_matrix2 = copy(reference_data.g2_matrices[frame_id])
+    update_g2_matrix!(g2_matrix2, distance_vector1, distance_vector2, system_params, nn_params, point_index)
 
     # Make a copy of the original angular matrices and update them
-    G3Matrix2 = []
-    if refData.G3Matrices != []
-        G3Matrix2 = copy(refData.G3Matrices[frameId])
-        updateG3Matrix!(G3Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
-                        NNParms, pointIndex)
+    g3_matrix2 = []
+    if !isempty(reference_data.g3_matrices)
+        g3_matrix2 = copy(reference_data.g3_matrices[frame_id])
+        updateG3Matrix!(g3_matrix2, coordinates1, positions(frame), box, distance_vector1, distance_vector2,
+                        system_params,
+                        nn_params, point_index)
     end
 
     # Make a copy of the original angular matrices and update them
-    G9Matrix2 = []
-    if refData.G9Matrices != []
-        G9Matrix2 = copy(refData.G9Matrices[frameId])
-        updateG9Matrix!(G9Matrix2, coordinates1, positions(frame), box, distanceVector1, distanceVector2, systemParms,
-                        NNParms, pointIndex)
+    g9_matrix2 = []
+    if !isempty(reference_data.g9_matrices)
+        g9_matrix2 = copy(reference_data.g9_matrices[frame_id])
+        updateG9Matrix!(g9_matrix2, coordinates1, positions(frame), box, distance_vector1, distance_vector2,
+                        system_params,
+                        nn_params, point_index)
     end
 
     # Combine symmetry function matrices accumulators
-    symmFuncMatrix2 = combine_symmetry_matrices(G2Matrix2, G3Matrix2, G9Matrix2)
+    symm_func_matrix2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
 
     # Compute the NN energy again
-    ENN2Vector = update_system_energies_vector(symmFuncMatrix2, model, indexesForUpdate, ENN1Vector)
-    ENN2 = sum(ENN2Vector)
-    EPMF2 = sum(hist .* PMF)
+    e_nn2_vector = update_system_energies_vector(symm_func_matrix2, model, indexes_for_update, e_nn1_vector)
+    e_nn2 = sum(e_nn2_vector)
+    e_pmf2 = sum(hist .* pmf)
 
     # Get the energy differences
-    ΔENN = ENN2 - ENN1
-    ΔEPMF = EPMF2 - EPMF1
+    Δe_nn = e_nn2 - e_nn1
+    Δe_pmf = e_pmf2 - e_pmf1
 
     # Revert the changes in the frame arrays
-    positions(frame)[:, pointIndex] .-= dr
-    hist = update_distance_histogram_vectors!(hist, distanceVector2, distanceVector1, systemParms)
+    positions(frame)[:, point_index] .-= dr
+    hist = update_distance_histogram_vectors!(hist, distance_vector2, distance_vector1, system_params)
 
-    return (symmFuncMatrix1, symmFuncMatrix2, ΔENN, ΔEPMF)
+    return (symm_func_matrix1, symm_func_matrix2, Δe_nn, Δe_pmf)
 end
 
 function pretrain_model!(pretrain_params::PreTrainingParameters,
@@ -2217,8 +2168,8 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                          save_path::String="model-pre-trained.bson",
                          verbose::Bool=true)::Chain
     if verbose
-        println("\nStarting pre-training with Monte Carlo for $(pretrain_params.PTsteps) steps")
-        println("Regularization parameter: $(pretrain_params.PTREGP)")
+        println("\nStarting pre-training with Monte Carlo for $(pretrain_params.regularization) steps")
+        println("Regularization parameter: $(pretrain_params.regularization)")
         report_optimizer(optimizer)
     end
 
@@ -2234,8 +2185,8 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
     ref_data_list = pmap(precompute_reference_data, ref_data_inputs)
 
     # Main training loop
-    for step in 1:(pretrain_params.PTsteps)
-        should_report = (step % pretrain_params.PToutfreq == 0) || (step == 1)
+    for step in 1:(pretrain_params.steps)
+        should_report = (step % pretrain_params.output_frequency == 0) || (step == 1)
         if should_report && verbose
             println("\nPre-training step: $step")
         end
@@ -2317,29 +2268,29 @@ function main()
             """)
 
         # Execute pretraining if needed
-        if global_params.modelFile == "none"
+        if global_params.model_file == "none"
             model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
 
             println("\nRe-initializing the optimizer for the training...")
             optimizer = init_optimizer(nn_params)
             report_optimizer(optimizer)
-            println("Neural network regularization parameter: $(nn_params.REGP)")
+            println("Neural network regularization parameter: $(nn_params.regularization)")
         end
 
         # Execute main training
         println("""
             \nStarting main training phase:
-            - Adaptive gradient scaling: $(global_params.adaptiveScaling)
-            - Iterations: $(nn_params.iters)
+            - Adaptive gradient scaling: $(global_params.adaptive_scaling)
+            - Iterations: $(nn_params.iterations)
             - Running on $(num_workers) worker(s)
             - Total steps: $(mc_params.steps * num_workers / 1e6)M
-            - Equilibration steps per rank: $(mc_params.Eqsteps / 1e6)M
+            - Equilibration steps per rank: $(mc_params.equilibration_steps / 1e6)M
             """)
 
         train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
     else
         length(system_params_list) == 1 || throw(ArgumentError("Simulation mode supports only one system"))
-        println("Running simulation with $(global_params.modelFile)")
+        println("Running simulation with $(global_params.model_file)")
         simulate!(model, global_params, mc_params, nn_params, system_params_list[1])
     end
 
