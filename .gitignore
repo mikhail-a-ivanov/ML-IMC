@@ -10,9 +10,6 @@
 # Do not ignore configs, starting .xtc files
 !configs/*/*/*
 
-# Do not commit svg
-*.svg
-
 # Do not commit jupyter notebooks
 *.ipynb
 
@@ -32,7 +29,4 @@ make_loss_plot.py
 trash/
 trash
 trash/*
-
 .mypy_cache/
-
-trash/main_one_file.jl
