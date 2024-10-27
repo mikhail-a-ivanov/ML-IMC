@@ -7,6 +7,9 @@
 *.pdb
 *.txt
 
+# Do not ignore configs, starting .xtc files
+!configs/*/*/*
+
 # Do not commit svg
 *.svg
 
@@ -26,4 +29,10 @@
 
 /models
 make_loss_plot.py
+trash/
 trash
+trash/*
+
+.mypy_cache/
+
+trash/main_one_file.jl
