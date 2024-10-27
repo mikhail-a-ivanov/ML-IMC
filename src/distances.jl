@@ -1,126 +1,79 @@
-"""
-buildDistanceMatrixChemfiles(frame)
+using ..ML_IMC
 
-Builds the distance matrix for a given
-Chemfiles frame
+function build_distance_matrix_chemfiles(frame::Frame)::Matrix{Float64}
+    n_atoms = length(frame)
+    distance_matrix = Matrix{Float64}(undef, n_atoms, n_atoms)
 
-Note that the Chemfiles distance
-function starts indexing atoms from 0!
-"""
-function buildDistanceMatrixChemfiles(frame)
-    N = length(frame)
-    distanceMatrix = Matrix{Float64}(undef, N, N)
-    @inbounds for i in 1:N
-        @inbounds for j in 1:N
-            distanceMatrix[i, j] = distance(frame, i - 1, j - 1)
+    @inbounds for i in 1:n_atoms
+        distance_matrix[i, i] = 0.0
+        for j in (i + 1):n_atoms
+            dist = distance(frame, i - 1, j - 1)
+            distance_matrix[i, j] = dist
+            distance_matrix[j, i] = dist
         end
     end
-    return (distanceMatrix)
+
+    return distance_matrix
 end
 
-"""
-function updatedistance!(frame, distanceVector, pointIndex)
-
-Updates all distances between a selected particle
-and all the others in a given configuration
-
-Note that the Chemfiles distance
-function starts indexing atoms from 0!
-
-pointIndex can be any number from 1 to N,
-so I need to shift it by -1 so it takes
-the same values as the iterator i
-"""
-function updateDistance!(frame, distanceVector, pointIndex)
-    @fastmath @inbounds for i in 0:(length(distanceVector) - 1)
-        distanceVector[i + 1] = distance(frame, i, pointIndex - 1)
+function update_distance!(frame::Frame, distance_vector::Vector{Float64}, point_index::Int)::Vector{Float64}
+    @inbounds for i in eachindex(distance_vector)
+        distance_vector[i] = distance(frame, i - 1, point_index - 1) # NOTE: Chemfiles.distance 0-based index
     end
-    return (distanceVector)
+    return distance_vector
 end
 
-"""
-function distanceCutoff(distance, rcutoff = 6.0)
-
-Cutoff distance function (J. Chem. Phys. 134, 074106 (2011))
-"""
-function distanceCutoff(distance, rcutoff=6.0)
-    if distance > rcutoff
-        return (0.0)
+function distance_cutoff(distance::Float64, r_cutoff::Float64=6.0)::Float64
+    if distance > r_cutoff
+        return 0.0
     else
-        return (0.5 * (cos(π * distance / rcutoff) + 1.0))
+        return (0.5 * (cos(π * distance / r_cutoff) + 1.0))
     end
 end
 
-"""
-function distanceComponent(x1, x2, xsize)
-
-Computes distance between two points along a selected axis,
-taking the periodic boundary conditions into the account.
-"""
-function computeDistanceComponent(x1, x2, xsize)
+function compute_distance_component(x1::Float64, x2::Float64, box_size::Float64)::Float64
     dx = x2 - x1
-    dx += -xsize * convert(Int32, round(dx / xsize))
+    dx -= box_size * round(dx / box_size)
     return dx
 end
 
-"""
-function computeDirectionalVector(r1, r2, box)
-
-Computes a directional vector between two
-points, taking the periodic boundary conditions into account
-"""
-function computeDirectionalVector(r1, r2, box)
-    return map(computeDistanceComponent, r1, r2, box)
-end
-
-"""
-function squaredDistanceComponent(x1, x2, xsize)
-
-Computes distance between two points along a selected axis,
-taking the periodic boundary conditions into account
-The result is then squared.
-"""
-function computeSquaredDistanceComponent(x1, x2, xsize)
+function compute_squared_distance_component(x1::Float64, x2::Float64, box_size::Float64)::Float64
     dx = x2 - x1
-    dx += -xsize * convert(Int32, round(dx / xsize))
-    return dx^2
+    dx -= box_size * round(dx / box_size)
+    return dx * dx
 end
 
-"""
-function computeDistance(r1, r2, box)
-
-Computes PBC distance between two points
-"""
-function computeDistance(r1, r2, box)
-    return sqrt.(reduce(+, map(computeSquaredDistanceComponent, r1, r2, box)))
+function compute_directional_vector(r1::AbstractVector{T}, r2::AbstractVector{T},
+                                    box::AbstractVector{T})::Vector{T} where {T <: AbstractFloat}
+    return [compute_distance_component(r1[i], r2[i], box[i]) for i in eachindex(r1, r2, box)]
 end
 
-"""
-computeDistanceVector(r1, coordinates, box)
-
-Computes a vector of PBC distances between point r1
-and all the others in the simulation box
-"""
-function computeDistanceVector(r1, coordinates, box)
-    return vec(sqrt.(sum(broadcast(computeSquaredDistanceComponent, r1, coordinates, box); dims=1)))
+function compute_distance(r1::AbstractVector{T}, r2::AbstractVector{T},
+                          box::AbstractVector{T})::T where {T <: AbstractFloat}
+    return sqrt(sum(compute_squared_distance_component(r1[i], r2[i], box[i]) for i in eachindex(r1, r2, box)))
 end
 
-"""
-buildDistanceMatrix(frame)
+function compute_distance_vector(r1::AbstractVector{T}, coordinates::AbstractMatrix{T},
+                                 box::AbstractVector{T})::Vector{T} where {T <: AbstractFloat}
+    return [sqrt(sum(compute_squared_distance_component(r1[i], coordinates[i, j], box[i]) for i in axes(coordinates, 1)))
+            for j in axes(coordinates, 2)]
+end
 
-Builds the distance matrix for a given
-Chemfiles frame using my own distance functions
-(slightly faster but more memory consumption)
-"""
-function buildDistanceMatrix(frame)
+function build_distance_matrix(frame::Frame)::Matrix{Float64}
     coordinates = positions(frame)
-    N::Int64 = length(frame) # number of atoms
-    box::Vector{Float64} = lengths(UnitCell(frame)) # pbc box vector
+    n_atoms = length(frame)
+    box = lengths(UnitCell(frame))
 
-    distanceMatrix = Matrix{Float64}(undef, N, N)
-    for i in 1:N
-        distanceMatrix[i, :] = computeDistanceVector(coordinates[:, i], coordinates, box)
+    distance_matrix = Matrix{Float64}(undef, n_atoms, n_atoms)
+
+    @inbounds for i in 1:n_atoms
+        distance_matrix[i, i] = 0.0
+        for j in (i + 1):n_atoms
+            dist = compute_distance(coordinates[:, i], coordinates[:, j], box)
+            distance_matrix[i, j] = dist
+            distance_matrix[j, i] = dist
+        end
     end
 
-    return (distanceMatrix)
+    return distance_matrix
 end

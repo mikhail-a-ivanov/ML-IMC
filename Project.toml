@@ -1,0 +1,28 @@
+name = "ML_IMC"
+uuid = "8c997b32-2944-4c64-b9e3-ea505a7f7864"
+authors = ["Maksim Posysoev <maxim.posysoev@gmail.com>", "Mikhail Ivanov <mikhail.ivanov.1995@gmail.com>"]
+version = "0.2.0"
+
+[deps]
+BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
+Chemfiles = "46823bd8-5fb3-5f92-9aa0-96921f3dd015"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+RandomNumbers = "e6cf234a-135c-5ec9-84dd-332b85af5143"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[compat]
+BSON = "0.3.9"
+Chemfiles = "0.10.41"
+Dates = "1.11.0"
+Distributed = "1.11.0"
+Flux = "0.14.22"
+LinearAlgebra = "1.11.0"
+Printf = "1.11.0"
+RandomNumbers = "1.6.0"
+Statistics = "1.11.1"
+TOML = "1.0.3"
