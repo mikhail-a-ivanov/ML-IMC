@@ -1,4 +1,4 @@
-using Flux
+using ..ML_IMC
 
 function report_optimizer(optimizer::Flux.Optimise.AbstractOptimiser)
     println("Optimizer type: $(typeof(optimizer))")

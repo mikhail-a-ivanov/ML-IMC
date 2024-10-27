@@ -1,18 +1,32 @@
 module ML_IMC
 
-using Dates
+__precompile__()
 
+using Dates
+using BSON: @load, @save
+using Flux
+using Statistics
+using RandomNumbers
+using RandomNumbers.Xorshifts
+using TOML
+using Chemfiles
+using LinearAlgebra
+using Printf
+using Distributed
+
+include("entities.jl")
 include("config_loading.jl")
 include("distances.jl")
-include("entities.jl")
+include("gradients.jl")
+include("initialization.jl")
 include("logging.jl")
+include("monte_carlo.jl")
 include("neural_network.jl")
 include("pre_training.jl")
 include("simulation.jl")
 include("symmetry_functions.jl")
 include("training.jl")
 include("utils.jl")
-include("initialization.jl")
 
 BLAS.set_num_threads(1)
 

@@ -1,8 +1,4 @@
-using Flux
-using Statistics
-using Distributed
-
-using BSON: @save
+using ..ML_IMC
 
 function compute_training_loss(descriptor_nn::AbstractVector{T},
                                descriptor_ref::AbstractVector{T},

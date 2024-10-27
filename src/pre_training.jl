@@ -1,11 +1,4 @@
-using Chemfiles
-using Flux
-using RandomNumbers
-using RandomNumbers.Xorshifts
-using Statistics
-using BSON: @save
-
-include("monte_carlo.jl")
+using ..ML_IMC
 
 struct PreComputedInput
     nn_params::NeuralNetParameters

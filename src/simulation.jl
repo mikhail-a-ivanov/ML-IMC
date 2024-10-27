@@ -1,7 +1,4 @@
-using Flux
-using Distributed
-
-include("monte_carlo.jl")
+using ..ML_IMC
 
 function simulate!(model::Flux.Chain,
                    global_params::GlobalParameters,

@@ -1,4 +1,4 @@
-using LinearAlgebra
+using ..ML_IMC
 
 function combine_symmetry_matrices(g2_matrix, g3_matrix, g9_matrix) # NOTE: better no types
     if isempty(g3_matrix) && isempty(g9_matrix)

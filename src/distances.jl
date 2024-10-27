@@ -1,4 +1,4 @@
-using Chemfiles
+using ..ML_IMC
 
 function build_distance_matrix_chemfiles(frame::Frame)::Matrix{Float64}
     n_atoms = length(frame)

@@ -1,3 +1,5 @@
+using ..ML_IMC
+
 struct G2
     eta::Float64
     rcutoff::Float64

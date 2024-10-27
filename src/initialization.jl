@@ -1,8 +1,4 @@
-using BSON: @load
-include("entities.jl")
-include("utils.jl")
-include("logging.jl")
-include("neural_network.jl")
+using ..ML_IMC
 
 function input_init(global_params::GlobalParameters, nn_params::NeuralNetParameters,
                     pretrain_params::PreTrainingParameters, system_params_list::Vector{SystemParameters})

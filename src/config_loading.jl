@@ -1,5 +1,4 @@
-using TOML
-using Chemfiles
+using ..ML_IMC
 
 function parse_symmetry_functions(filename::String)
     symm_data = TOML.parsefile(filename)

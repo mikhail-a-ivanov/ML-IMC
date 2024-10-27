@@ -1,4 +1,4 @@
-using Flux
+using ..ML_IMC
 
 function build_network(nn_params::NeuralNetParameters)
     return [(nn_params.neurons[i - 1], nn_params.neurons[i],

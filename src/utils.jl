@@ -1,5 +1,4 @@
-using Chemfiles
-using Printf
+using ..ML_IMC
 
 function check_file(filename::AbstractString)
     isfile(filename) || throw(ArgumentError("Could not locate file: $filename"))

@@ -1,6 +1,4 @@
-using Flux
-
-include("entities.jl")
+using ..ML_IMC
 
 function compute_atomic_energy(input_layer::AbstractVector{T}, model::Flux.Chain)::T where {T <: AbstractFloat}
     return only(model(input_layer))

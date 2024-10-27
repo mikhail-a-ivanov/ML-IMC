@@ -1,16 +1,4 @@
-using Flux
-using Chemfiles
-using RandomNumbers
-using RandomNumbers.Xorshifts
-using Statistics
-using Distributed
-
-include("entities.jl")
-include("symmetry_functions.jl")
-include("gradients.jl")
-include("utils.jl")
-include("distances.jl")
-include("training.jl")
+using ..ML_IMC
 
 struct MonteCarloAverages
     descriptor::Vector{Float64}
