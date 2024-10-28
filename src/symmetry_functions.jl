@@ -1,5 +1,13 @@
 using ..ML_IMC
 
+function distance_cutoff(distance::Float64, r_cutoff::Float64=6.0)::Float64
+    if distance > r_cutoff
+        return 0.0
+    else
+        return (0.5 * (cos(π * distance / r_cutoff) + 1.0))
+    end
+end
+
 function combine_symmetry_matrices(g2_matrix, g3_matrix, g9_matrix) # NOTE: better no types
     if isempty(g3_matrix) && isempty(g9_matrix)
         return g2_matrix

@@ -126,13 +126,6 @@ function train!(global_params::GlobalParameters,
         end
 
         # Save model state
-        for (filename, data) in [
-            ("model-iter-$(iter_string).bson", model),
-            ("opt-iter-$(iter_string).bson", optimizer),
-            ("gradients-iter-$(iter_string).bson", mean_loss_gradients)
-        ]
-        end
-
         @save "model-iter-$(iter_string).bson" model
         check_file("model-iter-$(iter_string).bson")
         @save "opt-iter-$(iter_string).bson" optimizer

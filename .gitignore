@@ -30,3 +30,5 @@ trash/
 trash
 trash/*
 .mypy_cache/
+
+benchmarks/*
