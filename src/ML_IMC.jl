@@ -33,10 +33,15 @@ BLAS.set_num_threads(1)
 function main()
     # Initialize timing
     start_time = now()
-    println("Starting at: ", start_time)
+    println("Start time: ", Dates.format(start_time, "dd u yyyy, HH:MM"))
+
+    println("Initialization")
+    println("--------------")
 
     # Initialize parameters and validate configuration
     global_params, mc_params, nn_params, pretrain_params, system_params_list = parameters_init()
+
+    log_global_parameters(global_params)
 
     # Validate worker/system configuration
     num_workers = nworkers()
@@ -54,42 +59,27 @@ function main()
         inputs, nothing, nothing
     end
 
-    # Display model configuration
-    println("Using the following symmetry functions as the neural input for each atom:")
-    print_symmetry_function_info(nn_params)
+    # Log configuration information
+
+    log_symmetry_functions_info(nn_params)
+    log_model_info(model, nn_params)
+    log_optimizer_info(optimizer)
+    log_training_config(global_params, mc_params)
 
     # Execute workflow based on mode
     if global_params.mode == "training"
-        println("""
-            Training Configuration:
-            - Using $(num_systems) reference system(s)
-            - Activation functions: $(nn_params.activations)
-            """)
-
         # Execute pretraining if needed
         if global_params.model_file == "none"
             model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
 
             println("\nRe-initializing the optimizer for the training...")
             optimizer = init_optimizer(nn_params)
-            report_optimizer(optimizer)
-            println("Neural network regularization parameter: $(nn_params.regularization)")
+            log_optimizer_info(optimizer)
         end
-
-        # Execute main training
-        println("""
-            \nStarting main training phase:
-            - Adaptive gradient scaling: $(global_params.adaptive_scaling)
-            - Iterations: $(nn_params.iterations)
-            - Running on $(num_workers) worker(s)
-            - Total steps: $(mc_params.steps * num_workers / 1e6)M
-            - Equilibration steps per rank: $(mc_params.equilibration_steps / 1e6)M
-            """)
 
         train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
     else
         length(system_params_list) == 1 || throw(ArgumentError("Simulation mode supports only one system"))
-        println("Running simulation with $(global_params.model_file)")
         simulate!(model, global_params, mc_params, nn_params, system_params_list[1])
     end
 
@@ -97,8 +87,7 @@ function main()
     stop_time = now()
     wall_time = canonicalize(stop_time - start_time)
     println("\nExecution completed:")
-    println("- Stop time: ", stop_time)
-    println("- Wall time: ", wall_time)
+    println("Stopped time: ", Dates.format(stop_time, "dd u yyyy, HH:MM"))
+    println("Wall time: ", wall_time)
 end
-
 end # module ML_IMC

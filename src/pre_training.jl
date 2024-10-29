@@ -126,10 +126,10 @@ function compute_pretraining_gradient(energy_diff_nn::T,
     # Print detailed loss information if requested
     if verbose
         println("""
-         Energy loss: $(round(mse_loss; digits=8))
-         PMF energy difference: $(round(energy_diff_pmf; digits=8))
-         NN energy difference: $(round(energy_diff_nn; digits=8))
-         Regularization loss: $(round(reg_loss; digits=8))
+           Energy loss: $(round(mse_loss; digits=8))
+           PMF energy difference: $(round(energy_diff_pmf; digits=8))
+           NN energy difference: $(round(energy_diff_nn; digits=8))
+           Regularization loss: $(round(reg_loss; digits=8))
         """)
     end
 
@@ -255,11 +255,6 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                          reference_rdfs;
                          save_path::String="model-pre-trained.bson",
                          verbose::Bool=true)::Chain
-    if verbose
-        println("\nStarting pre-training with Monte Carlo for $(pretrain_params.regularization) steps")
-        println("Regularization parameter: $(pretrain_params.regularization)")
-        report_optimizer(optimizer)
-    end
 
     # Initialize random number generator and prepare reference data
     rng = RandomNumbers.Xorshifts.Xoroshiro128Plus()

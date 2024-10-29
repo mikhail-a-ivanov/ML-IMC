@@ -90,10 +90,10 @@ function parameters_init()
     inputname = if length(ARGS) > 0 && !occursin("json", ARGS[1])
         ARGS[1]
     else
-        println("No input file was provided!")
-        println("Trying to read input data from configs/config.toml")
         "configs/config.toml"
     end
+
+    println("Config file: $(inputname)")
 
     # Read and parse main configuration file
     config = TOML.parsefile(inputname)
@@ -156,9 +156,6 @@ function parameters_init()
 
     # Parse system parameters for each system file
     system_params_list = [parse_system_parameters(system_file) for system_file in global_params.system_files]
-
-    # Print mode information
-    println("Running ML-IMC in the $(global_params.mode) mode.")
 
     return global_params, mc_params, nn_params, pretrain_params, system_params_list
 end
