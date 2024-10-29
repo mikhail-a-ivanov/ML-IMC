@@ -7,8 +7,8 @@
 *.pdb
 *.txt
 
-# Do not commit svg
-*.svg
+# Do not ignore configs, starting .xtc files
+!configs/*/*/*
 
 # Do not commit jupyter notebooks
 *.ipynb
@@ -26,3 +26,9 @@
 
 /models
 make_loss_plot.py
+trash/
+trash
+trash/*
+.mypy_cache/
+
+benchmarks/*

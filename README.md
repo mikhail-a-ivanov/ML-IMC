@@ -1,5 +1,7 @@
 # ML-IMC
 
+[![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
+
 **M**achine **L**earning enhanced **I**nverse **M**onte **C**arlo.
 
 This project implements an algorithm for creating neural network force fields and performing simulations.
@@ -12,7 +14,13 @@ This project implements an algorithm for creating neural network force fields an
 
   ```julia
    using Pkg
-   Pkg.add(["Distributed", "LinearAlgebra", "Dates", "Flux", "Statistics", "BSON", "RandomNumbers", "Chemfiles", "Printf"])
+   Pkg.instantiate()
+  ```
+
+  or
+
+  ```bash
+  make install
   ```
 
 ## Running the Code
@@ -20,32 +28,32 @@ This project implements an algorithm for creating neural network force fields an
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/mikhail-a-ivanov/ML-IMC.git
+   git clone https://github.com/mposysoev/ML-IMC --depth=1
    ```
 
 2. **Configuration:**
-   - Modify the `ML-IMC-init.in` file to specify the desired parameters for training or simulation.
-   - See the detailed parameter descriptions in the `ML-IMC-init.in` file.
+   - Modify the `config.toml` file (example in the folder `configs`) to specify the desired parameters for training or simulation.
+   - Modify the `symmetry_functions.toml` file for specifying trajectory descriptors.
 
 3. **Execution:**
    - **Training:**
 
      ```bash
-     julia -p n ML-IMC.jl ML-IMC-init.in | tee report.out 
+     julia -p n src/main.jl configs/config.toml | tee report.out 
      ```
 
      where `n` is the number of systems you want to train.
 
    - **Simulation:**
-     - Set the `mode` parameter in `ML-IMC-init.in` to "simulation".
+     - Set the `mode` parameter in `config.toml` to "simulation".
      - Specify the input PDB file and trained model file in the appropriate parameters.
      - Run the same command as for training.
 
 ## Input Files
 
-- **`ML-IMC-init.in`:**  Main input file containing global parameters, Monte Carlo settings, neural network parameters, and pre-training parameters.
-- **`symmetry-functions.in`:**  Defines the symmetry functions to be used as input features for the neural network.
-- **System Input Files (`.in`):**  Individual input files for each system to be trained, containing information such as topology, reference RDF, and simulation parameters.
+- **`config.toml`:**  Main input file containing Global parameters, Monte Carlo settings, Neural Network parameters, and Pre-training parameters.
+- **`symmetry_functions.toml`:**  Defines the symmetry functions to be used as input features for the neural network.
+- **System Input Files (`.toml`):**  Individual input files for each system to be trained, containing information such as topology, reference RDF, and simulation parameters.
 
 ## Authors
 
