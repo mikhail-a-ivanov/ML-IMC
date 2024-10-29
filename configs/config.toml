@@ -2,10 +2,11 @@
 
 [global]
 # Input files and system configuration
+# List of system files for training or simulation.
 system_files = [
     "configs/methanol-data/10CH3OH/10CH3OH-CG.toml",
     "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
-] # List of system files for training or simulation.
+]
 symmetry_function_file = "configs/symmetry_functions.toml" # File with definitions of symmetry functions for atomic descriptors.
 
 # Operation mode settings
@@ -28,30 +29,22 @@ output_frequency = 10            # Frequency (in steps) of recording energy and 
 
 [neural_network]
 # Network architecture
-neurons = [
-    10,
-    10,
-    1,
-] # Number of neurons in each network layer, including the output layer.
-bias = false # Use of bias parameters in network layers.
-activations = [
-    "identity",
-    "relu",
-    "identity",
-] # Activation functions for each layer of the neural network.
+# Number of neurons in each network layer, including the output layer.
+neurons = [10, 10, 1]
+bias = false          # Use of bias parameters in network layers.
+# Activation functions for each layer of the neural network.
+activations = ["identity", "relu", "identity"]
 
 # Training parameters
 iterations = 2       # Number of training iterations for the neural network.
 regularization = 0.0 # L2 regularization parameter for network weights (0.0 disables regularization).
 
 # Optimizer configuration
-optimizer = "AMSGrad" # Optimization algorithm for training the neural network (recommended: AMSGrad, Adam, or AdamW).
+optimizer = "AMSGrad"  # Optimization algorithm for training the neural network (recommended: AMSGrad, Adam, or AdamW).
 learning_rate = 0.0001 # Learning rate for the optimizer.
-momentum = 0.9 # Momentum coefficient used in momentum-based optimizers like AMSGrad and Adam.
-decay_rates = [
-    0.9,
-    0.999,
-] # Decay parameters for Adam-based optimizers ([first decay, second decay]).
+momentum = 0.9         # Momentum coefficient used in momentum-based optimizers like AMSGrad and Adam.
+# Decay parameters for Adam-based optimizers ([first decay, second decay]).
+decay_rates = [0.9, 0.999]
 
 [pretraining]
 # Pre-training parameters
@@ -60,10 +53,8 @@ output_frequency = 1 # Frequency (in steps) of reporting progress during pre-tra
 regularization = 0.0 # L2 regularization parameter for pre-training (0.0 disables regularization).
 
 # Optimizer configuration
-optimizer = "AMSGrad" # Optimizer for pre-training (same options as in `optimizer`).
+optimizer = "AMSGrad"  # Optimizer for pre-training (same options as in `optimizer`).
 learning_rate = 0.0005 # Learning rate for the optimizer during pre-training.
-momentum = 0.9 # Momentum coefficient for the optimizer during pre-training.
-decay_rates = [
-    0.9,
-    0.999,
-] # Decay parameters for the optimizer during pre-training.
+momentum = 0.9         # Momentum coefficient for the optimizer during pre-training.
+# Decay parameters for the optimizer during pre-training.
+decay_rates = [0.9, 0.999]
