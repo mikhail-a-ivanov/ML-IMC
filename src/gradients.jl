@@ -123,6 +123,7 @@ function compute_loss_gradients(cross_accumulators::Vector{Matrix{T}},
     ensemble_correlations = compute_ensemble_correlation(symm_func_matrix, descriptor_nn, model, nn_params)
     descriptor_gradients = compute_descriptor_gradients(cross_accumulators, ensemble_correlations, system_params)
 
+    # NOTE: The order of difference is very important
     dLdS = @. 2 * (descriptor_nn - descriptor_ref)
 
     loss_gradients = Vector{AbstractArray{T}}(undef, length(Flux.params(model)))

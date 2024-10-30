@@ -2,10 +2,11 @@
 
 [global]
 # Input files and system configuration
+# List of system files for training or simulation.
 system_files = [
     "configs/methanol-data/10CH3OH/10CH3OH-CG.toml",
     "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
-] # List of system files for training or simulation.
+]
 symmetry_function_file = "configs/symmetry_functions.toml" # File with definitions of symmetry functions for atomic descriptors.
 
 # Operation mode settings
@@ -20,50 +21,40 @@ adaptive_scaling = false # Enable adaptive scaling of gradients based on individ
 
 [monte_carlo]
 # Monte Carlo simulation parameters
-steps = 50                       # Total number of Monte Carlo steps.
-equilibration_steps = 10         # Number of equilibration steps before data collection begins.
-step_adjust_frequency = 50       # Frequency (in steps) for adjusting the maximum MC displacement to achieve target acceptance rate.
-trajectory_output_frequency = 50 # Frequency (in steps) of writing the system configuration to a trajectory file.
-output_frequency = 10            # Frequency (in steps) of recording energy and other data to output files.
+steps = 5000                       # Total number of Monte Carlo steps.
+equilibration_steps = 100         # Number of equilibration steps before data collection begins.
+step_adjust_frequency = 500       # Frequency (in steps) for adjusting the maximum MC displacement to achieve target acceptance rate.
+trajectory_output_frequency = 500 # Frequency (in steps) of writing the system configuration to a trajectory file.
+output_frequency = 100            # Frequency (in steps) of recording energy and other data to output files.
 
 [neural_network]
 # Network architecture
-neurons = [
-    10,
-    10,
-    1,
-] # Number of neurons in each network layer, including the output layer.
-bias = false # Use of bias parameters in network layers.
-activations = [
-    "identity",
-    "relu",
-    "identity",
-] # Activation functions for each layer of the neural network.
+# Number of neurons in each network layer, including the output layer.
+neurons = [10, 5, 1]
+bias = true          # Use of bias parameters in network layers.
+# Activation functions for each layer of the neural network.
+activations = ["leakyrelu", "leakyrelu", "leakyrelu"]
 
 # Training parameters
-iterations = 2       # Number of training iterations for the neural network.
+iterations = 5       # Number of training iterations for the neural network.
 regularization = 0.0 # L2 regularization parameter for network weights (0.0 disables regularization).
 
 # Optimizer configuration
-optimizer = "AMSGrad" # Optimization algorithm for training the neural network (recommended: AMSGrad, Adam, or AdamW).
-learning_rate = 0.0001 # Learning rate for the optimizer.
-momentum = 0.9 # Momentum coefficient used in momentum-based optimizers like AMSGrad and Adam.
-decay_rates = [
-    0.9,
-    0.999,
-] # Decay parameters for Adam-based optimizers ([first decay, second decay]).
+optimizer = "Adam"  # Optimization algorithm for training the neural network (recommended: AMSGrad, Adam, or AdamW).
+learning_rate = 0.01 # Learning rate for the optimizer.
+momentum = 0.9         # Momentum coefficient used in momentum-based optimizers like AMSGrad and Adam.
+# Decay parameters for Adam-based optimizers ([first decay, second decay]).
+decay_rates = [0.9, 0.999]
 
 [pretraining]
 # Pre-training parameters
-steps = 5            # Number of Monte Carlo steps for pre-training the neural network.
-output_frequency = 1 # Frequency (in steps) of reporting progress during pre-training.
+steps = 10000            # Number of Monte Carlo steps for pre-training the neural network.
+output_frequency = 100 # Frequency (in steps) of reporting progress during pre-training.
 regularization = 0.0 # L2 regularization parameter for pre-training (0.0 disables regularization).
 
 # Optimizer configuration
-optimizer = "AMSGrad" # Optimizer for pre-training (same options as in `optimizer`).
-learning_rate = 0.0005 # Learning rate for the optimizer during pre-training.
-momentum = 0.9 # Momentum coefficient for the optimizer during pre-training.
-decay_rates = [
-    0.9,
-    0.999,
-] # Decay parameters for the optimizer during pre-training.
+optimizer = "Adam"  # Optimizer for pre-training (same options as in `optimizer`).
+learning_rate = 0.01 # Learning rate for the optimizer during pre-training.
+momentum = 0.9         # Momentum coefficient for the optimizer during pre-training.
+# Decay parameters for the optimizer during pre-training.
+decay_rates = [0.9, 0.999]

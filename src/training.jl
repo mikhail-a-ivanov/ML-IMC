@@ -9,10 +9,10 @@ function compute_training_loss(descriptor_nn::AbstractVector{T},
     descriptor_loss_se = sum(abs2, descriptor_nn .- descriptor_ref)
     descriptor_loss_mse = mean(abs2, descriptor_nn .- descriptor_ref)
 
-    # Compute L1 regularization loss if regularization parameter is positive
+    # Compute L2 regularization loss if regularization parameter is positive
     reg_loss = zero(T)
     if nn_params.regularization > zero(T)
-        reg_loss = nn_params.regularization * sum(sum(abs, p) for p in Flux.params(model))
+        reg_loss = nn_params.regularization * sum(sum(abs2, p) for p in Flux.params(model))
     end
 
     total_loss_se = descriptor_loss_se + reg_loss

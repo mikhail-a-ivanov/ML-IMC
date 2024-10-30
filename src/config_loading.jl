@@ -11,38 +11,31 @@ function parse_symmetry_functions(filename::String)
 
     # Parse G2 functions
     if haskey(symm_data, "G2")
-        for g2_params in symm_data["G2"]
-            g2 = G2(g2_params["eta"],
-                    g2_params["rcutoff"],
-                    g2_params["rshift"])
+        for params in symm_data["G2"]
+            eta, rcutoff, rshift = params
+            g2 = G2(eta, rcutoff, rshift)
             push!(g2_functions, g2)
-            max_cutoff = max(max_cutoff, g2.rcutoff)
+            max_cutoff = max(max_cutoff, rcutoff)
         end
     end
 
-    # Parse G3 functions
+    # Parse G3 functions (if uncommented in config)
     if haskey(symm_data, "G3")
-        for g3_params in symm_data["G3"]
-            g3 = G3(g3_params["eta"],
-                    g3_params["lambda"],
-                    g3_params["zeta"],
-                    g3_params["rcutoff"],
-                    g3_params["rshift"])
+        for params in symm_data["G3"]
+            eta, lambda, zeta, rcutoff, rshift = params
+            g3 = G3(eta, lambda, zeta, rcutoff, rshift)
             push!(g3_functions, g3)
-            max_cutoff = max(max_cutoff, g3.rcutoff)
+            max_cutoff = max(max_cutoff, rcutoff)
         end
     end
 
-    # Parse G9 functions
+    # Parse G9 functions (if uncommented in config)
     if haskey(symm_data, "G9")
-        for g9_params in symm_data["G9"]
-            g9 = G9(g9_params["eta"],
-                    g9_params["lambda"],
-                    g9_params["zeta"],
-                    g9_params["rcutoff"],
-                    g9_params["rshift"])
+        for params in symm_data["G9"]
+            eta, lambda, zeta, rcutoff, rshift = params
+            g9 = G9(eta, lambda, zeta, rcutoff, rshift)
             push!(g9_functions, g9)
-            max_cutoff = max(max_cutoff, g9.rcutoff)
+            max_cutoff = max(max_cutoff, rcutoff)
         end
     end
 
