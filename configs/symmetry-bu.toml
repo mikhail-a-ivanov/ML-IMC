@@ -1,0 +1,36 @@
+# Global scaling factor (1.0 = no scaling)
+scaling = 1.0
+
+# G2 symmetry functions (radial symmetry)
+# Format: eta (Å^-2), rcutoff (Å), rshift (Å)
+G2 = [
+    # eta  rcutoff  rshift
+    # G2(0) - local density
+    
+    # G2 wide - Repulsion
+    [0.125, 10.0, 0.00],
+    # Main G2 functions
+    [4.000, 10.0, 3.00],
+    [4.000, 10.0, 3.50],
+    [4.000, 10.0, 4.00],
+    [4.000, 10.0, 4.50],
+    [4.000, 10.0, 5.00],
+    [4.000, 10.0, 5.50],
+    [4.000, 10.0, 6.00],
+]
+
+# G3 symmetry functions (narrow angular symmetry)
+# Format: eta (Å^-2), lambda (+1/-1), zeta, rcutoff (Å), rshift (Å)
+# G3 = [
+#     # eta  lambda  zeta  rcutoff  rshift
+#     [0.001,  1.0, 1.0, 5.0, 0.0],
+#     [0.001, -1.0, 1.0, 5.0, 0.0],
+# ]
+
+# G9 symmetry functions (wide angular symmetry)
+# Format: eta (Å^-2), lambda (+1/-1), zeta, rcutoff (Å), rshift (Å)
+# G9 = [
+#     # eta  lambda  zeta  rcutoff  rshift
+#     [0.001,  1.0, 1.0, 5.0, 0.0],
+#     [0.001, -1.0, 1.0, 5.0, 0.0],
+# ]

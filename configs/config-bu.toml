@@ -1,0 +1,62 @@
+# Configuration file for ML-IMC
+
+[global]
+# Input files and system configuration
+# List of system files for training or simulation.
+system_files = [
+    "configs/butanol-data/10BuOH/10BuOH-CG.toml",
+    "configs/butanol-data/40BuOH/40BuOH-CG.toml",
+    "configs/butanol-data/60BuOH/60BuOH-CG.toml",
+    "configs/butanol-data/100BuOH/100BuOH-CG.toml",
+]
+symmetry_function_file = "configs/symmetry-bu.toml" # File with definitions of symmetry functions for atomic descriptors.
+
+# Operation mode settings
+mode = "training"       # Operation mode: "training" to train the neural network, "simulation" to run MC simulation with a trained model.
+output_mode = "default" # Output detail level: "default" for essential output, "verbose" for additional trajectory files.
+
+# Model and optimization files
+model_file = "none"      # File to load a pre-trained model; "none" to start with random weights.
+gradients_file = "none"  # File with pre-calculated gradients; "none" for default initialization.
+optimizer_file = "none"  # File to load the optimizer state; "none" for default initialization.
+adaptive_scaling = false # Enable adaptive scaling of gradients based on individual system losses (true) or use uniform averaging (false).
+
+[monte_carlo]
+# Monte Carlo simulation parameters
+steps = 750000                       # Total number of Monte Carlo steps.
+equilibration_steps = 50000         # Number of equilibration steps before data collection begins.
+step_adjust_frequency = 5000       # Frequency (in steps) for adjusting the maximum MC displacement to achieve target acceptance rate.
+trajectory_output_frequency = 5000 # Frequency (in steps) of writing the system configuration to a trajectory file.
+output_frequency = 1000            # Frequency (in steps) of recording energy and other data to output files.
+
+[neural_network]
+# Network architecture
+# Number of neurons in each network layer, including the output layer.
+neurons = [40, 30, 30, 1]
+bias = true          # Use of bias parameters in network layers.
+# Activation functions for each layer of the neural network.
+activations = ["relu", "relu", "relu", "relu"]
+
+# Training parameters
+iterations = 50       # Number of training iterations for the neural network.
+regularization = 0.0 # L2 regularization parameter for network weights (0.0 disables regularization).
+
+# Optimizer configuration
+optimizer = "Adam"  # Optimization algorithm for training the neural network (recommended: AMSGrad, Adam, or AdamW).
+learning_rate = 0.001 # Learning rate for the optimizer.
+momentum = 0.9         # Momentum coefficient used in momentum-based optimizers like AMSGrad and Adam.
+# Decay parameters for Adam-based optimizers ([first decay, second decay]).
+decay_rates = [0.9, 0.999]
+
+[pretraining]
+# Pre-training parameters
+steps = 50000            # Number of Monte Carlo steps for pre-training the neural network.
+output_frequency = 1000 # Frequency (in steps) of reporting progress during pre-training.
+regularization = 0.0 # L2 regularization parameter for pre-training (0.0 disables regularization).
+
+# Optimizer configuration
+optimizer = "AMSGrad"  # Optimizer for pre-training (same options as in `optimizer`).
+learning_rate = 0.01 # Learning rate for the optimizer during pre-training.
+momentum = 0.9         # Momentum coefficient for the optimizer during pre-training.
+# Decay parameters for the optimizer during pre-training.
+decay_rates = [0.9, 0.999]
