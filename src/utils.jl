@@ -46,7 +46,7 @@ function write_energies(outname::AbstractString, energies::Vector{Float64},
     check_file(outname)
 end
 
-function write_trajectory(conf::Matrix{Float64}, box::Vector{Float64},
+function write_trajectory(conf::Chemfiles.ChemfilesArray, box::Vector{Float64},
                           system_params::SystemParameters, outname::AbstractString,
                           mode::Char='w')
     frame = Frame()
@@ -54,11 +54,11 @@ function write_trajectory(conf::Matrix{Float64}, box::Vector{Float64},
     set_cell!(frame, UnitCell(box))
 
     for i in 1:(system_params.n_atoms)
-        wrapped_atom_coords = wrap!(UnitCell(frame), view(conf, :, i)) .+ box_center
+        wrapped_atom_coords = wrap!(UnitCell(frame), conf[:, i]) .+ box_center
         add_atom!(frame, Atom(system_params.atom_name), wrapped_atom_coords)
     end
 
-    Trajectory(outname, string(mode)) do traj
+    Trajectory(outname, mode) do traj
         write(traj, frame)
     end
 

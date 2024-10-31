@@ -60,14 +60,13 @@ function main()
     end
 
     # Log configuration information
-
     log_symmetry_functions_info(nn_params)
     log_model_info(model, nn_params)
-    log_optimizer_info(optimizer)
     log_training_config(global_params, mc_params)
 
     # Execute workflow based on mode
     if global_params.mode == "training"
+        log_optimizer_info(optimizer)
         # Execute pretraining if needed
         if global_params.model_file == "none"
             model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
