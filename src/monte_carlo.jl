@@ -84,7 +84,7 @@ function normalize_hist_to_rdf!(histogram::AbstractVector{T},
 end
 
 function collect_system_averages(outputs::Vector{MonteCarloAverages},
-                                 reference_rdfs::Union{Vector{Vector{Float64}}, Nothing},
+                                 reference_rdfs::Any,
                                  system_params_list::Vector{SystemParameters},
                                  global_params::GlobalParameters,
                                  nn_params::Union{NeuralNetParameters, Nothing},
