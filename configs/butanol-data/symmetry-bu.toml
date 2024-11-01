@@ -6,7 +6,7 @@ scaling = 1.0
 G2 = [
     # eta  rcutoff  rshift
     # G2(0) - local density
-    
+
     # G2 wide - Repulsion
     [0.125, 10.0, 0.00],
     # Main G2 functions
