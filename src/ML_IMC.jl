@@ -88,5 +88,9 @@ function main()
     println("\nExecution completed:")
     println("Stopped time: ", Dates.format(stop_time, "dd u yyyy, HH:MM"))
     println("Wall time: ", wall_time)
+
+    # Clean up after execution
+    GC.gc()
+    exit(0)
 end
 end # module ML_IMC
