@@ -2,8 +2,8 @@
 .PHONY: clean
 clean:
 	rm -f *-loss-values.out \
-		RDFNN-*-CG-iter-*.dat \
-		energies-*-CG-iter-*.dat \
+		RDFNN-*-iter-*.dat \
+		energies-*-iter-*.dat \
 		model-iter-*.bson \
 		opt-iter-*.bson \
 		gradients-iter-*.bson \
