@@ -12,7 +12,7 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
     # Initialize the model and the optimizer
     if global_params.model_file == "none"
         model = model_init(nn_params)
-        opt = init_optimizer(pretrain_params)
+        optimizer = init_optimizer(pretrain_params)
     else
         # Loading the model
         check_file(global_params.model_file)
@@ -22,9 +22,9 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
             # Either initialize the optimizer or read from a file
             if global_params.optimizer_file != "none"
                 check_file(global_params.optimizer_file)
-                @load global_params.optimizer_file opt
+                @load global_params.optimizer_file optimizer
             else
-                opt = init_optimizer(nn_params)
+                optimizer = init_optimizer(nn_params)
             end
 
             mean_loss_gradients = nothing
@@ -36,13 +36,13 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
 
             # Update the model if both opt and gradients are restored
             if global_params.optimizer_file != "none" && global_params.gradients_file != "none"
-                update_model!(model, opt, mean_loss_gradients)
+                update_model!(model, optimizer, mean_loss_gradients)
             end
         end
     end
 
     if global_params.mode == "training"
-        return (model, opt, ref_rdfs)
+        return (model, optimizer, ref_rdfs)
     else
         return (model)
     end

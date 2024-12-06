@@ -1,0 +1,12 @@
+[system]
+# Name
+system_name = "70BuOH-CG-8"
+# Files
+topology_file_path = "configs/butanol-data/70BuOH/first_frame.pdb"
+trajectory_file_path = "configs/butanol-data/70BuOH/70Bu200step.xtc"
+rdf_file_path = "configs/butanol-data/70BuOH/rdf70bu.txt"
+# Simulation
+temperature = 300             # Temperature [K]
+max_displacement = 8.50       # Maximum atomic displacement [Å]
+target_acceptance_ratio = 0.5 # Monte Carlo acceptance ratio target
+concentration = 70.0          # System concentration

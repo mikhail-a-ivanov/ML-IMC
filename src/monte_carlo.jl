@@ -313,7 +313,7 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     end
 
     # Calculate data collection parameters
-    total_points::Int = Int(mc_params.steps / mc_params.output_frequency)
+    total_points::Int = round(Int, mc_params.steps / mc_params.output_frequency)
     production_points::Int = round(Int, (mc_params.steps - mc_params.equilibration_steps) / mc_params.output_frequency)
 
     # Initialize distance and symmetry matrices

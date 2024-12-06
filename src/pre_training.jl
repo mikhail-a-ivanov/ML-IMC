@@ -109,6 +109,7 @@ function compute_pretraining_gradient(energy_diff_nn::T,
                                       verbose::Bool=false) where {T <: AbstractFloat}
     # Calculate MSE loss between energy differences
     mse_loss = (energy_diff_nn - energy_diff_pmf)^2
+    mae_loss = abs(energy_diff_nn - energy_diff_pmf)
 
     # Log loss value
     try
@@ -126,7 +127,8 @@ function compute_pretraining_gradient(energy_diff_nn::T,
     # Print detailed loss information if requested
     if verbose
         println("""
-           Energy loss: $(round(mse_loss; digits=8))
+           Energy loss (MSE): $(round(mse_loss; digits=8))
+           Energy loss (MAE): $(round(mae_loss; digits=8))
            PMF energy difference: $(round(energy_diff_pmf; digits=8))
            NN energy difference: $(round(energy_diff_nn; digits=8))
            Regularization loss: $(round(reg_loss; digits=8))
@@ -138,7 +140,16 @@ function compute_pretraining_gradient(energy_diff_nn::T,
     grad2 = compute_energy_gradients(symm_func_matrix2, model, nn_params)
 
     # Calculate loss gradients with regularization
-    gradient_scale = 2 * (energy_diff_nn - energy_diff_pmf)
+    loss_type = "mae"
+
+    gradient_scale = if loss_type == "mse"
+        2 * (energy_diff_nn - energy_diff_pmf)
+    elseif loss_type == "mae"
+        sign(energy_diff_nn - energy_diff_pmf)
+    else
+        throw(ArgumentError("Unsupported loss type: $loss_type. Supported types are: 'mse', 'mae'"))
+    end
+
     loss_gradient = @. gradient_scale * (grad2 - grad1)
     reg_gradient = @. model_params * 2 * pretrain_params.regularization
 

@@ -1,0 +1,12 @@
+[system]
+# Name
+system_name = "100CH3OH-CG-2"
+# Files
+topology_file_path = "configs/methanol-data/100CH3OH/100CH3OH-CG.pdb"
+trajectory_file_path = "configs/methanol-data/100CH3OH/100CH3OH-CG-200.xtc"
+rdf_file_path = "configs/methanol-data/100CH3OH/100CH3OH-CG.rdf"
+# Simulation
+temperature = 298.15          # Temperature [K]
+max_displacement = 1.30       # Maximum atomic displacement [Å]
+target_acceptance_ratio = 0.5 # Monte Carlo acceptance ratio target
+concentration = 100.0         # System concentration
