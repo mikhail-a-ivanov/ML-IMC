@@ -68,12 +68,13 @@ function main()
     if global_params.mode == "training"
         # Execute pretraining if needed
         if global_params.model_file == "none"
+            log_optimizer_info(optimizer)
             model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
 
-            println("\nRe-initializing the optimizer for the training...")
-            opt = init_optimizer(nn_params)
-            optimizer = Flux.setup(opt, model)
+            println("\nOptimizer for the training")
+            optimizer = init_optimizer(nn_params)
         end
+        log_optimizer_info(optimizer)
 
         train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
     else
