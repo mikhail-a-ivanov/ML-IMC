@@ -12,8 +12,7 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
     # Initialize the model and the optimizer
     if global_params.model_file == "none"
         model = model_init(nn_params)
-        opt = init_optimizer(pretrain_params)
-        optimizer = Flux.setup(opt, model)
+        optimizer = init_optimizer(pretrain_params)
     else
         # Loading the model
         check_file(global_params.model_file)
@@ -25,8 +24,7 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
                 check_file(global_params.optimizer_file)
                 @load global_params.optimizer_file optimizer
             else
-                opt = init_optimizer(nn_params)
-                optimizer = Flux.setup(opt, model)
+                optimizer = init_optimizer(nn_params)
             end
 
             mean_loss_gradients = nothing
