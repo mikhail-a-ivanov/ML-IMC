@@ -42,7 +42,7 @@ output_frequency = 600            # Frequency (in steps) of recording energy and
 neurons = [44, 44, 22, 1]
 bias = true               # Use of bias parameters in network layers.
 # Activation functions for each layer of the neural network.
-activations = ["indentity", "leakyrelu", "leakyrelu", "indentity"]
+activations = ["identity", "leakyrelu", "leakyrelu", "identity"]
 
 # Training parameters
 iterations = 20      # Number of training iterations for the neural network.

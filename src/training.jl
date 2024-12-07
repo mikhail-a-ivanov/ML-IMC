@@ -6,8 +6,10 @@ function compute_training_loss(descriptor_nn::AbstractVector{T},
                                nn_params::NeuralNetParameters) where {T <: AbstractFloat}
 
     # Compute descriptor difference loss
-    descriptor_loss_se = sum(abs2, descriptor_nn .- descriptor_ref)
+    descriptor_loss_sse = sum(abs2, descriptor_nn .- descriptor_ref)
     descriptor_loss_mse = mean(abs2, descriptor_nn .- descriptor_ref)
+    descriptor_loss_rmse = sqrt(mean(abs2, descriptor_nn .- descriptor_ref))
+    descriptor_loss_mae = mean(abs, descriptor_nn .- descriptor_ref)
 
     # Compute L2 regularization loss if regularization parameter is positive
     reg_loss = zero(T)
@@ -15,32 +17,45 @@ function compute_training_loss(descriptor_nn::AbstractVector{T},
         reg_loss = nn_params.regularization * sum(sum(abs2, p) for p in Flux.params(model))
     end
 
-    total_loss_se = descriptor_loss_se + reg_loss
+    total_loss_sse = descriptor_loss_sse + reg_loss
     total_loss_mse = descriptor_loss_mse + reg_loss
+    total_loss_rmse = descriptor_loss_rmse + reg_loss
+    total_loss_mae = descriptor_loss_mae + reg_loss
 
     println("    Losses:")
     for (label, value) in [
-        ("        Regularization:", reg_loss),
-        ("        Descriptor:    ", descriptor_loss_se),
-        ("        Squared Error: ", total_loss_se),
-        ("        MSE:           ", total_loss_mse)
+        ("        Reg:  ", reg_loss),
+        ("        SSE:  ", total_loss_sse),
+        ("        MSE:  ", total_loss_mse),
+        ("        RMSE: ", total_loss_rmse),
+        ("        MAE:  ", total_loss_mae)
     ]
-        println("$label = $(round(value; digits=8))")
+        println("$label   $(round(value; digits=8))")
     end
     println()
 
     # Log descriptor loss to file
-    LOSS_LOG_FILE = "training-loss-values.out"
+    LOSS_LOG_FILE = "training-loss-values-sse.out"
     try
         open(LOSS_LOG_FILE, "a") do io
-            println(io, round(descriptor_loss_mse; digits=8))
+            println(io, round(descriptor_loss_sse; digits=8))
         end
         check_file(LOSS_LOG_FILE)
     catch e
         @warn "Failed to log loss value" exception=e
     end
 
-    return total_loss_se, total_loss_mse
+    LOSS_LOG_FILE = "training-loss-values-mae.out"
+    try
+        open(LOSS_LOG_FILE, "a") do io
+            println(io, round(descriptor_loss_mae; digits=8))
+        end
+        check_file(LOSS_LOG_FILE)
+    catch e
+        @warn "Failed to log loss value" exception=e
+    end
+
+    return total_loss_mae, total_loss_sse, total_loss_mse, total_loss_rmse
 end
 
 function prepare_monte_carlo_inputs(global_params::GlobalParameters,

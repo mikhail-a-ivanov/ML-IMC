@@ -89,8 +89,11 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                  global_params::GlobalParameters,
                                  nn_params::Union{NeuralNetParameters, Nothing},
                                  model::Union{Flux.Chain, Nothing})::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
-    total_loss_se::Float64 = 0.0
+    total_loss_sse::Float64 = 0.0
     total_loss_mse::Float64 = 0.0
+    total_loss_rmse::Float64 = 0.0
+    total_loss_mae::Float64 = 0.0
+
     system_outputs::Vector{MonteCarloAverages} = Vector{MonteCarloAverages}()
     system_losses::Vector{Float64} = Vector{Float64}()
 
@@ -153,14 +156,16 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
 
         # Compute and accumulate loss for training mode
         if global_params.mode == "training"
-            system_loss_se, system_loss_mse = compute_training_loss(system_output.descriptor,
-                                                                    reference_rdfs[system_idx],
-                                                                    model,
-                                                                    nn_params)
+            system_loss_mae, system_loss_sse, system_loss_mse, system_loss_rmse = compute_training_loss(system_output.descriptor,
+                                                                                                        reference_rdfs[system_idx],
+                                                                                                        model,
+                                                                                                        nn_params)
 
-            total_loss_se += system_loss_se
+            total_loss_sse += system_loss_sse
             total_loss_mse += system_loss_mse
-            push!(system_losses, system_loss_mse)
+            total_loss_rmse += system_loss_rmse
+            total_loss_mae += system_loss_mae
+            push!(system_losses, system_loss_mae)
         end
 
         push!(system_outputs, system_output)
@@ -168,10 +173,31 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
 
     # Calculate and print average loss for training mode
     if global_params.mode == "training"
-        total_loss_se /= length(system_params_list)
-        println("Average Loss: ", round(total_loss_se; digits=8))
+        total_loss_sse /= length(system_params_list)
+        println("Average SSE:   ", round(total_loss_sse; digits=8))
         total_loss_mse /= length(system_params_list)
-        println("Average MSE:  ", round(total_loss_mse; digits=8))
+        println("Average MSE:   ", round(total_loss_mse; digits=8))
+        total_loss_rmse /= length(system_params_list)
+        println("Average RMSE:  ", round(total_loss_rmse; digits=8))
+        total_loss_mae /= length(system_params_list)
+        println("Average MAE:   ", round(total_loss_mae; digits=8))
+    end
+
+    # Log loss value
+    try
+        open("avg_sse_loss.dat", "a") do io
+            println(io, round(total_loss_sse; digits=8))
+        end
+    catch e
+        @warn "Failed to write to log file: avg_sse_loss.dat" exception=e
+    end
+
+    try
+        open("avg_mae_loss.dat", "a") do io
+            println(io, round(total_loss_mae; digits=8))
+        end
+    catch e
+        @warn "Failed to write to log file: avg_mae_loss.dat" exception=e
     end
 
     return (system_outputs, system_losses)

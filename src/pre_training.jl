@@ -114,7 +114,7 @@ function compute_pretraining_gradient(energy_diff_nn::T,
     # Log loss value
     try
         open(log_file, "a") do io
-            println(io, round(mse_loss; digits=8))
+            println(io, round(mae_loss; digits=8))
         end
     catch e
         @warn "Failed to write to log file: $log_file" exception=e
