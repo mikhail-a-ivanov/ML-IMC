@@ -91,7 +91,7 @@ function train!(global_params::GlobalParameters,
                 nn_params::NeuralNetParameters,
                 system_params_list::Vector{SystemParameters},
                 model::Flux.Chain,
-                optimizer::Flux.Optimise.AbstractOptimiser,
+                optimizer,
                 ref_rdfs)
     for iteration in 1:(nn_params.iterations)
         iter_string = lpad(iteration, 2, "0")

@@ -18,6 +18,7 @@
 
 # Do not commit run scripts
 *.sh
+!run.sh
 *.ps1
 *.run
 

@@ -6,15 +6,39 @@ system_files = [
     # 10
     "configs/methanol-data/10CH3OH/10CH3OH-CG.toml",
     # "configs/methanol-data/10CH3OH/10CH3OH-CG-2.toml",
+    # "configs/methanol-data/10CH3OH/10CH3OH-CG-3.toml",
+    # "configs/methanol-data/10CH3OH/10CH3OH-CG-4.toml",
+    # "configs/methanol-data/10CH3OH/10CH3OH-CG-5.toml",
+    # "configs/methanol-data/10CH3OH/10CH3OH-CG-6.toml",
+    # "configs/methanol-data/10CH3OH/10CH3OH-CG-7.toml",
+    # "configs/methanol-data/10CH3OH/10CH3OH-CG-8.toml",
     # 40
     "configs/methanol-data/40CH3OH/40CH3OH-CG.toml",
     # "configs/methanol-data/40CH3OH/40CH3OH-CG-2.toml",
+    # "configs/methanol-data/40CH3OH/40CH3OH-CG-3.toml",
+    # "configs/methanol-data/40CH3OH/40CH3OH-CG-4.toml",
+    # "configs/methanol-data/40CH3OH/40CH3OH-CG-5.toml",
+    # "configs/methanol-data/40CH3OH/40CH3OH-CG-6.toml",
+    # "configs/methanol-data/40CH3OH/40CH3OH-CG-7.toml",
+    # "configs/methanol-data/40CH3OH/40CH3OH-CG-8.toml",
     # 70
     "configs/methanol-data/70CH3OH/70CH3OH-CG.toml",
     # "configs/methanol-data/70CH3OH/70CH3OH-CG-2.toml",
+    # "configs/methanol-data/70CH3OH/70CH3OH-CG-3.toml",
+    # "configs/methanol-data/70CH3OH/70CH3OH-CG-4.toml",
+    # "configs/methanol-data/70CH3OH/70CH3OH-CG-5.toml",
+    # "configs/methanol-data/70CH3OH/70CH3OH-CG-6.toml",
+    # "configs/methanol-data/70CH3OH/70CH3OH-CG-7.toml",
+    # "configs/methanol-data/70CH3OH/70CH3OH-CG-8.toml",
     # 100
     "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
     # "configs/methanol-data/100CH3OH/100CH3OH-CG-2.toml",
+    # "configs/methanol-data/100CH3OH/100CH3OH-CG-3.toml",
+    # "configs/methanol-data/100CH3OH/100CH3OH-CG-4.toml",
+    # "configs/methanol-data/100CH3OH/100CH3OH-CG-5.toml",
+    # "configs/methanol-data/100CH3OH/100CH3OH-CG-6.toml",
+    # "configs/methanol-data/100CH3OH/100CH3OH-CG-7.toml",
+    # "configs/methanol-data/100CH3OH/100CH3OH-CG-8.toml",
 ]
 symmetry_function_file = "configs/methanol-data/symmetry_functions.toml" # File with definitions of symmetry functions for atomic descriptors.
 
