@@ -7,7 +7,9 @@ clean:
 		model-iter-*.bson \
 		opt-iter-*.bson \
 		gradients-iter-*.bson \
-		model-pre-trained.bson
+		model-pre-trained.bson \
+		training-loss-values-* \
+		avg_*_loss.dat
 
 
 # Install dependencies

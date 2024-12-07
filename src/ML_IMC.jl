@@ -66,14 +66,13 @@ function main()
 
     # Execute workflow based on mode
     if global_params.mode == "training"
-        log_optimizer_info(optimizer)
         # Execute pretraining if needed
         if global_params.model_file == "none"
             model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
 
             println("\nRe-initializing the optimizer for the training...")
-            optimizer = init_optimizer(nn_params)
-            log_optimizer_info(optimizer)
+            opt = init_optimizer(nn_params)
+            optimizer = Flux.setup(opt, model)
         end
 
         train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, ref_rdfs)

@@ -64,7 +64,7 @@ function model_init(nn_params::NeuralNetParameters)
 end
 
 function update_model!(model::Chain,
-                       optimizer::Flux.Optimise.AbstractOptimiser,
+                       optimizer,
                        loss_gradients::Vector{<:AbstractArray{T}}) where {T <: AbstractFloat}
     for (gradient, parameter) in zip(loss_gradients, Flux.params(model))
         Flux.Optimise.update!(optimizer, parameter, gradient)

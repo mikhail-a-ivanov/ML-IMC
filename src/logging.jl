@@ -149,7 +149,7 @@ function log_training_config(global_params::GlobalParameters, mc_params::MonteCa
     println()
 end
 
-function log_optimizer_info(optimizer::Flux.Optimise.AbstractOptimiser)
+function log_optimizer_info(optimizer)
     log_subsubsection("Optimizer Configuration")
 
     # Get optimizer type name without module prefix
