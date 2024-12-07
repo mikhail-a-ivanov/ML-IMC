@@ -16,7 +16,7 @@ system_files = [
     "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
     # "configs/methanol-data/100CH3OH/100CH3OH-CG-2.toml",
 ]
-symmetry_function_file = "configs/symmetry_functions.toml" # File with definitions of symmetry functions for atomic descriptors.
+symmetry_function_file = "configs/methanol-data/symmetry_functions.toml" # File with definitions of symmetry functions for atomic descriptors.
 
 # Operation mode settings
 mode = "training"       # Operation mode: "training" to train the neural network, "simulation" to run MC simulation with a trained model.

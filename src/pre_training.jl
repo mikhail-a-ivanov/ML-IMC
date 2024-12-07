@@ -262,7 +262,7 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                          nn_params::NeuralNetParameters,
                          system_params_list,
                          model::Chain,
-                         optimizer::Flux.Optimise.AbstractOptimiser,
+                         optimizer,
                          reference_rdfs;
                          save_path::String="model-pre-trained.bson",
                          verbose::Bool=true)::Chain
