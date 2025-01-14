@@ -1,9 +1,7 @@
 # Delete all produces files
 .PHONY: clean
 clean:
-	rm -f *.out \
-		  *.dat \
-		  *.dat
+	rm -f *.out *.dat *.bson
 
 
 # Install dependencies
