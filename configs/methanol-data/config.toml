@@ -90,7 +90,7 @@ decay_rates = [0.9, 0.999]
 
 [pretraining]
 # Pre-training parameters
-steps = 15000           # Number of Monte Carlo steps for pre-training the neural network.
+steps = 25000           # Number of Monte Carlo steps for pre-training the neural network.
 output_frequency = 500  # Frequency (in steps) of reporting progress during pre-training.
 regularization = 0.0    # L2 regularization parameter for pre-training (0.0 disables regularization).
 
