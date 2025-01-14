@@ -153,6 +153,12 @@ function train!(global_params::GlobalParameters,
 
         # Update model with computed gradients
         update_model!(model, optimizer, mean_loss_gradients)
+
+        # Scheduler of Learning Rate
+        # optimizer.eta *= 2.0
+
+        # Run GC after each iteration
+        GC.gc()
     end
 
     println("Training completed!")

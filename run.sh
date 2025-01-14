@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -ex
+
 folder_name=$(basename "$PWD")
 num_processes=4
 

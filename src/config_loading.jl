@@ -3,6 +3,12 @@ using ..ML_IMC
 function parse_symmetry_functions(filename::String)
     symm_data = TOML.parsefile(filename)
 
+    println("----------------------------- Symmetry Functions ------------------------------")
+    println("Symmetry Functions file: $(filename)")
+    println()
+    TOML.print(symm_data)
+    println()
+
     g2_functions = Vector{G2}()
     g3_functions = Vector{G3}()
     g9_functions = Vector{G9}()
@@ -12,8 +18,8 @@ function parse_symmetry_functions(filename::String)
     # Parse G2 functions
     if haskey(symm_data, "G2")
         for params in symm_data["G2"]
-            eta, rcutoff, rshift = params
-            g2 = G2(eta, rcutoff, rshift)
+            eta, rcutoff, rshift, norm = params
+            g2 = G2(eta, rcutoff, rshift, norm)
             push!(g2_functions, g2)
             max_cutoff = max(max_cutoff, rcutoff)
         end
@@ -80,16 +86,21 @@ end
 
 function parameters_init()
     # Handle command line arguments
-    inputname = if length(ARGS) > 0 && !occursin("json", ARGS[1])
-        ARGS[1]
-    else
-        "configs/config.toml"
+    if length(ARGS) == 0
+        error("No arguments provided. Please provide a TOML config file path")
+    elseif !endswith(ARGS[1], ".toml")
+        error("Only TOML files are supported. Please provide a file with .toml extension")
     end
-
-    println("Config file: $(inputname)")
+    inputname = ARGS[1]
 
     # Read and parse main configuration file
     config = TOML.parsefile(inputname)
+
+    println("-------------------------------- Configuration --------------------------------")
+    println("Config file: $(inputname)")
+    println()
+    TOML.print(config)
+    println()
 
     # Parse global parameters
     global_params = GlobalParameters(config["global"]["system_files"],

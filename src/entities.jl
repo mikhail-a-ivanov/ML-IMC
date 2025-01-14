@@ -4,6 +4,7 @@ struct G2
     eta::Float64
     rcutoff::Float64
     rshift::Float64
+    norm::Float64
 end
 
 struct G3

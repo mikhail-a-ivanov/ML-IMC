@@ -127,7 +127,7 @@ function compute_loss_gradients(cross_accumulators::Vector{Matrix{T}},
     diff = descriptor_nn - descriptor_ref
     n_samples = length(diff)
 
-    loss_type = "mae"
+    loss_type = "mse"
 
     # Calculate gradient scaling based on loss type
     if loss_type == "mse"
