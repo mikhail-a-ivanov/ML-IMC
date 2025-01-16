@@ -92,7 +92,8 @@ function train!(global_params::GlobalParameters,
 
         # Process system outputs and compute losses
         system_outputs, system_losses = collect_system_averages(outputs, ref_rdfs, system_params_list, global_params,
-                                                                nn_params, model, optimizer.eta, iteration)
+                                                                nn_params, model, optimizer.eta, iteration,
+                                                                mc_params.steps)
 
         # Compute gradients for each system
         loss_gradients = Vector{Any}(undef, length(system_outputs))

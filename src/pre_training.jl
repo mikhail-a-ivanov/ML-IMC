@@ -293,8 +293,8 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
             end
 
             if should_report
-                println(@sprintf("Epoch: %d/%d | %-15s | ΔE_pmf: %8.3f | ΔE_nn: %8.3f | MSE: %8.2f | MAE: %6.2f | Reg: %.2e | lr: %.2e",
-                                 step, pretrain_params.steps, system_params_list[sys_id].system_name, Δe_pmf, Δe_nn,
+                println(@sprintf("Epoch: %d | %-15s | ΔE_pmf: %8.3f | ΔE_nn: %8.3f | MSE: %8.2f | MAE: %6.2f | Reg: %.2e | lr: %.2e",
+                                 step, system_params_list[sys_id].system_name, Δe_pmf, Δe_nn,
                                  mse_loss, mae_loss, reg_loss,
                                  optimizer.eta))
             end
@@ -310,7 +310,9 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
             learning_rate_schedule = Dict(500 => 0.005,
                                           1000 => 0.001,
                                           5000 => 0.0005,
-                                          10000 => 0.0001)
+                                          20000 => 0.0001,
+                                          50000 => 0.00005,
+                                          75000 => 0.00001)
 
             if haskey(learning_rate_schedule, step)
                 optimizer.eta = learning_rate_schedule[step]
@@ -326,7 +328,6 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
     try
         @save save_path model
         check_file(save_path)
-        verbose && println("\nModel saved to $save_path")
     catch e
         @warn "Failed to save model to $save_path" exception=e
     end

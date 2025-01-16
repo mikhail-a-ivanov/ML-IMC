@@ -89,7 +89,7 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                  global_params::GlobalParameters,
                                  nn_params::Union{NeuralNetParameters, Nothing},
                                  model::Union{Flux.Chain, Nothing}, lr::Float64,
-                                 epoch)::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
+                                 epoch, mc_steps)::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
     total_loss_sse::Float64 = 0.0
     total_loss_mse::Float64 = 0.0
     total_loss_rmse::Float64 = 0.0
@@ -190,8 +190,8 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
         total_loss_rmse /= length(system_params_list)
         total_loss_mae /= length(system_params_list)
         println()
-        println(@sprintf("Epoch: %d | SSE: %.5f | MSE: %.8e | RMSE: %.8f | MAE: %.8f | LR: %.2e",
-                         epoch, total_loss_sse, total_loss_mse, total_loss_rmse, total_loss_mae, lr))
+        println(@sprintf("Epoch: %d | Steps: %d | SSE: %.5f | MSE: %.4e | RMSE: %.8f | MAE: %.8f | LR: %.2e",
+                         epoch, mc_steps, total_loss_sse, total_loss_mse, total_loss_rmse, total_loss_mae, lr))
     end
 
     # Log loss value
