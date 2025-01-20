@@ -14,12 +14,8 @@ function simulate!(model::Flux.Chain,
     outputs = pmap(mcsample!, inputs)
 
     # Collect system statistics
-    system_outputs, system_losses = collect_system_averages(outputs,
-                                                            nothing,
-                                                            [system_params],
-                                                            global_params,
-                                                            nothing,
-                                                            nothing)
+    system_outputs, system_losses = collect_system_averages(outputs, nothing, [system_params], global_params,
+                                                            nothing, nothing, 0.0, 1, mc_params.steps)
 
     # Save simulation results
     system_name = system_params.system_name

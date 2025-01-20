@@ -22,18 +22,6 @@ function compute_training_loss(descriptor_nn::AbstractVector{T},
     total_loss_rmse = descriptor_loss_rmse + reg_loss
     total_loss_mae = descriptor_loss_mae + reg_loss
 
-    println("    Losses:")
-    for (label, value) in [
-        ("        Reg:  ", reg_loss),
-        ("        SSE:  ", total_loss_sse),
-        ("        MSE:  ", total_loss_mse),
-        ("        RMSE: ", total_loss_rmse),
-        ("        MAE:  ", total_loss_mae)
-    ]
-        println("$label   $(round(value; digits=8))")
-    end
-    println()
-
     # Log descriptor loss to file
     LOSS_LOG_FILE = "training-loss-values-sse.out"
     try
@@ -95,8 +83,8 @@ function train!(global_params::GlobalParameters,
                 ref_rdfs)
     for iteration in 1:(nn_params.iterations)
         iter_string = lpad(iteration, 2, "0")
-        println("\nIteration $iteration")
-        println("~~~~~~~~~~~~")
+
+        println("\n--------------------------------- Iteration $iteration ---------------------------------\n")
 
         # Monte Carlo sampling
         inputs = prepare_monte_carlo_inputs(global_params, mc_params, nn_params, system_params_list, model)
@@ -104,7 +92,8 @@ function train!(global_params::GlobalParameters,
 
         # Process system outputs and compute losses
         system_outputs, system_losses = collect_system_averages(outputs, ref_rdfs, system_params_list, global_params,
-                                                                nn_params, model)
+                                                                nn_params, model, optimizer.eta, iteration,
+                                                                mc_params.steps)
 
         # Compute gradients for each system
         loss_gradients = Vector{Any}(undef, length(system_outputs))
@@ -153,7 +142,11 @@ function train!(global_params::GlobalParameters,
 
         # Update model with computed gradients
         update_model!(model, optimizer, mean_loss_gradients)
-    end
 
-    println("Training completed!")
+        # Scheduler of Learning Rate
+        # optimizer.eta *= 2.0
+
+        # Run GC after each iteration
+        GC.gc()
+    end
 end

@@ -1,15 +1,7 @@
 # Delete all produces files
 .PHONY: clean
 clean:
-	rm -f *-loss-values.out \
-		RDFNN-*-iter-*.dat \
-		energies-*-iter-*.dat \
-		model-iter-*.bson \
-		opt-iter-*.bson \
-		gradients-iter-*.bson \
-		model-pre-trained.bson \
-		training-loss-values-* \
-		avg_*_loss.dat
+	rm -f *.out *.dat *.bson
 
 
 # Install dependencies

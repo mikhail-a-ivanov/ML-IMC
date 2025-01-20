@@ -19,7 +19,6 @@ include("config_loading.jl")
 include("distances.jl")
 include("gradients.jl")
 include("initialization.jl")
-include("logging.jl")
 include("monte_carlo.jl")
 include("neural_network.jl")
 include("pre_training.jl")
@@ -31,17 +30,15 @@ include("utils.jl")
 BLAS.set_num_threads(1)
 
 function main()
+    println("=============================== Initialization ================================")
+    println()
     # Initialize timing
     start_time = now()
     println("Start time: ", Dates.format(start_time, "dd u yyyy, HH:MM"))
-
-    println("Initialization")
-    println("--------------")
+    println()
 
     # Initialize parameters and validate configuration
     global_params, mc_params, nn_params, pretrain_params, system_params_list = parameters_init()
-
-    log_global_parameters(global_params)
 
     # Validate worker/system configuration
     num_workers = nworkers()
@@ -59,23 +56,15 @@ function main()
         inputs, nothing, nothing
     end
 
-    # Log configuration information
-    log_symmetry_functions_info(nn_params)
-    log_model_info(model, nn_params)
-    log_training_config(global_params, mc_params)
-
     # Execute workflow based on mode
     if global_params.mode == "training"
         # Execute pretraining if needed
         if global_params.model_file == "none"
-            log_optimizer_info(optimizer)
+            println("================================ Pre-Training =================================")
             model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
-
-            println("\nOptimizer for the training")
             optimizer = init_optimizer(nn_params)
         end
-        log_optimizer_info(optimizer)
-
+        println("================================== Training ===================================")
         train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
     else
         length(system_params_list) == 1 || throw(ArgumentError("Simulation mode supports only one system"))

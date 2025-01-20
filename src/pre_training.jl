@@ -51,8 +51,6 @@ function precompute_reference_data(input::PreComputedInput;)::ReferenceData
     system_params = input.system_params
     ref_rdf = input.reference_rdf
 
-    println("Pre-computing data for $(system_params.system_name)...")
-
     # Compute potential of mean force
     pmf = compute_pmf(ref_rdf, system_params)
 
@@ -104,43 +102,17 @@ function compute_pretraining_gradient(energy_diff_nn::T,
                                       symm_func_matrix2::AbstractMatrix{T},
                                       model::Chain,
                                       pretrain_params::PreTrainingParameters,
-                                      nn_params::NeuralNetParameters;
-                                      log_file::String="pretraining-loss-values.out",
-                                      verbose::Bool=false) where {T <: AbstractFloat}
-    # Calculate MSE loss between energy differences
-    mse_loss = (energy_diff_nn - energy_diff_pmf)^2
-    mae_loss = abs(energy_diff_nn - energy_diff_pmf)
-
-    # Log loss value
-    try
-        open(log_file, "a") do io
-            println(io, round(mae_loss; digits=8))
-        end
-    catch e
-        @warn "Failed to write to log file: $log_file" exception=e
-    end
+                                      nn_params::NeuralNetParameters;) where {T <: AbstractFloat}
 
     # Calculate regularization loss
     model_params = Flux.params(model)
-    reg_loss = pretrain_params.regularization * sum(abs2, model_params[1])
-
-    # Print detailed loss information if requested
-    if verbose
-        println("""
-           Energy loss (MSE): $(round(mse_loss; digits=8))
-           Energy loss (MAE): $(round(mae_loss; digits=8))
-           PMF energy difference: $(round(energy_diff_pmf; digits=8))
-           NN energy difference: $(round(energy_diff_nn; digits=8))
-           Regularization loss: $(round(reg_loss; digits=8))
-        """)
-    end
 
     # Compute gradients for both configurations
     grad1 = compute_energy_gradients(symm_func_matrix1, model, nn_params)
     grad2 = compute_energy_gradients(symm_func_matrix2, model, nn_params)
 
     # Calculate loss gradients with regularization
-    loss_type = "mae"
+    loss_type = "mse"
 
     gradient_scale = if loss_type == "mse"
         2 * (energy_diff_nn - energy_diff_pmf)
@@ -281,9 +253,6 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
     # Main training loop
     for step in 1:(pretrain_params.steps)
         should_report = (step % pretrain_params.output_frequency == 0) || (step == 1)
-        if should_report && verbose
-            println("\nPre-training step: $step")
-        end
 
         # Compute gradients for all systems
         loss_gradients = Vector{Any}(undef, n_systems)
@@ -304,8 +273,50 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                                                                   symm_func_matrix2,
                                                                   model,
                                                                   pretrain_params,
-                                                                  nn_params,
-                                                                  verbose=should_report)
+                                                                  nn_params)
+
+            model_params = Flux.params(model)
+            reg_loss = pretrain_params.regularization * sum(abs2, model_params[1])
+
+            # Calculate MSE loss between energy differences
+            mse_loss = (Δe_nn - Δe_pmf)^2
+            mae_loss = abs(Δe_nn - Δe_pmf)
+
+            # Log loss value
+            try
+                log_file::String = "pretraining-loss-values.out"
+                open(log_file, "a") do io
+                    println(io, round(mae_loss; digits=8))
+                end
+            catch e
+                @warn "Failed to write to log file: $log_file" exception=e
+            end
+
+            if should_report
+                println(@sprintf("Epoch: %d | %-15s | ΔE_pmf: %8.3f | ΔE_nn: %8.3f | MSE: %8.2f | MAE: %6.2f | Reg: %.2e | lr: %.2e",
+                                 step, system_params_list[sys_id].system_name, Δe_pmf, Δe_nn,
+                                 mse_loss, mae_loss, reg_loss,
+                                 optimizer.eta))
+            end
+        end
+        if should_report
+            println()
+        end
+
+        # Learning Rate Scheduler
+        if step % 500 == 0 || step == 1
+            # @save "checkpoint_$(step).bson" model
+
+            learning_rate_schedule = Dict(500 => 0.005,
+                                          1000 => 0.001,
+                                          5000 => 0.0005,
+                                          20000 => 0.0001,
+                                          50000 => 0.00005,
+                                          75000 => 0.00001)
+
+            if haskey(learning_rate_schedule, step)
+                optimizer.eta = learning_rate_schedule[step]
+            end
         end
 
         # Update model with mean gradients
@@ -317,7 +328,6 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
     try
         @save save_path model
         check_file(save_path)
-        verbose && println("\nModel saved to $save_path")
     catch e
         @warn "Failed to save model to $save_path" exception=e
     end

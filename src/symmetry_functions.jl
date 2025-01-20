@@ -20,23 +20,24 @@ end
 function compute_g2_element(distance::T,
                             η::T,
                             r_cutoff::T,
-                            r_shift::T)::T where {T <: AbstractFloat}
+                            r_shift::T,
+                            norm::T)::T where {T <: AbstractFloat}
     distance <= zero(T) && return zero(T)
 
     shifted_distance = distance - r_shift
     exponential_term = exp(-η * shifted_distance^2)
     cutoff_term = distance_cutoff(distance, r_cutoff)
 
-    return exponential_term * cutoff_term
+    return exponential_term * cutoff_term / norm
 end
 
 function compute_g2(distances::AbstractVector{T},
                     η::T,
                     r_cutoff::T,
-                    r_shift::T)::T where {T <: AbstractFloat}
+                    r_shift::T, norm::T)::T where {T <: AbstractFloat}
     acc = zero(T)
     @simd for i in eachindex(distances)
-        @inbounds acc += compute_g2_element(distances[i], η, r_cutoff, r_shift)
+        @inbounds acc += compute_g2_element(distances[i], η, r_cutoff, r_shift, norm)
     end
     return acc
 end
@@ -53,7 +54,7 @@ function build_g2_matrix(distance_matrix::AbstractMatrix{T},
             g2_matrix[i, j] = compute_g2(distance_vector,
                                          g2_func.eta,
                                          g2_func.rcutoff,
-                                         g2_func.rshift)
+                                         g2_func.rshift, g2_func.norm)
         end
     end
 
@@ -74,7 +75,7 @@ function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
         g2_matrix[point_index, j] = compute_g2(distance_vector2,
                                                g2_func.eta,
                                                g2_func.rcutoff,
-                                               g2_func.rshift) * scaling
+                                               g2_func.rshift, g2_func.norm) * scaling
     end
 
     # Update affected atoms
@@ -86,8 +87,8 @@ function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
             dist1, dist2 = distance_vector1[i], distance_vector2[i]
 
             if (zero(T) < dist1 < r_cutoff) || (zero(T) < dist2 < r_cutoff)
-                δg2 = compute_g2_element(dist2, g2_func.eta, r_cutoff, g2_func.rshift) -
-                      compute_g2_element(dist1, g2_func.eta, r_cutoff, g2_func.rshift)
+                δg2 = compute_g2_element(dist2, g2_func.eta, r_cutoff, g2_func.rshift, g2_func.norm) -
+                      compute_g2_element(dist1, g2_func.eta, r_cutoff, g2_func.rshift, g2_func.norm)
                 g2_matrix[i, j] += δg2 * scaling
             end
         end

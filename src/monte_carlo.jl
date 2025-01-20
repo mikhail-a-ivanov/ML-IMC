@@ -88,7 +88,8 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                  system_params_list::Vector{SystemParameters},
                                  global_params::GlobalParameters,
                                  nn_params::Union{NeuralNetParameters, Nothing},
-                                 model::Union{Flux.Chain, Nothing})::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
+                                 model::Union{Flux.Chain, Nothing}, lr::Float64,
+                                 epoch, mc_steps)::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
     total_loss_sse::Float64 = 0.0
     total_loss_mse::Float64 = 0.0
     total_loss_rmse::Float64 = 0.0
@@ -97,9 +98,9 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     system_outputs::Vector{MonteCarloAverages} = Vector{MonteCarloAverages}()
     system_losses::Vector{Float64} = Vector{Float64}()
 
-    for (system_idx, system_params) in enumerate(system_params_list)
-        println("System $(system_params.system_name):")
+    println("| System          | Acc.Ratio | Avg.Displ.(Å) | SSE        | MSE        | RMSE     | MAE      |")
 
+    for (system_idx, system_params) in enumerate(system_params_list)
         # Initialize collection vectors
         descriptors::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
         energies::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
@@ -149,10 +150,12 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                            system_params,
                                            avg_displacement)
 
-        # Print statistics
-        println("    Acceptance ratio: ", round(avg_acceptance; digits=4))
-        println("    Max displacement: ", round(avg_displacement; digits=4))
-        println()
+        if global_params.mode != "training"
+            println("System $(system_params.system_name):")
+            println("    Acceptance ratio: ", round(avg_acceptance; digits=4))
+            println("    Avg. displacement: ", round(avg_displacement; digits=4))
+            println()
+        end
 
         # Compute and accumulate loss for training mode
         if global_params.mode == "training"
@@ -160,6 +163,15 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                                                                                         reference_rdfs[system_idx],
                                                                                                         model,
                                                                                                         nn_params)
+
+            println(@sprintf("| %-15s | %9.4f | %13.4f | %10.4f | %9.4e | %8.4f | %8.4f |",
+                             system_params.system_name,
+                             avg_acceptance,
+                             avg_displacement,
+                             system_loss_sse,
+                             system_loss_mse,
+                             system_loss_rmse,
+                             system_loss_mae))
 
             total_loss_sse += system_loss_sse
             total_loss_mse += system_loss_mse
@@ -174,13 +186,12 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     # Calculate and print average loss for training mode
     if global_params.mode == "training"
         total_loss_sse /= length(system_params_list)
-        println("Average SSE:   ", round(total_loss_sse; digits=8))
         total_loss_mse /= length(system_params_list)
-        println("Average MSE:   ", round(total_loss_mse; digits=8))
         total_loss_rmse /= length(system_params_list)
-        println("Average RMSE:  ", round(total_loss_rmse; digits=8))
         total_loss_mae /= length(system_params_list)
-        println("Average MAE:   ", round(total_loss_mae; digits=8))
+        println()
+        println(@sprintf("Epoch: %d | Steps: %d | SSE: %.5f | MSE: %.4e | RMSE: %.8f | MAE: %.8f | LR: %.2e",
+                         epoch, mc_steps, total_loss_sse, total_loss_mse, total_loss_rmse, total_loss_mae, lr))
     end
 
     # Log loss value
