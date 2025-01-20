@@ -5,58 +5,28 @@
 system_files = [
     # 10
     "configs/methanol-data/10CH3OH/10CH3OH-CG.toml",
-    #"configs/methanol-data/10CH3OH/10CH3OH-CG-2.toml",
-    #"configs/methanol-data/10CH3OH/10CH3OH-CG-3.toml",
-    #"configs/methanol-data/10CH3OH/10CH3OH-CG-4.toml",
-    #"configs/methanol-data/10CH3OH/10CH3OH-CG-5.toml",
-    #"configs/methanol-data/10CH3OH/10CH3OH-CG-6.toml",
-    #"configs/methanol-data/10CH3OH/10CH3OH-CG-7.toml",
-    #"configs/methanol-data/10CH3OH/10CH3OH-CG-8.toml",
+    # "configs/methanol-data/10CH3OH/10CH3OH-CG-2.toml",
     # 40
     "configs/methanol-data/40CH3OH/40CH3OH-CG.toml",
-    #"configs/methanol-data/40CH3OH/40CH3OH-CG-2.toml",
-    #"configs/methanol-data/40CH3OH/40CH3OH-CG-3.toml",
-    #"configs/methanol-data/40CH3OH/40CH3OH-CG-4.toml",
-    #"configs/methanol-data/40CH3OH/40CH3OH-CG-5.toml",
-    #"configs/methanol-data/40CH3OH/40CH3OH-CG-6.toml",
-    #"configs/methanol-data/40CH3OH/40CH3OH-CG-7.toml",
-    #"configs/methanol-data/40CH3OH/40CH3OH-CG-8.toml",
+    # "configs/methanol-data/40CH3OH/40CH3OH-CG-2.toml",
     # 60
     "configs/methanol-data/60CH3OH/60CH3OH-CG.toml",
-    #"configs/methanol-data/60CH3OH/60CH3OH-CG-2.toml",
-    #"configs/methanol-data/60CH3OH/60CH3OH-CG-3.toml",
-    #"configs/methanol-data/60CH3OH/60CH3OH-CG-4.toml",
-    #"configs/methanol-data/60CH3OH/60CH3OH-CG-5.toml",
-    #"configs/methanol-data/60CH3OH/60CH3OH-CG-6.toml",
-    #"configs/methanol-data/60CH3OH/60CH3OH-CG-7.toml",
-    #"configs/methanol-data/60CH3OH/60CH3OH-CG-8.toml",
+    # "configs/methanol-data/60CH3OH/60CH3OH-CG-2.toml",
     # 70
-    #"configs/methanol-data/70CH3OH/70CH3OH-CG.toml",
+    # "configs/methanol-data/70CH3OH/70CH3OH-CG.toml",
     # "configs/methanol-data/70CH3OH/70CH3OH-CG-2.toml",
-    # "configs/methanol-data/70CH3OH/70CH3OH-CG-3.toml",
-    # "configs/methanol-data/70CH3OH/70CH3OH-CG-4.toml",
-    # "configs/methanol-data/70CH3OH/70CH3OH-CG-5.toml",
-    # "configs/methanol-data/70CH3OH/70CH3OH-CG-6.toml",
-    # "configs/methanol-data/70CH3OH/70CH3OH-CG-7.toml",
-    # "configs/methanol-data/70CH3OH/70CH3OH-CG-8.toml",
     # 100
     "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
-    #"configs/methanol-data/100CH3OH/100CH3OH-CG-2.toml",
-    #"configs/methanol-data/100CH3OH/100CH3OH-CG-3.toml",
-    #"configs/methanol-data/100CH3OH/100CH3OH-CG-4.toml",
-    #"configs/methanol-data/100CH3OH/100CH3OH-CG-5.toml",
-    #"configs/methanol-data/100CH3OH/100CH3OH-CG-6.toml",
-    #"configs/methanol-data/100CH3OH/100CH3OH-CG-7.toml",
-    #"configs/methanol-data/100CH3OH/100CH3OH-CG-8.toml",
+    # "configs/methanol-data/100CH3OH/100CH3OH-CG-2.toml",
 ]
 
-symmetry_function_file = "configs/methanol-data/symmetry_functions.toml" 
 # File defining the symmetry functions for atomic descriptors.
+symmetry_function_file = "configs/methanol-data/symmetry_functions.toml" 
 
 # Operation mode: "training" to train the NN, or "simulation" to run an MC simulation with a trained model.
 mode = "training"
 
-# Output detail level: "default" shows basic logs, "verbose" also writes trajectory files.
+# Output detail level: "default" shows RDFs and Energies, "verbose" also writes trajectory files.
 output_mode = "default"
 
 # Model and optimization file paths
@@ -67,18 +37,19 @@ adaptive_scaling = false # true => adapt gradient scaling per system; false => u
 
 [monte_carlo]
 # Monte Carlo simulation parameters
-steps = 1860000                   # Total number of MC steps to run.
+steps = 3060000                   # Total number of MC steps to run.
 equilibration_steps = 60000       # MC steps for equilibration before data collection.
 step_adjust_frequency = 600       # Adjust max MC displacement every N steps to maintain acceptance rate.
-trajectory_output_frequency = 600 # Write system configuration to trajectory file every N steps.
-output_frequency = 600            # Record energy and other data to output files every N steps.
+trajectory_output_frequency = 600 # Write system configuration to trajectory file every N steps. (Only in verbose mode)
+output_frequency = 600            # Sampling frequency for system states and energy recording.
+                                  # Recommended to be slightly above system size N.
 
 [neural_network]
 # Neural network architecture
-neurons = [46, 46, 46, 1]   # Number of neurons per layer (including output).
+neurons = [46, 46, 46, 1]   # Neurons per layer (output included). Input equals number of symmetry functions.
 bias = true                 # Whether to use bias in each layer.
-activations = ["identity", "leakyrelu", "leakyrelu", "identity"] 
 # Activation function for each layer.
+activations = ["identity", "leakyrelu", "leakyrelu", "identity"] 
 
 # Training hyperparameters
 iterations = 10            # Number of training iterations.
