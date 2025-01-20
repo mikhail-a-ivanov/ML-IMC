@@ -1,7 +1,7 @@
 name = "ML_IMC"
 uuid = "8c997b32-2944-4c64-b9e3-ea505a7f7864"
 authors = ["Maksim Posysoev <maxim.posysoev@gmail.com>", "Mikhail Ivanov <mikhail.ivanov.1995@gmail.com>"]
-version = "0.3.0"
+version = "0.4.0"
 
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
@@ -20,7 +20,7 @@ BSON = "0.3.9"
 Chemfiles = "0.10.41"
 Dates = "1.11.0"
 Distributed = "1.11.0"
-Flux = "0.14.25"
+Flux = "0.16.1"
 LinearAlgebra = "1.11.0"
 Printf = "1.11.0"
 RandomNumbers = "1.6.0"

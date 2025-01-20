@@ -14,7 +14,7 @@ function compute_training_loss(descriptor_nn::AbstractVector{T},
     # Compute L2 regularization loss if regularization parameter is positive
     reg_loss = zero(T)
     if nn_params.regularization > zero(T)
-        reg_loss = nn_params.regularization * sum(sum(abs2, p) for p in Flux.params(model))
+        reg_loss = nn_params.regularization * sum(sum(abs2, p) for p in Flux.trainables(model))
     end
 
     total_loss_sse = descriptor_loss_sse + reg_loss
@@ -81,6 +81,9 @@ function train!(global_params::GlobalParameters,
                 model::Flux.Chain,
                 optimizer,
                 ref_rdfs)
+    model_params = Flux.trainables(model)
+    opt_state = Flux.setup(optimizer, model_params)
+
     for iteration in 1:(nn_params.iterations)
         iter_string = lpad(iteration, 2, "0")
 
@@ -92,7 +95,7 @@ function train!(global_params::GlobalParameters,
 
         # Process system outputs and compute losses
         system_outputs, system_losses = collect_system_averages(outputs, ref_rdfs, system_params_list, global_params,
-                                                                nn_params, model, optimizer.eta, iteration,
+                                                                nn_params, model, opt_state[1].rule.eta, iteration,
                                                                 mc_params.steps)
 
         # Compute gradients for each system
@@ -135,15 +138,15 @@ function train!(global_params::GlobalParameters,
         # Save model state
         @save "model-iter-$(iter_string).bson" model
         check_file("model-iter-$(iter_string).bson")
-        @save "opt-iter-$(iter_string).bson" optimizer
+        @save "opt-iter-$(iter_string).bson" opt_state
         check_file("opt-iter-$(iter_string).bson")
         @save "gradients-iter-$(iter_string).bson" mean_loss_gradients
         check_file("gradients-iter-$(iter_string).bson")
 
         # Update model with computed gradients
-        update_model!(model, optimizer, mean_loss_gradients)
+        update_model!(model, opt_state, mean_loss_gradients)
 
-        # Scheduler of Learning Rate
+        # Scheduler of Learning Rate (LR Finder)
         # optimizer.eta *= 2.0
 
         # Run GC after each iteration

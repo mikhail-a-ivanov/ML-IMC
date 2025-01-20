@@ -138,9 +138,9 @@ function compute_loss_gradients(cross_accumulators::Vector{Matrix{T}},
         throw(ArgumentError("Unsupported loss type: $loss_type. Supported types are: 'mse', 'mae'"))
     end
 
-    loss_gradients = Vector{AbstractArray{T}}(undef, length(Flux.params(model)))
+    loss_gradients = Vector{AbstractArray{T}}(undef, length(Flux.trainables(model)))
 
-    for (i, (gradient, parameters)) in enumerate(zip(descriptor_gradients, Flux.params(model)))
+    for (i, (gradient, parameters)) in enumerate(zip(descriptor_gradients, Flux.trainables(model)))
         loss_gradient = reshape(dLdS' * gradient, size(parameters))
         reg_loss_gradient = @. 2 * nn_params.regularization * parameters
         loss_gradients[i] = loss_gradient .+ reg_loss_gradient

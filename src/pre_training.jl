@@ -105,7 +105,7 @@ function compute_pretraining_gradient(energy_diff_nn::T,
                                       nn_params::NeuralNetParameters;) where {T <: AbstractFloat}
 
     # Calculate regularization loss
-    model_params = Flux.params(model)
+    model_params = Flux.trainables(model)
 
     # Compute gradients for both configurations
     grad1 = compute_energy_gradients(symm_func_matrix1, model, nn_params)
@@ -250,6 +250,9 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
     # Pre-compute reference data in parallel
     ref_data_list = pmap(precompute_reference_data, ref_data_inputs)
 
+    model_params = Flux.trainables(model)
+    opt_state = Flux.setup(optimizer, model_params)
+
     # Main training loop
     for step in 1:(pretrain_params.steps)
         should_report = (step % pretrain_params.output_frequency == 0) || (step == 1)
@@ -275,8 +278,8 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                                                                   pretrain_params,
                                                                   nn_params)
 
-            model_params = Flux.params(model)
-            reg_loss = pretrain_params.regularization * sum(abs2, model_params[1])
+            model_params = Flux.trainables(model)
+            reg_loss = pretrain_params.regularization * sum(x -> sum(abs2, x), model_params)
 
             # Calculate MSE loss between energy differences
             mse_loss = (Δe_nn - Δe_pmf)^2
@@ -296,7 +299,7 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                 println(@sprintf("Epoch: %d | %-15s | ΔE_pmf: %8.3f | ΔE_nn: %8.3f | MSE: %8.2f | MAE: %6.2f | Reg: %.2e | lr: %.2e",
                                  step, system_params_list[sys_id].system_name, Δe_pmf, Δe_nn,
                                  mse_loss, mae_loss, reg_loss,
-                                 optimizer.eta))
+                                 opt_state[1].rule.eta))
             end
         end
         if should_report
@@ -315,13 +318,13 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                                           75000 => 0.00001)
 
             if haskey(learning_rate_schedule, step)
-                optimizer.eta = learning_rate_schedule[step]
+                Flux.adjust!(opt_state, learning_rate_schedule[step])
             end
         end
 
         # Update model with mean gradients
         mean_gradients = mean(loss_gradients)
-        update_model!(model, optimizer, mean_gradients)
+        update_model!(model, opt_state, mean_gradients)
     end
 
     # Save trained model

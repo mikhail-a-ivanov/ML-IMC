@@ -1,16 +1,5 @@
 using ..ML_IMC
 
-function build_network(nn_params::NeuralNetParameters)
-    return [(nn_params.neurons[i - 1], nn_params.neurons[i],
-             getfield(Flux, Symbol(nn_params.activations[i - 1])))
-            for i in 2:length(nn_params.neurons)]
-end
-
-function build_chain(nn_params::NeuralNetParameters, layers...)
-    return Chain([nn_params.bias ? Dense(layer...) : Dense(layer..., bias=false)
-                  for layer in layers]...)
-end
-
 function init_optimizer(params::Union{NeuralNetParameters, PreTrainingParameters})
     function get_rate(params::Union{NeuralNetParameters, PreTrainingParameters})
         return params isa NeuralNetParameters ? params.learning_rate : params.learning_rate
@@ -55,6 +44,17 @@ function init_optimizer(params::Union{NeuralNetParameters, PreTrainingParameters
     end
 end
 
+function build_network(nn_params::NeuralNetParameters)
+    return [(nn_params.neurons[i - 1], nn_params.neurons[i],
+             getfield(Flux, Symbol(nn_params.activations[i - 1])))
+            for i in 2:length(nn_params.neurons)]
+end
+
+function build_chain(nn_params::NeuralNetParameters, layers...)
+    return Chain([nn_params.bias ? Dense(layer...) : Dense(layer..., bias=false)
+                  for layer in layers]...)
+end
+
 function model_init(nn_params::NeuralNetParameters)
     network = build_network(nn_params)
     model = build_chain(nn_params, network...)
@@ -64,10 +64,10 @@ function model_init(nn_params::NeuralNetParameters)
 end
 
 function update_model!(model::Chain,
-                       optimizer,
+                       opt_state,
                        loss_gradients::Vector{<:AbstractArray{T}}) where {T <: AbstractFloat}
-    for (gradient, parameter) in zip(loss_gradients, Flux.params(model))
-        Flux.Optimise.update!(optimizer, parameter, gradient)
+    for (s, p, g) in zip(opt_state, Flux.trainables(model), loss_gradients)
+        Flux.update!(s, p, g)
     end
 
     return model
