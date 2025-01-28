@@ -55,20 +55,44 @@ function build_chain(nn_params::NeuralNetParameters, layers...)
                   for layer in layers]...)
 end
 
+function resnet_block(dim::Int)
+    skip_chain = Chain(Dense(dim => dim),
+                       LayerNorm(dim),  # Use LayerNorm instead of BatchNorm
+                       relu,
+                       Dense(dim => dim),
+                       LayerNorm(dim),
+                       relu)
+    return Chain(SkipConnection(skip_chain, +), relu)
+end
+
+function create_resnet(input_dim::Int, hidden_dim::Int, n_blocks::Int)
+    initial_layers = Chain(Dense(input_dim => hidden_dim),
+                           LayerNorm(hidden_dim),
+                           relu)
+
+    res_blocks = Chain([resnet_block(hidden_dim) for _ in 1:n_blocks]...)
+    final_layer = Dense(hidden_dim => 1)
+
+    return Chain(initial_layers, res_blocks, final_layer)
+end
+
 function model_init(nn_params::NeuralNetParameters)
     network = build_network(nn_params)
     model = build_chain(nn_params, network...)
+
+    # ResNet initialization
+    # input_dim = nn_params.neurons[1]        # input data dimension
+    # hidden_dim = 32                         # network "width" dimension
+    # n_blocks = 2                            # number of residual blocks
+    # model = create_resnet(input_dim, hidden_dim, n_blocks)
+
     model = f64(model)
 
     return model
 end
 
-function update_model!(model::Chain,
-                       opt_state,
-                       loss_gradients::Vector{<:AbstractArray{T}}) where {T <: AbstractFloat}
-    for (s, p, g) in zip(opt_state, Flux.trainables(model), loss_gradients)
-        Flux.update!(s, p, g)
-    end
+function update_model!(model::Chain, opt_state, loss_gradients)
+    Flux.update!(opt_state, model, loss_gradients)
 
     return model
 end

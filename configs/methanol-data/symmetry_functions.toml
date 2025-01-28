@@ -6,7 +6,7 @@ scaling = 1.0
 G2 = [
     # eta  rcutoff  rshift  norm
     # G2(eta=0, rshift=0) - Local Density
-    [0.00, 8.00, 0.00, 1.00],
+    # [0.00, 8.00, 0.00, 1.00],
     # G2(eta=0, rshift=0) R_cutoff = 3.5 Å - Repulsion Region
     [0.00, 3.50, 0.00, 1.00],
     # Grid with Resolution eta = 4 and Step - 0.4 Å

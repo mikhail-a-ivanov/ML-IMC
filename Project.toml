@@ -17,10 +17,10 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
 BSON = "0.3.9"
-Chemfiles = "0.10.41"
+Chemfiles = "0.10.42"
 Dates = "1.11.0"
 Distributed = "1.11.0"
-Flux = "0.16.1"
+Flux = "0.15.2"
 LinearAlgebra = "1.11.0"
 Printf = "1.11.0"
 RandomNumbers = "1.6.0"

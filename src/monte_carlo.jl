@@ -3,7 +3,7 @@ using ..ML_IMC
 struct MonteCarloAverages
     descriptor::Vector{Float64}
     energies::Vector{Float64}
-    cross_accumulators::Union{Nothing, Vector{Matrix{Float64}}}
+    cross_accumulators::Union{Nothing, Matrix{Float64}}
     symmetry_matrix_accumulator::Union{Nothing, Matrix{Float64}}
     acceptance_ratio::Float64
     system_params::SystemParameters
@@ -108,7 +108,7 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
         max_displacements::Vector{Float64} = Vector{Float64}()
 
         # Training-specific accumulators
-        cross_accumulators::Vector{Vector{Matrix{Float64}}} = Vector{Vector{Matrix{Float64}}}()
+        cross_accumulators::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}()
         symm_func_accumulators::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}()
 
         # Collect matching outputs
@@ -133,7 +133,7 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
         avg_displacement::Float64 = mean(max_displacements)
 
         # Training-specific averages
-        avg_cross_acc::Union{Vector{Matrix{Float64}}, Nothing} = nothing
+        avg_cross_acc::Union{Matrix{Float64}, Nothing} = nothing
         avg_symm_func::Union{Matrix{Float64}, Nothing} = nothing
 
         if global_params.mode == "training"
@@ -381,7 +381,7 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
         g2_accumulator::Matrix{Float64} = zeros(size(g2_matrix))
         g3_accumulator::Union{Matrix{Float64}, Vector{Float64}} = zeros(size(g3_matrix))
         g9_accumulator::Union{Matrix{Float64}, Vector{Float64}} = zeros(size(g9_matrix))
-        cross_accumulators::Vector{Matrix{Float64}} = initialize_cross_accumulators(nn_params, system_params)
+        cross_accumulators::Matrix{Float64} = initialize_cross_accumulators(system_params, model)
     end
 
     # Initialize energy calculations
@@ -439,7 +439,7 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
 
                 normalize_hist_to_rdf!(hist, system_params, box)
                 symm_func_matrix = combine_symmetry_matrices(g2_matrix, g3_matrix, g9_matrix)
-                update_cross_accumulators!(cross_accumulators, symm_func_matrix, hist, model, nn_params)
+                update_cross_accumulators!(cross_accumulators, symm_func_matrix, hist, model)
                 hist = zeros(Float64, system_params.n_bins)
             else
                 hist_accumulator = update_distance_histogram!(distance_matrix, hist_accumulator, system_params)
@@ -453,9 +453,7 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     # Process final results
     if global_params.mode == "training"
         # Normalize accumulators
-        for cross in cross_accumulators
-            cross ./= production_points
-        end
+        cross_accumulators ./= production_points
 
         g2_accumulator ./= production_points
         if !isempty(g3_matrix)
