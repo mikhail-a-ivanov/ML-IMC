@@ -84,6 +84,7 @@ end
 
 struct PreTrainingParameters
     steps::Int
+    batch_size::Int
     output_frequency::Int
     regularization::Float64
     optimizer::String

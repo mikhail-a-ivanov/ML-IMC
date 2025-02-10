@@ -56,6 +56,12 @@ function main()
         inputs, nothing, nothing
     end
 
+    println("----------------------------------- Model -------------------------------------")
+    @show model
+    w, _ = Flux.destructure(model)
+    println("\nTotal Parameters Number: ", length(w))
+    println()
+
     # Execute workflow based on mode
     if global_params.mode == "training"
         # Execute pretraining if needed

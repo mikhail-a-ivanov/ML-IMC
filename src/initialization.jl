@@ -33,11 +33,6 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
                 check_file(global_params.gradients_file)
                 @load global_params.gradients_file mean_loss_gradients
             end
-
-            # Update the model if both opt and gradients are restored
-            if global_params.optimizer_file != "none" && global_params.gradients_file != "none"
-                update_model!(model, optimizer, mean_loss_gradients)
-            end
         end
     end
 

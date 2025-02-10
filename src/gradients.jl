@@ -34,117 +34,74 @@ function init_system_energies_vector(symm_func_matrix::AbstractMatrix{T}, model:
 end
 
 function compute_energy_gradients(symm_func_matrix::AbstractMatrix{T},
-                                  model::Flux.Chain,
-                                  nn_params::NeuralNetParameters)::Vector{AbstractArray{T}} where {T <: AbstractFloat}
-    energy_gradients = Vector{AbstractArray{T}}()
-
+                                  model::Flux.Chain) where {T <: AbstractFloat}
     gs = gradient(compute_system_total_energy_scalar, symm_func_matrix, model)
-    # Structure: gs[2][1][layerId][1 - weigths; 2 - biases]
-
-    for layer_gradients in gs[2][1]
-        push!(energy_gradients, layer_gradients[1])  # weights
-        if nn_params.bias
-            push!(energy_gradients, layer_gradients[2])  # biases
-        end
-    end
+    energy_gradients = gs[2]
 
     return energy_gradients
 end
 
-function compute_cross_correlation(descriptor::Vector{T},
-                                   energy_gradients::Vector{<:AbstractArray{T}})::Vector{Matrix{T}} where {T <:
-                                                                                                           AbstractFloat}
-    cross_correlations = Vector{Matrix{T}}(undef, length(energy_gradients))
-    for (i, gradient) in enumerate(energy_gradients)
-        cross_correlations[i] = descriptor * gradient[:]' # Matrix Nbins x Nparameters
-    end
+function compute_cross_correlation(descriptor::Vector{T}, energy_gradients)::Matrix{T} where {T <: AbstractFloat}
+    flat_energy_grad, gradient_restructure = Flux.destructure(energy_gradients)
+    cross_correlations = descriptor * transpose(flat_energy_grad)
+
     return cross_correlations
 end
 
-function initialize_cross_accumulators(nn_params::NeuralNetParameters,
-                                       system_params::SystemParameters)::Vector{Matrix{Float64}}
-    n_layers = length(nn_params.neurons)
-    cross_accumulators = Vector{Matrix{Float64}}()
-
-    for layer_id in 2:n_layers
-        weights_shape = (system_params.n_bins, nn_params.neurons[layer_id - 1] * nn_params.neurons[layer_id])
-        push!(cross_accumulators, zeros(weights_shape))
-
-        if nn_params.bias
-            bias_shape = (system_params.n_bins, nn_params.neurons[layer_id])
-            push!(cross_accumulators, zeros(bias_shape))
-        end
-    end
-
+function initialize_cross_accumulators(system_params::SystemParameters,
+                                       model::Flux.Chain)::Matrix{Float64}
+    model_params, re = Flux.destructure(model)
+    num_params = length(model_params)
+    cross_accumulators_shape = (system_params.n_bins, num_params)
+    cross_accumulators = zeros(cross_accumulators_shape)
     return cross_accumulators
 end
 
-function update_cross_accumulators!(cross_accumulators::Vector{Matrix{T}},
+function update_cross_accumulators!(cross_accumulators::Matrix{T},
                                     symm_func_matrix::Matrix{T},
                                     descriptor::Vector{T},
-                                    model::Chain,
-                                    nn_params::NeuralNetParameters)::Vector{Matrix{T}} where {T <: AbstractFloat}
-    energy_gradients = compute_energy_gradients(symm_func_matrix, model, nn_params)
+                                    model::Chain)::Matrix{T} where {T <: AbstractFloat}
+    energy_gradients = compute_energy_gradients(symm_func_matrix, model)
     new_cross_correlations = compute_cross_correlation(descriptor, energy_gradients)
-
-    @inbounds for i in eachindex(cross_accumulators, new_cross_correlations)
-        cross_accumulators[i] .+= new_cross_correlations[i]
-    end
-
+    cross_accumulators .+= new_cross_correlations
     return cross_accumulators
 end
 
 function compute_ensemble_correlation(symm_func_matrix::Matrix{T},
                                       descriptor::Vector{T},
-                                      model::Chain,
-                                      nn_params::NeuralNetParameters)::Vector{Matrix{T}} where {T <: AbstractFloat}
-    energy_gradients = compute_energy_gradients(symm_func_matrix, model, nn_params)
+                                      model::Chain)::Matrix{T} where {T <: AbstractFloat}
+    energy_gradients = compute_energy_gradients(symm_func_matrix, model)
     ensemble_correlations = compute_cross_correlation(descriptor, energy_gradients)
     return ensemble_correlations
 end
 
-function compute_descriptor_gradients(cross_accumulators::Vector{Matrix{T}},
-                                      ensemble_correlations::Vector{Matrix{T}},
-                                      system_params::SystemParameters)::Vector{Matrix{T}} where {T <: AbstractFloat}
-    descriptor_gradients = Vector{Matrix{T}}(undef, length(cross_accumulators))
-    for i in eachindex(cross_accumulators, ensemble_correlations)
-        descriptor_gradients[i] = -system_params.beta .* (cross_accumulators[i] - ensemble_correlations[i])
-    end
+function compute_descriptor_gradients(cross_accumulators::Matrix{T},
+                                      ensemble_correlations::Matrix{T},
+                                      system_params::SystemParameters)::Matrix{T} where {T <: AbstractFloat}
+    descriptor_gradients = -system_params.beta .* (cross_accumulators - ensemble_correlations)
     return descriptor_gradients
 end
 
-function compute_loss_gradients(cross_accumulators::Vector{Matrix{T}},
+function compute_loss_gradients(cross_accumulators::Matrix{T},
                                 symm_func_matrix::Matrix{T},
                                 descriptor_nn::Vector{T},
                                 descriptor_ref::Vector{T},
-                                model::Chain,
+                                model::Flux.Chain,
                                 system_params::SystemParameters,
-                                nn_params::NeuralNetParameters;)::Vector{AbstractArray{T}} where {T <: AbstractFloat}
-    ensemble_correlations = compute_ensemble_correlation(symm_func_matrix, descriptor_nn, model, nn_params)
+                                nn_params::NeuralNetParameters)::Vector{T} where {T <: AbstractFloat}
+    flat_params, _ = Flux.destructure(model)
+
+    # Calculate correlations and their gradients for descriptor computation
+    ensemble_correlations = compute_ensemble_correlation(symm_func_matrix, descriptor_nn, model)
     descriptor_gradients = compute_descriptor_gradients(cross_accumulators, ensemble_correlations, system_params)
 
-    # Compute difference
+    # MSE loss gradient computation
     diff = descriptor_nn - descriptor_ref
-    n_samples = length(diff)
+    dLdS = @. (2 / length(diff)) * diff
 
-    loss_type = "mse"
+    # Combine descriptor gradients with regularization
+    param_gradients = descriptor_gradients' * dLdS  # (num_params × n_bins) * (n_bins × 1) = (num_params × 1)
+    param_gradients .+= 2 * nn_params.regularization .* flat_params
 
-    # Calculate gradient scaling based on loss type
-    if loss_type == "mse"
-        dLdS = @. (2 / n_samples) * diff  # MSE
-    elseif loss_type == "mae"
-        dLdS = @. sign(diff) / n_samples # MAE
-    else
-        throw(ArgumentError("Unsupported loss type: $loss_type. Supported types are: 'mse', 'mae'"))
-    end
-
-    loss_gradients = Vector{AbstractArray{T}}(undef, length(Flux.params(model)))
-
-    for (i, (gradient, parameters)) in enumerate(zip(descriptor_gradients, Flux.params(model)))
-        loss_gradient = reshape(dLdS' * gradient, size(parameters))
-        reg_loss_gradient = @. 2 * nn_params.regularization * parameters
-        loss_gradients[i] = loss_gradient .+ reg_loss_gradient
-    end
-
-    return loss_gradients
+    return param_gradients
 end
