@@ -150,6 +150,7 @@ function parameters_init()
     # Parse pre-training parameters
     pt_section = config["pretraining"]
     pretrain_params = PreTrainingParameters(pt_section["steps"],
+                                            pt_section["batch_size"],
                                             pt_section["output_frequency"],
                                             pt_section["regularization"],
                                             pt_section["optimizer"],

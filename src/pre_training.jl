@@ -253,6 +253,7 @@ function training_phase!(phase_name::String,
                          avg_log_file::String)
     n_systems = length(system_params_list)
     opt_state = Flux.setup(optimizer, model)
+    lr = pretrain_params.learning_rate
     for epoch in 1:steps
         should_report = (epoch % pretrain_params.output_frequency == 0) || (epoch == 1)
         accum_mse_diff = 0.0
@@ -327,15 +328,8 @@ function training_phase!(phase_name::String,
 
         log_average_metrics(avg_log_file, epoch, mean_mae_diff, mean_mse_diff, mean_mae_abs, mean_mse_abs, mean_reg)
 
-        if should_report
-            println(@sprintf("%s - Epoch: %4d | diff_MSE: %.6f | diff_MAE: %.6f | abs_MSE: %.6f | abs_MAE: %.6f | Reg: %.2e",
-                             phase_name, epoch, mean_mse_diff, mean_mae_diff, mean_mse_abs, mean_mae_abs, mean_reg))
-        end
-
-        if epoch % 5 == 0 || epoch == 1
-            checkpoint_path = "pt_checkpoint_$(phase_name)_$(epoch).bson"
-            @save checkpoint_path model
-        end
+            println(@sprintf("%s - Epoch: %4d | diff_MSE: %.6f | diff_MAE: %.6f | abs_MSE: %.6f | abs_MAE: %.6f | Reg: %.2e | LR: %.2e",
+                             phase_name, epoch, mean_mse_diff, mean_mae_diff, mean_mse_abs, mean_mae_abs, mean_reg, lr))
     end
 end
 
@@ -353,13 +347,15 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                        for i in 1:n_systems]
     ref_data_list = pmap(precompute_reference_data, ref_data_inputs)
 
-    phase1_steps = 500
-    phase2_steps = 500
-    batch_size = 100
+    phase1_steps = pretrain_params.steps
+    do_phase_2 = false
+    phase2_steps = 1000
+    batch_size = pretrain_params.batch_size
 
-    phase1_lr_schedule = Dict(500 => 0.005,
-                              1000 => 0.001,
-                              2500 => 0.0005)
+    phase1_lr_schedule = Dict(2000 => 0.001,
+                              7000 => 0.0005,
+                              18000 => 0.0001)
+
     phase2_lr_schedule = Dict(500 => 0.0002,
                               1000 => 0.0001,
                               2000 => 0.00005,
@@ -373,14 +369,27 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                     model, nn_params, pretrain_params,
                     optimizer, rng, compute_pretraining_gradient_abs,
                     phase1_lr_schedule, all_loss_log, avg_loss_log)
-    @save "model-phase1.bson" model
+    @save "model-phase1-stage1.bson" model
 
-    Flux.adjust!(Flux.setup(optimizer, model), 0.0005)
-    training_phase!("diff", phase2_steps, batch_size,
+    batch_size = 256
+    phase1_steps = 1000
+    Flux.adjust!(Flux.setup(optimizer, model), 0.00005)
+    println()
+    training_phase!("abs", phase1_steps, batch_size,
                     system_params_list, ref_data_list,
                     model, nn_params, pretrain_params,
-                    optimizer, rng, compute_pretraining_gradient_diff,
-                    phase2_lr_schedule, all_loss_log, avg_loss_log)
+                    optimizer, rng, compute_pretraining_gradient_abs,
+                    phase1_lr_schedule, all_loss_log, avg_loss_log)
+    @save "model-phase1-stage2.bson" model
+
+    if do_phase_2
+        Flux.adjust!(Flux.setup(optimizer, model), 0.00005)
+        training_phase!("diff", phase2_steps, batch_size,
+                        system_params_list, ref_data_list,
+                        model, nn_params, pretrain_params,
+                        optimizer, rng, compute_pretraining_gradient_diff,
+                        phase2_lr_schedule, all_loss_log, avg_loss_log)
+    end
 
     try
         @save save_path model

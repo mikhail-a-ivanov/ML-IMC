@@ -46,10 +46,11 @@ output_frequency = 600            # Sampling frequency for system states and ene
 
 [neural_network]
 # Neural network architecture
-neurons = [46, 46, 46, 1]   # Neurons per layer (output included). Input equals number of symmetry functions.
-bias = true                 # Whether to use bias in each layer.
+neurons = [64, 64, 64, 64, 64, 1]   # Neurons per layer (output included). Input equals number of symmetry functions.
+bias = true                         # Whether to use bias in each layer.
 # Activation function for each layer.
-activations = ["identity", "leakyrelu", "leakyrelu", "identity"] 
+activations = ["identity", "leakyrelu", "leakyrelu", "leakyrelu", "leakyrelu", "identity"] 
+
 
 # Training hyperparameters
 iterations = 10            # Number of training iterations.
@@ -63,8 +64,9 @@ decay_rates = [0.9, 0.999] # Exponential decay for first & second moment estimat
 
 [pretraining]
 # Pre-training settings
-steps = 10000             # Number of MC steps for neural network pre-training.
-output_frequency = 100     # Report progress every N steps during pre-training.
+steps = 20000              # Number of MC steps for neural network pre-training.
+batch_size = 10            # Initial Batch Size for pre-training.
+output_frequency = 1       # Report progress every N steps during pre-training.
 regularization = 0.0       # L2 regularization (0.0 = disabled) for pre-training.
 
 # Pre-training optimizer settings
