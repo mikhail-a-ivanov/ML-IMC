@@ -90,7 +90,7 @@ function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
     point = positions(frame)[:, point_index]
     distance_vec2 = compute_distance_vector(point, positions(frame), box)
     update_distance_histogram_vectors!(hist, distance_vec1, distance_vec2, sys_params)
-    update_mask = get_energies_update_mask(distance_vec2, nn_params)
+    update_mask = get_energies_update_mask(distance_vec1, distance_vec2, nn_params)
 
     g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)

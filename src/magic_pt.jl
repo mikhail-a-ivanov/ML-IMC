@@ -229,7 +229,7 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
 
     e_pot2 = compute_potential_energy(distance_matrix2, lookup, sys_params)
 
-    update_mask = get_energies_update_mask(distance_vec2, nn_params)
+    update_mask = get_energies_update_mask(distance_vec1, distance_vec2, nn_params)
 
     g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)

@@ -24,9 +24,11 @@ function update_system_energies_vector(symm_func_matrix::AbstractMatrix{T},
     return updated_energies
 end
 
-function get_energies_update_mask(distance_vector::AbstractVector{T},
+function get_energies_update_mask(old_distance_vector::AbstractVector{T},
+                                  new_distance_vector::AbstractVector{T},
                                   nn_params::NeuralNetParameters)::Vector{Bool} where {T <: AbstractFloat}
-    return distance_vector .< nn_params.max_distance_cutoff
+    cutoff = nn_params.max_distance_cutoff
+    return (old_distance_vector .< cutoff) .| (new_distance_vector .< cutoff)
 end
 
 function init_system_energies_vector(symm_func_matrix::AbstractMatrix{T}, model::Flux.Chain) where {T <: AbstractFloat}

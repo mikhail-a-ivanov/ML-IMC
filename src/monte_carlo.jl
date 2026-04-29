@@ -246,7 +246,7 @@ function mcmove!(mc_arrays::Tuple{Frame, Matrix{T}, Matrix{T}},
     new_position = positions(frame)[:, particle_index]
     distances_new = compute_distance_vector(new_position, positions(frame), box)
 
-    indexes_for_update = get_energies_update_mask(distances_new, nn_params)
+    indexes_for_update = get_energies_update_mask(distances_orig, distances_new, nn_params)
 
     g2_matrix_new = copy(g2_matrix)
     update_g2_matrix!(g2_matrix_new, distances_orig, distances_new, system_params, nn_params, particle_index)
