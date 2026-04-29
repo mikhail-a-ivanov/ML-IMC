@@ -98,6 +98,7 @@ function compute_loss_gradients(cross_accumulators::Matrix{T},
     # MSE loss gradient computation
     diff = descriptor_nn - descriptor_ref
     dLdS = @. (2 / length(diff)) * diff
+    # dLdS = @. (1 / length(diff)) * sign(diff)  # Градиент для MAE
 
     # Combine descriptor gradients with regularization
     param_gradients = descriptor_gradients' * dLdS  # (num_params × n_bins) * (n_bins × 1) = (num_params × 1)

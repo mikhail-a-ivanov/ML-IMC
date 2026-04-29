@@ -37,7 +37,7 @@ adaptive_scaling = false # true => adapt gradient scaling per system; false => u
 
 [monte_carlo]
 # Monte Carlo simulation parameters
-steps = 2550000                   # Total number of MC steps to run.
+steps = 1050000                   # Total number of MC steps to run.
 equilibration_steps = 50000       # MC steps for equilibration before data collection.
 step_adjust_frequency = 500       # Adjust max MC displacement every N steps to maintain acceptance rate.
 trajectory_output_frequency = 500 # Write system configuration to trajectory file every N steps. (Only in verbose mode)
@@ -46,29 +46,32 @@ output_frequency = 500            # Sampling frequency for system states and ene
 
 [neural_network]
 # Neural network architecture
-neurons = [46, 46, 46, 1]   # Neurons per layer (output included). Input equals number of symmetry functions.
-bias = true                 # Whether to use bias in each layer.
+neurons = [64, 64, 64, 1]   # Neurons per layer (output included). Input equals number of symmetry functions.
+bias = true                         # Whether to use bias in each layer.
 # Activation function for each layer.
 activations = ["identity", "leakyrelu", "leakyrelu", "identity"] 
 
+
 # Training hyperparameters
-iterations = 10            # Number of training iterations.
+iterations = 20            # Number of training iterations.
 regularization = 0.0       # L2 regularization coefficient (0.0 = disabled).
 
 # Optimizer configuration
 optimizer = "Adam"         # Recommended: "Adam", "AMSGrad", "AdamW"
-learning_rate = 0.0001     # Optimizer learning rate.
+learning_rate = 0.001     # Optimizer learning rate.
 momentum = 0.9             # Momentum factor (used in Adam-based optimizers).
 decay_rates = [0.9, 0.999] # Exponential decay for first & second moment estimates.
 
 [pretraining]
 # Pre-training settings
-steps = 100000             # Number of MC steps for neural network pre-training.
-output_frequency = 500     # Report progress every N steps during pre-training.
+steps = 20000              # Number of MC steps for neural network pre-training.
+batch_size = 16            # Initial Batch Size for pre-training.
+output_frequency = 1       # Report progress every N steps during pre-training.
 regularization = 0.0       # L2 regularization (0.0 = disabled) for pre-training.
 
 # Pre-training optimizer settings
 optimizer = "Adam"         # Optimizer type for pre-training.
-learning_rate = 0.01       # Learning rate during pre-training.
+learning_rate = 0.01      # Learning rate during pre-training.
 momentum = 0.9             # Momentum factor during pre-training.
 decay_rates = [0.9, 0.999] # Decay parameters for first/second moments during pre-training.
+

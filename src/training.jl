@@ -80,14 +80,31 @@ function train!(global_params::GlobalParameters,
                 system_params_list::Vector{SystemParameters},
                 model::Flux.Chain,
                 optimizer,
+                opt_state_loaded,
                 ref_rdfs)
     opt_state = Flux.setup(optimizer, model)
+    if opt_state_loaded != nothing
+        opt_state = opt_state_loaded
+    end
+
     lr = optimizer.eta
+
+    lr_schedule = Dict(5 => 0.0005,
+                       50 => 0.0005,
+                       100 => 0.00001,
+                       150 => 0.000005,
+                       200 => 0.000001)
 
     for iteration in 1:(nn_params.iterations)
         iter_string = lpad(iteration, 2, "0")
 
         println("\n--------------------------------- Iteration $iteration ---------------------------------\n")
+
+        # Scheduler of Learning Rate (LR Finder)
+        if haskey(lr_schedule, iteration)
+            lr = lr_schedule[iteration]
+            Flux.adjust!(opt_state, lr)
+        end
 
         # Monte Carlo sampling
         inputs = prepare_monte_carlo_inputs(global_params, mc_params, nn_params, system_params_list, model)
@@ -138,11 +155,8 @@ function train!(global_params::GlobalParameters,
 
         # Save model state
         @save "model-iter-$(iter_string).bson" model
-        check_file("model-iter-$(iter_string).bson")
         @save "opt-iter-$(iter_string).bson" opt_state
-        check_file("opt-iter-$(iter_string).bson")
         @save "gradients-iter-$(iter_string).bson" mean_loss_gradients
-        check_file("gradients-iter-$(iter_string).bson")
 
         # Update model with computed gradients
         tmp_symm_func_matrix::Matrix{Float64} = zeros(1,
@@ -152,9 +166,6 @@ function train!(global_params::GlobalParameters,
         _, gradient_restructure = Flux.destructure(tmp_energy_gradients)
         mean_loss_gradients = gradient_restructure(mean_loss_gradients)
         update_model!(model, opt_state, mean_loss_gradients)
-
-        # Scheduler of Learning Rate (LR Finder)
-        # optimizer.eta *= 2.0
 
         # Run GC after each iteration
         GC.gc()

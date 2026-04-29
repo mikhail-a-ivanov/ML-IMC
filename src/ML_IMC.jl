@@ -27,6 +27,8 @@ include("symmetry_functions.jl")
 include("training.jl")
 include("utils.jl")
 
+include("magic_pt.jl")
+
 BLAS.set_num_threads(1)
 
 function main()
@@ -49,12 +51,7 @@ function main()
     end
 
     # Initialize input data and model components
-    inputs = input_init(global_params, nn_params, pretrain_params, system_params_list)
-    model, optimizer, ref_rdfs = if global_params.mode == "training"
-        inputs
-    else
-        inputs, nothing, nothing
-    end
+    model, optimizer, opt_state, ref_rdfs = input_init(global_params, nn_params, pretrain_params, system_params_list)
 
     println("----------------------------------- Model -------------------------------------")
     @show model
@@ -62,20 +59,32 @@ function main()
     println("\nTotal Parameters Number: ", length(w))
     println()
 
-    # Execute workflow based on mode
-    if global_params.mode == "training"
-        # Execute pretraining if needed
-        if global_params.model_file == "none"
-            println("================================ Pre-Training =================================")
-            model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
-            optimizer = init_optimizer(nn_params)
-        end
-        println("================================== Training ===================================")
-        train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
-    else
-        length(system_params_list) == 1 || throw(ArgumentError("Simulation mode supports only one system"))
-        simulate!(model, global_params, mc_params, nn_params, system_params_list[1])
-    end
+    # # Execute workflow based on mode
+    # if global_params.mode == "training"
+    #     # Execute pretraining if needed
+    #     if global_params.model_file == "none"
+    #         println("================================ Pre-Training =================================")
+    #         model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
+    #         optimizer = init_optimizer(nn_params)
+    #     end
+    #     println("================================== Training ===================================")
+    #     train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, opt_state, ref_rdfs)
+    # else
+    #     length(system_params_list) == 1 || throw(ArgumentError("Simulation mode supports only one system"))
+    #     simulate!(model, global_params, mc_params, nn_params, system_params_list[1])
+    # end
+
+    @load "run6/magic-pt-final-model-abs-all.bson" model
+    #potential_files = [
+    #    "methanol-IMC-potentials_form/10_CH3OH_magic_pot.dat",
+    #    "methanol-IMC-potentials_form/40_CH3OH_magic_pot.dat",
+    #    "methanol-IMC-potentials_form/60_CH3OH_magic_pot.dat",
+    #    "methanol-IMC-potentials_form/100_CH3OH_magic_pot.dat"
+    #]
+    #model = magic_pretrain(potential_files, pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs,
+    #                       use_diff_gradient=false, use_all_particles=true)
+
+    simulate!(model, global_params, mc_params, nn_params, system_params_list[1])
 
     # Log execution summary
     stop_time = now()

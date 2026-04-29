@@ -15,49 +15,66 @@ struct ReferenceData
     g9_matrices::Vector{Matrix{Float64}}
 end
 
+function read_random_frame(sys_params::SystemParameters, rng::Xoroshiro128Plus)
+    traj = read_xtc(sys_params)
+    nframes = Int(size(traj)) - 1  # пропускаем первый кадр
+    frame_id = rand(rng, 1:nframes)
+    frame = read_step(traj, frame_id)
+    box = lengths(UnitCell(frame))
+    return frame, frame_id, box
+end
+
+function compute_initial_energies(ref_data::ReferenceData, frame_id::Int, model::Chain)
+    hist = ref_data.histograms[frame_id]
+    pmf = ref_data.pmf
+    symm = combine_matrices_from_reference(ref_data, frame_id)
+    e_nn_vector = init_system_energies_vector(symm, model)
+    e_nn = sum(e_nn_vector)
+    e_pmf = sum(hist .* pmf)
+    return symm, hist, e_nn, e_pmf, e_nn_vector
+end
+
 function compute_pmf(rdf::AbstractVector{T}, system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
     n_bins = system_params.n_bins
     β = system_params.beta
     pmf = Vector{T}(undef, n_bins)
     repulsion_mask = rdf .== zero(T)
-    n_repulsion_points = count(repulsion_mask)
-    first_valid_index = n_repulsion_points + 1
-    max_pmf = -log(rdf[first_valid_index]) / β
-    next_pmf = -log(rdf[first_valid_index + 1]) / β
+    n_repulsion = count(repulsion_mask)
+    first_valid = n_repulsion + 1
+    max_pmf = -log(rdf[first_valid]) / β
+    next_pmf = -log(rdf[first_valid + 1]) / β
     pmf_gradient = max_pmf - next_pmf
     @inbounds for i in eachindex(pmf)
-        if repulsion_mask[i]
-            pmf[i] = max_pmf + pmf_gradient * (first_valid_index - i)
-        else
-            pmf[i] = -log(rdf[i]) / β
-        end
+        pmf[i] = repulsion_mask[i] ? max_pmf + pmf_gradient * (first_valid - i) : -log(rdf[i]) / β
     end
-    return pmf
+    return pmf ./ 2.0
 end
 
 function precompute_reference_data(input::PreComputedInput)::ReferenceData
     nn_params = input.nn_params
-    system_params = input.system_params
+    sys_params = input.system_params
     ref_rdf = input.reference_rdf
 
-    pmf = compute_pmf(ref_rdf, system_params)
-    trajectory = read_xtc(system_params)
-    n_frames = Int(size(trajectory)) - 1  # skip first frame
+    pmf = compute_pmf(ref_rdf, sys_params)
+    traj = read_xtc(sys_params)
+    n_frames = Int(size(traj)) - 1  # пропускаем первый кадр
 
     distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
     histograms = Vector{Vector{Float64}}(undef, n_frames)
     g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-    g3_matrices = Vector{Matrix{Float64}}(undef, n_frames * (length(nn_params.g3_functions) > 0))
-    g9_matrices = Vector{Matrix{Float64}}(undef, n_frames * (length(nn_params.g9_functions) > 0))
+    g3_matrices = isempty(nn_params.g3_functions) ? Matrix{Float64}[] :
+                  Vector{Matrix{Float64}}(undef, n_frames)
+    g9_matrices = isempty(nn_params.g9_functions) ? Matrix{Float64}[] :
+                  Vector{Matrix{Float64}}(undef, n_frames)
 
     for frame_id in 1:n_frames
-        frame = read_step(trajectory, frame_id)
+        frame = read_step(traj, frame_id)
         box = lengths(UnitCell(frame))
         coords = positions(frame)
 
         distance_matrices[frame_id] = build_distance_matrix(frame)
-        histograms[frame_id] = zeros(Float64, system_params.n_bins)
-        update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], system_params)
+        histograms[frame_id] = zeros(Float64, sys_params.n_bins)
+        update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], sys_params)
 
         g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
         if !isempty(nn_params.g3_functions)
@@ -71,135 +88,156 @@ function precompute_reference_data(input::PreComputedInput)::ReferenceData
     return ReferenceData(distance_matrices, histograms, pmf, g2_matrices, g3_matrices, g9_matrices)
 end
 
-function compute_pretraining_gradient_diff(energy_diff_nn::T,
-                                           energy_diff_pmf::T,
-                                           symm_func_matrix1::AbstractMatrix{T},
-                                           symm_func_matrix2::AbstractMatrix{T},
-                                           model::Chain,
-                                           pretrain_params::PreTrainingParameters,
-                                           nn_params::NeuralNetParameters)::Any where {T <: AbstractFloat}
-    model_params = Flux.trainables(model)
-    grad1 = compute_energy_gradients(symm_func_matrix1, model)
-    grad2 = compute_energy_gradients(symm_func_matrix2, model)
-    loss_type = "mse"
-    gradient_scale = loss_type == "mse" ? 2 * (energy_diff_nn - energy_diff_pmf) :
-                     sign(energy_diff_nn - energy_diff_pmf)
-    flat_grad_1, re_1 = Flux.destructure(grad1)
-    flat_grad_2, _ = Flux.destructure(grad2)
-    mp, _ = Flux.destructure(model_params)
-    loss_gradient = @. gradient_scale * (flat_grad_2 - flat_grad_1)
-    reg_gradient = @. mp * 2 * pretrain_params.regularization
-    return re_1(loss_gradient + reg_gradient)
-end
-
-function compute_pretraining_gradient_abs(e_nn::T,
-                                          e_pmf::T,
-                                          symm_func_matrix::AbstractMatrix{T},
-                                          model::Flux.Chain,
-                                          pretrain_params::PreTrainingParameters,
-                                          nn_params::NeuralNetParameters)::Any where {T <: AbstractFloat}
-    model_params = Flux.trainables(model)
-    grad_final = compute_energy_gradients(symm_func_matrix, model)
-    diff = e_nn - e_pmf
-    loss_type = "mse"
-    gradient_scale = loss_type == "mse" ? 2 * diff : sign(diff)
-    flat_grad_final, re_final = Flux.destructure(grad_final)
-    mp, _ = Flux.destructure(model_params)
-    loss_gradient = @. gradient_scale * flat_grad_final
-    reg_gradient = @. mp * 2 * pretrain_params.regularization
-    return re_final(loss_gradient + reg_gradient)
-end
-
-function pretraining_move!(reference_data::ReferenceData,
-                           model::Flux.Chain,
-                           nn_params::NeuralNetParameters,
-                           system_params::SystemParameters,
-                           rng::Xoroshiro128Plus)
-    traj = read_xtc(system_params)
-    nframes = Int(size(traj)) - 1  # skip first frame
-    frame_id = rand(rng, 1:nframes)
-    frame = read_step(traj, frame_id)
-    box = lengths(UnitCell(frame))
-    point_index = rand(rng, 1:(system_params.n_atoms))
-
-    distance_matrix = reference_data.distance_matrices[frame_id]
-    hist = reference_data.histograms[frame_id]
-    pmf = reference_data.pmf
-
-    if isempty(reference_data.g3_matrices) && isempty(reference_data.g9_matrices)
-        symm_func_matrix1 = reference_data.g2_matrices[frame_id]
-    else
-        coordinates1 = copy(positions(frame))
-        if isempty(reference_data.g3_matrices)
-            symm_func_matrices = [
-                reference_data.g2_matrices[frame_id],
-                reference_data.g9_matrices[frame_id]
-            ]
-        elseif isempty(reference_data.g9_matrices)
-            symm_func_matrices = [
-                reference_data.g2_matrices[frame_id],
-                reference_data.g3_matrices[frame_id]
-            ]
-        else
-            symm_func_matrices = [
-                reference_data.g2_matrices[frame_id],
-                reference_data.g3_matrices[frame_id],
-                reference_data.g9_matrices[frame_id]
-            ]
-        end
-        symm_func_matrix1 = hcat(symm_func_matrices...)
+function combine_matrices_from_reference(ref_data::ReferenceData, frame_id::Int)
+    if isempty(ref_data.g3_matrices) && isempty(ref_data.g9_matrices)
+        return ref_data.g2_matrices[frame_id]
     end
+    mats = [ref_data.g2_matrices[frame_id]]
+    if !isempty(ref_data.g3_matrices)
+        push!(mats, ref_data.g3_matrices[frame_id])
+    end
+    if !isempty(ref_data.g9_matrices)
+        push!(mats, ref_data.g9_matrices[frame_id])
+    end
+    return hcat(mats...)
+end
 
-    e_nn1_vector = init_system_energies_vector(symm_func_matrix1, model)
-    e_nn1 = sum(e_nn1_vector)
-    e_pmf1 = sum(hist .* pmf)
+function compute_gradient!(e_nn::T, e_pmf::T, Δe_nn::T, Δe_pmf::T,
+                           symm1::AbstractMatrix{T}, symm2::AbstractMatrix{T},
+                           model::Chain, pretrain_params::PreTrainingParameters,
+                           nn_params::NeuralNetParameters, use_diff_gradient::Bool)::Any where {T <: AbstractFloat}
+    model_params = Flux.trainables(model)
+    mp, _ = Flux.destructure(model_params)
+    reg_gradient = @. mp * 2 * pretrain_params.regularization
 
-    distance_vector1 = distance_matrix[:, point_index]
-    dr = system_params.max_displacement * (rand(rng, Float64, 3) .- 0.5)
+    if !use_diff_gradient
+        grad_final = compute_energy_gradients(symm2, model)
+        gradient_scale = 2 * (e_nn - e_pmf)
+        # gradient_scale = sign(e_nn - e_pmf)
+        flat_grad, restructure = Flux.destructure(grad_final)
+        loss_gradient = @. gradient_scale * flat_grad
+        return restructure(loss_gradient + reg_gradient)
+    else
+        grad1 = compute_energy_gradients(symm1, model)
+        grad2 = compute_energy_gradients(symm2, model)
+        gradient_scale = 2 * (Δe_nn - Δe_pmf)
+        # gradient_scale = sign(Δe_nn - Δe_pmf)
+        flat_grad1, restructure = Flux.destructure(grad1)
+        flat_grad2, _ = Flux.destructure(grad2)
+        loss_gradient = @. gradient_scale * (flat_grad2 - flat_grad1)
+        return restructure(loss_gradient + reg_gradient)
+    end
+end
+
+function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
+                           nn_params::NeuralNetParameters, sys_params::SystemParameters,
+                           rng::Xoroshiro128Plus)
+    frame, frame_id, box = read_random_frame(sys_params, rng)
+    point_index = rand(rng, 1:(sys_params.n_atoms))
+
+    # Исходные данные
+    distance_matrix = ref_data.distance_matrices[frame_id]
+    symm1, hist, e_nn1, e_pmf1, e_nn1_vector = compute_initial_energies(ref_data, frame_id, model)
+    distance_vec1 = distance_matrix[:, point_index]
+
+    # Смещение частицы
+    dr = sys_params.max_displacement * (rand(rng, Float64, 3) .- 0.5)
     positions(frame)[:, point_index] .+= dr
 
     point = positions(frame)[:, point_index]
-    distance_vector2 = compute_distance_vector(point, positions(frame), box)
-    hist = update_distance_histogram_vectors!(hist, distance_vector1, distance_vector2, system_params)
-    indexes_for_update = get_energies_update_mask(distance_vector2, nn_params)
+    distance_vec2 = compute_distance_vector(point, positions(frame), box)
+    update_distance_histogram_vectors!(hist, distance_vec1, distance_vec2, sys_params)
+    update_mask = get_energies_update_mask(distance_vec2, nn_params)
 
-    g2_matrix2 = copy(reference_data.g2_matrices[frame_id])
-    update_g2_matrix!(g2_matrix2, distance_vector1, distance_vector2, system_params, nn_params, point_index)
+    coords_for_update = (isempty(ref_data.g3_matrices) && isempty(ref_data.g9_matrices)) ? nothing :
+                        copy(positions(frame))
 
-    g3_matrix2 = []
-    if !isempty(reference_data.g3_matrices)
-        g3_matrix2 = copy(reference_data.g3_matrices[frame_id])
-        update_g3_matrix!(g3_matrix2, coordinates1, positions(frame), box,
-                          distance_vector1, distance_vector2,
-                          system_params, nn_params, point_index)
+    g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
+    update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
+
+    g3_matrix2 = if !isempty(ref_data.g3_matrices)
+        g3_copy = copy(ref_data.g3_matrices[frame_id])
+        update_g3_matrix!(g3_copy, coords_for_update, positions(frame), box,
+                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
+        g3_copy
+    else
+        []
     end
 
-    g9_matrix2 = []
-    if !isempty(reference_data.g9_matrices)
-        g9_matrix2 = copy(reference_data.g9_matrices[frame_id])
-        update_g9_matrix!(g9_matrix2, coordinates1, positions(frame), box,
-                          distance_vector1, distance_vector2,
-                          system_params, nn_params, point_index)
+    g9_matrix2 = if !isempty(ref_data.g9_matrices)
+        g9_copy = copy(ref_data.g9_matrices[frame_id])
+        update_g9_matrix!(g9_copy, coords_for_update, positions(frame), box,
+                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
+        g9_copy
+    else
+        []
     end
 
-    symm_func_matrix2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
-    e_nn2_vector = update_system_energies_vector(symm_func_matrix2, model,
-                                                 indexes_for_update,
-                                                 e_nn1_vector)
+    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
+    e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
     e_nn2 = sum(e_nn2_vector)
-    e_pmf2 = sum(hist .* pmf)
+    e_pmf2 = sum(hist .* ref_data.pmf)
 
-    positions(frame)[:, point_index] .-= dr  # restore state
-    hist = update_distance_histogram_vectors!(hist, distance_vector2, distance_vector1, system_params)
+    # Восстанавливаем исходное состояние
+    positions(frame)[:, point_index] .-= dr
+    update_distance_histogram_vectors!(hist, distance_vec2, distance_vec1, sys_params)
 
-    return (symm_func_matrix1,
-            symm_func_matrix2,
-            e_nn2 - e_nn1,
-            e_pmf2 - e_pmf1,
-            e_nn1,
-            e_pmf1,
-            e_nn2,
-            e_pmf2)
+    return (symm1=symm1,
+            symm2=symm2,
+            Δe_nn=e_nn2 - e_nn1,
+            Δe_pmf=e_pmf2 - e_pmf1,
+            e_nn1=e_nn1,
+            e_pmf1=e_pmf1,
+            e_nn2=e_nn2,
+            e_pmf2=e_pmf2)
+end
+
+function all_particle_move!(ref_data::ReferenceData, model::Flux.Chain,
+                            nn_params::NeuralNetParameters, sys_params::SystemParameters,
+                            rng::Xoroshiro128Plus)
+    frame, frame_id, box = read_random_frame(sys_params, rng)
+    symm1, hist, e_nn1, e_pmf1, _ = compute_initial_energies(ref_data, frame_id, model)
+
+    old_coords = copy(positions(frame))
+    dr = sys_params.max_displacement * (rand(rng, Float64, 3, sys_params.n_atoms) .- 0.5)
+    positions(frame) .+= dr
+
+    distance_matrix2 = build_distance_matrix(frame)
+    hist2 = zeros(Float64, sys_params.n_bins)
+    update_distance_histogram!(distance_matrix2, hist2, sys_params)
+
+    g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
+    g3_matrix2 = isempty(nn_params.g3_functions) ? Matrix{Float64}[] :
+                 build_g3_matrix(distance_matrix2, positions(frame), box, nn_params)
+    g9_matrix2 = isempty(nn_params.g9_functions) ? Matrix{Float64}[] :
+                 build_g9_matrix(distance_matrix2, positions(frame), box, nn_params)
+
+    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
+    e_nn2_vector = init_system_energies_vector(symm2, model)
+    e_nn2 = sum(e_nn2_vector)
+    e_pmf2 = sum(hist2 .* ref_data.pmf)
+
+    positions(frame) .= old_coords
+
+    return (symm1=symm1,
+            symm2=symm2,
+            Δe_nn=e_nn2 - e_nn1,
+            Δe_pmf=e_pmf2 - e_pmf1,
+            e_nn1=e_nn1,
+            e_pmf1=e_pmf1,
+            e_nn2=e_nn2,
+            e_pmf2=e_pmf2)
+end
+
+function make_mc_move!(use_all_particles::Bool,
+                       ref_data::ReferenceData,
+                       model::Chain,
+                       nn_params::NeuralNetParameters,
+                       sys_params::SystemParameters,
+                       rng::Xoroshiro128Plus)
+    return use_all_particles ?
+           all_particle_move!(ref_data, model, nn_params, sys_params, rng) :
+           pretraining_move!(ref_data, model, nn_params, sys_params, rng)
 end
 
 function log_batch_metrics(file::String, epoch, batch_iter, sys_id,
@@ -237,25 +275,26 @@ function log_average_metrics(file::String, epoch,
     end
 end
 
-function training_phase!(phase_name::String,
-                         steps::Int,
-                         batch_size::Int,
-                         system_params_list,
-                         ref_data_list,
-                         model::Chain,
-                         nn_params::NeuralNetParameters,
-                         pretrain_params::PreTrainingParameters,
-                         optimizer,
-                         rng::Xoroshiro128Plus,
-                         gradient_func::Function,
-                         lr_schedule::Dict{Int, Float64},
-                         log_file::String,
-                         avg_log_file::String)
+function run_training_phase!(steps::Int, batch_size::Int,
+                             use_diff_gradient::Bool, use_all_particles::Bool,
+                             system_params_list, ref_data_list,
+                             model::Chain, nn_params::NeuralNetParameters,
+                             pretrain_params::PreTrainingParameters,
+                             optimizer, lr_schedule::Dict{Int, Float64},
+                             initial_lr::Float64; log_prefix::String="pretraining")
+    rng = Xoroshiro128Plus()
     n_systems = length(system_params_list)
     opt_state = Flux.setup(optimizer, model)
-    lr = pretrain_params.learning_rate
+    current_lr = initial_lr
+    Flux.adjust!(opt_state, current_lr)
+
+    timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
+    phase_type = use_diff_gradient ? "diff" : "abs"
+    move_type = use_all_particles ? "all" : "single"
+    log_file = "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_detail.dat"
+    avg_log_file = "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_summary.dat"
+
     for epoch in 1:steps
-        should_report = (epoch % pretrain_params.output_frequency == 0) || (epoch == 1)
         accum_mse_diff = 0.0
         accum_mae_diff = 0.0
         accum_mse_abs = 0.0
@@ -268,31 +307,36 @@ function training_phase!(phase_name::String,
         for batch_iter in 1:batch_size
             batch_gradients = Vector{Any}(undef, n_systems)
             for sys_id in 1:n_systems
-                ref_data = ref_data_list[sys_id]
-                symm1, symm2, Δe_nn, Δe_pmf, e_nn1, e_pmf1, e_nn2, e_pmf2 = pretraining_move!(ref_data, model,
-                                                                                              nn_params,
-                                                                                              system_params_list[sys_id],
-                                                                                              rng)
-                if phase_name == "abs"
-                    batch_gradients[sys_id] = gradient_func(e_nn2, e_pmf2, symm2, model, pretrain_params, nn_params)
-                elseif phase_name == "diff"
-                    batch_gradients[sys_id] = gradient_func(Δe_nn, Δe_pmf, symm1, symm2, model, pretrain_params,
-                                                            nn_params)
-                else
-                    error("Unknown phase: $phase_name")
-                end
+                move = make_mc_move!(use_all_particles,
+                                     ref_data_list[sys_id],
+                                     model,
+                                     nn_params,
+                                     system_params_list[sys_id],
+                                     rng)
+                symm1, symm2 = move.symm1, move.symm2
+                Δe_nn, Δe_pmf = move.Δe_nn, move.Δe_pmf
+                e_nn1, e_pmf1 = move.e_nn1, move.e_pmf1
+                e_nn2, e_pmf2 = move.e_nn2, move.e_pmf2
+
+                batch_gradients[sys_id] = compute_gradient!(e_nn2, e_pmf2, Δe_nn, Δe_pmf,
+                                                            symm1, symm2, model,
+                                                            pretrain_params, nn_params,
+                                                            use_diff_gradient)
+
                 diff_mse = (Δe_nn - Δe_pmf)^2
                 diff_mae = abs(Δe_nn - Δe_pmf)
                 abs_mse = (e_nn2 - e_pmf2)^2
                 abs_mae = abs(e_nn2 - e_pmf2)
                 model_params = Flux.trainables(model)
                 reg_loss = pretrain_params.regularization * sum(x -> sum(abs2, x), model_params)
+
                 accum_mse_diff += diff_mse
                 accum_mae_diff += diff_mae
                 accum_mse_abs += abs_mse
                 accum_mae_abs += abs_mae
                 accum_reg += reg_loss
                 count += 1
+
                 log_batch_metrics(log_file, epoch, batch_iter, sys_id,
                                   diff_mae, diff_mse, abs_mae, abs_mse,
                                   e_nn2, e_pmf2, Δe_nn, Δe_pmf)
@@ -304,11 +348,7 @@ function training_phase!(phase_name::String,
                 first_flat_grad .+= flat_grad
             end
             first_flat_grad ./= n_systems
-            if batch_flat_grad === nothing
-                batch_flat_grad = first_flat_grad
-            else
-                batch_flat_grad .+= first_flat_grad
-            end
+            batch_flat_grad = isnothing(batch_flat_grad) ? first_flat_grad : batch_flat_grad .+ first_flat_grad
         end
 
         batch_flat_grad ./= batch_size
@@ -316,8 +356,8 @@ function training_phase!(phase_name::String,
         update_model!(model, opt_state, final_grad)
 
         if haskey(lr_schedule, epoch)
-            lr = lr_schedule[epoch]
-            Flux.adjust!(opt_state, lr)
+            current_lr = lr_schedule[epoch]
+            Flux.adjust!(opt_state, current_lr)
         end
 
         mean_mse_diff = accum_mse_diff / count
@@ -326,11 +366,16 @@ function training_phase!(phase_name::String,
         mean_mae_abs = accum_mae_abs / count
         mean_reg = accum_reg / count
 
-        log_average_metrics(avg_log_file, epoch, mean_mae_diff, mean_mse_diff, mean_mae_abs, mean_mse_abs, mean_reg)
+        log_average_metrics(avg_log_file, epoch,
+                            mean_mae_diff, mean_mse_diff,
+                            mean_mae_abs, mean_mse_abs,
+                            mean_reg)
 
-            println(@sprintf("%s - Epoch: %4d | diff_MSE: %.6f | diff_MAE: %.6f | abs_MSE: %.6f | abs_MAE: %.6f | Reg: %.2e | LR: %.2e",
-                             phase_name, epoch, mean_mse_diff, mean_mae_diff, mean_mse_abs, mean_mae_abs, mean_reg, lr))
+        println(@sprintf("%s | %s | Epoch: %4d | Batch Size: %3d | Diff MAE: %8.2f | Abs MAE: %8.2f | LR: %.2e",
+                         phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs, current_lr))
     end
+
+    return model, opt_state
 end
 
 function pretrain_model!(pretrain_params::PreTrainingParameters,
@@ -338,64 +383,37 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                          system_params_list,
                          model::Chain,
                          optimizer,
-                         reference_rdfs;
-                         save_path::String="model-pre-trained.bson",
-                         verbose::Bool=true)
-    rng = Xoroshiro128Plus()
-    n_systems = length(system_params_list)
-    ref_data_inputs = [PreComputedInput(nn_params, system_params_list[i], reference_rdfs[i])
-                       for i in 1:n_systems]
-    ref_data_list = pmap(precompute_reference_data, ref_data_inputs)
+                         reference_rdfs)
+    ref_inputs = [PreComputedInput(nn_params, system_params_list[i], reference_rdfs[i])
+                  for i in 1:length(system_params_list)]
+    ref_data_list = pmap(precompute_reference_data, ref_inputs)
 
-    phase1_steps = pretrain_params.steps
-    do_phase_2 = false
-    phase2_steps = 1000
-    batch_size = pretrain_params.batch_size
+    lr_schedule = Dict(5000 => 0.001,
+                       30000 => 0.0005,
+                       70000 => 0.0001,
+                       95000 => 0.00005,
+                       99000 => 0.00001)
 
-    phase1_lr_schedule = Dict(2000 => 0.001,
-                              7000 => 0.0005,
-                              18000 => 0.0001)
+    # lr_schedule = Dict(10 => 0.0001,
+    #                    4900 => 0.00005)
 
-    phase2_lr_schedule = Dict(500 => 0.0002,
-                              1000 => 0.0001,
-                              2000 => 0.00005,
-                              4500 => 0.00001)
+    # @load "pt-model-1.bson" model
 
-    all_loss_log = "pretraining_loss.out"
-    avg_loss_log = "avg_pretraining_loss.out"
+    model, opt_state = run_training_phase!(100000,      # Steps
+                                           1,           # Batch Size
+                                           false,       # Use gradient for Difference
+                                           true,        # Move all particles
+                                           system_params_list,
+                                           ref_data_list,
+                                           model,
+                                           nn_params,
+                                           pretrain_params,
+                                           optimizer,
+                                           lr_schedule,
+                                           pretrain_params.learning_rate,
+                                           log_prefix="phase1")
 
-    training_phase!("abs", phase1_steps, batch_size,
-                    system_params_list, ref_data_list,
-                    model, nn_params, pretrain_params,
-                    optimizer, rng, compute_pretraining_gradient_abs,
-                    phase1_lr_schedule, all_loss_log, avg_loss_log)
-    @save "model-phase1-stage1.bson" model
-
-    batch_size = 256
-    phase1_steps = 1000
-    Flux.adjust!(Flux.setup(optimizer, model), 0.00005)
-    println()
-    training_phase!("abs", phase1_steps, batch_size,
-                    system_params_list, ref_data_list,
-                    model, nn_params, pretrain_params,
-                    optimizer, rng, compute_pretraining_gradient_abs,
-                    phase1_lr_schedule, all_loss_log, avg_loss_log)
-    @save "model-phase1-stage2.bson" model
-
-    if do_phase_2
-        Flux.adjust!(Flux.setup(optimizer, model), 0.00005)
-        training_phase!("diff", phase2_steps, batch_size,
-                        system_params_list, ref_data_list,
-                        model, nn_params, pretrain_params,
-                        optimizer, rng, compute_pretraining_gradient_diff,
-                        phase2_lr_schedule, all_loss_log, avg_loss_log)
-    end
-
-    try
-        @save save_path model
-    catch e
-        @warn "Failed to save model to $save_path" exception=e
-    end
-
+    @save "pt-model-1.bson" model
+    @save "pt-opt-state-1.bson" optimizer
     return model
 end
