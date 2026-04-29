@@ -95,10 +95,13 @@ function compute_loss_gradients(cross_accumulators::Matrix{T},
     ensemble_correlations = compute_ensemble_correlation(symm_func_matrix, descriptor_nn, model)
     descriptor_gradients = compute_descriptor_gradients(cross_accumulators, ensemble_correlations, system_params)
 
-    # MSE loss gradient computation
+    # MSE/MAE loss gradient computation
     diff = descriptor_nn - descriptor_ref
-    dLdS = @. (2 / length(diff)) * diff
-    # dLdS = @. (1 / length(diff)) * sign(diff)  # Градиент для MAE
+    dLdS = if nn_params.gradient_type == "mae"
+        @. sign(diff) / length(diff)
+    else
+        @. (2 / length(diff)) * diff
+    end
 
     # Combine descriptor gradients with regularization
     param_gradients = descriptor_gradients' * dLdS  # (num_params × n_bins) * (n_bins × 1) = (num_params × 1)

@@ -1,6 +1,6 @@
 using ..ML_IMC
 
-function distance_cutoff(distance::Float64, r_cutoff::Float64=6.0)::Float64
+function distance_cutoff(distance::Float64, r_cutoff::Float64)::Float64
     if distance > r_cutoff
         return 0.0
     else
@@ -188,8 +188,9 @@ function compute_g3(atom_index::Integer,
             distance_ij = distance_vector[j]
 
             if zero(T) < distance_ij < r_cutoff && distance_ik < r_cutoff
-                cos_angle, distance_kj = compute_triplet_geometry(coordinates, box, atom_index, j, k, distance_ij,
-                                                                  distance_ik)
+                cos_angle,
+                distance_kj = compute_triplet_geometry(coordinates, box, atom_index, j, k, distance_ij,
+                                                       distance_ik)
 
                 contribution = compute_g3_element(cos_angle, distance_ij, distance_ik, distance_kj,
                                                   r_cutoff, η, ζ, λ, r_shift)

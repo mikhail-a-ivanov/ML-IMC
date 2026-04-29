@@ -27,7 +27,8 @@ end
 function compute_initial_energies(ref_data::ReferenceData, frame_id::Int, model::Chain)
     hist = ref_data.histograms[frame_id]
     pmf = ref_data.pmf
-    symm = combine_matrices_from_reference(ref_data, frame_id)
+    symm = combine_symmetry_matrices(ref_data.g2_matrices[frame_id], ref_data.g3_matrices[frame_id],
+                                     ref_data.g9_matrices[frame_id])
     e_nn_vector = init_system_energies_vector(symm, model)
     e_nn = sum(e_nn_vector)
     e_pmf = sum(hist .* pmf)
@@ -86,47 +87,6 @@ function precompute_reference_data(input::PreComputedInput)::ReferenceData
     end
 
     return ReferenceData(distance_matrices, histograms, pmf, g2_matrices, g3_matrices, g9_matrices)
-end
-
-function combine_matrices_from_reference(ref_data::ReferenceData, frame_id::Int)
-    if isempty(ref_data.g3_matrices) && isempty(ref_data.g9_matrices)
-        return ref_data.g2_matrices[frame_id]
-    end
-    mats = [ref_data.g2_matrices[frame_id]]
-    if !isempty(ref_data.g3_matrices)
-        push!(mats, ref_data.g3_matrices[frame_id])
-    end
-    if !isempty(ref_data.g9_matrices)
-        push!(mats, ref_data.g9_matrices[frame_id])
-    end
-    return hcat(mats...)
-end
-
-function compute_gradient!(e_nn::T, e_pmf::T, Δe_nn::T, Δe_pmf::T,
-                           symm1::AbstractMatrix{T}, symm2::AbstractMatrix{T},
-                           model::Chain, pretrain_params::PreTrainingParameters,
-                           nn_params::NeuralNetParameters, use_diff_gradient::Bool)::Any where {T <: AbstractFloat}
-    model_params = Flux.trainables(model)
-    mp, _ = Flux.destructure(model_params)
-    reg_gradient = @. mp * 2 * pretrain_params.regularization
-
-    if !use_diff_gradient
-        grad_final = compute_energy_gradients(symm2, model)
-        gradient_scale = 2 * (e_nn - e_pmf)
-        # gradient_scale = sign(e_nn - e_pmf)
-        flat_grad, restructure = Flux.destructure(grad_final)
-        loss_gradient = @. gradient_scale * flat_grad
-        return restructure(loss_gradient + reg_gradient)
-    else
-        grad1 = compute_energy_gradients(symm1, model)
-        grad2 = compute_energy_gradients(symm2, model)
-        gradient_scale = 2 * (Δe_nn - Δe_pmf)
-        # gradient_scale = sign(Δe_nn - Δe_pmf)
-        flat_grad1, restructure = Flux.destructure(grad1)
-        flat_grad2, _ = Flux.destructure(grad2)
-        loss_gradient = @. gradient_scale * (flat_grad2 - flat_grad1)
-        return restructure(loss_gradient + reg_gradient)
-    end
 end
 
 function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
@@ -240,59 +200,26 @@ function make_mc_move!(use_all_particles::Bool,
            pretraining_move!(ref_data, model, nn_params, sys_params, rng)
 end
 
-function log_batch_metrics(file::String, epoch, batch_iter, sys_id,
-                           diff_mae, diff_mse, abs_mae, abs_mse,
-                           e_nn2, e_pmf2, Δe_nn, Δe_pmf)
-    try
-        open(file, "a") do io
-            println(io,
-                    @sprintf("%d %d %d  %.8f %.8f  %.8f %.8f  %.8f %.8f  %.8f %.8f",
-                             epoch, batch_iter, sys_id,
-                             diff_mae, diff_mse,
-                             abs_mae, abs_mse,
-                             e_nn2, e_pmf2,
-                             Δe_nn, Δe_pmf))
-        end
-    catch e
-        @warn "Failed to write to log file: $file" exception=e
-    end
-end
-
-function log_average_metrics(file::String, epoch,
-                             mean_mae_diff, mean_mse_diff,
-                             mean_mae_abs, mean_mse_abs, mean_reg)
-    try
-        open(file, "a") do io
-            println(io,
-                    @sprintf("%d %.8f %.8f %.8f %.8f %.2e",
-                             epoch,
-                             mean_mae_diff, mean_mse_diff,
-                             mean_mae_abs, mean_mse_abs,
-                             mean_reg))
-        end
-    catch e
-        @warn "Failed to write average metrics to file: $file" exception=e
-    end
-end
-
 function run_training_phase!(steps::Int, batch_size::Int,
                              use_diff_gradient::Bool, use_all_particles::Bool,
                              system_params_list, ref_data_list,
                              model::Chain, nn_params::NeuralNetParameters,
                              pretrain_params::PreTrainingParameters,
-                             optimizer, lr_schedule::Dict{Int, Float64},
-                             initial_lr::Float64; log_prefix::String="pretraining")
+                             optimizer; log_prefix::String="pretraining")
     rng = Xoroshiro128Plus()
     n_systems = length(system_params_list)
     opt_state = Flux.setup(optimizer, model)
-    current_lr = initial_lr
-    Flux.adjust!(opt_state, current_lr)
+    lr_config = pretrain_params.lr_scheduler_config
+    initial_lr = pretrain_params.learning_rate
+    lr_state = LRSchedulerState(initial_lr, Inf, 0, 0)
+    Flux.adjust!(opt_state, initial_lr)
 
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
     phase_type = use_diff_gradient ? "diff" : "abs"
     move_type = use_all_particles ? "all" : "single"
-    log_file = "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_detail.dat"
-    avg_log_file = "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_summary.dat"
+    od = pretrain_params.output_dir
+    log_file = joinpath(od, "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_detail.dat")
+    avg_log_file = joinpath(od, "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_summary.dat")
 
     for epoch in 1:steps
         accum_mse_diff = 0.0
@@ -318,10 +245,10 @@ function run_training_phase!(steps::Int, batch_size::Int,
                 e_nn1, e_pmf1 = move.e_nn1, move.e_pmf1
                 e_nn2, e_pmf2 = move.e_nn2, move.e_pmf2
 
-                batch_gradients[sys_id] = compute_gradient!(e_nn2, e_pmf2, Δe_nn, Δe_pmf,
-                                                            symm1, symm2, model,
-                                                            pretrain_params, nn_params,
-                                                            use_diff_gradient)
+                batch_gradients[sys_id] = compute_pretraining_gradient!(e_nn2, e_pmf2, Δe_nn, Δe_pmf,
+                                                                        symm1, symm2, model,
+                                                                        pretrain_params,
+                                                                        use_diff_gradient)
 
                 diff_mse = (Δe_nn - Δe_pmf)^2
                 diff_mae = abs(Δe_nn - Δe_pmf)
@@ -342,22 +269,19 @@ function run_training_phase!(steps::Int, batch_size::Int,
                                   e_nn2, e_pmf2, Δe_nn, Δe_pmf)
             end
 
-            first_flat_grad, grad_restructure = Flux.destructure(batch_gradients[1])
-            for grad in batch_gradients[2:end]
-                flat_grad, _ = Flux.destructure(grad)
-                first_flat_grad .+= flat_grad
-            end
-            first_flat_grad ./= n_systems
-            batch_flat_grad = isnothing(batch_flat_grad) ? first_flat_grad : batch_flat_grad .+ first_flat_grad
+            flat_grad, grad_restructure = mean_gradient(batch_gradients)
+            batch_flat_grad = isnothing(batch_flat_grad) ? flat_grad : batch_flat_grad .+ flat_grad
         end
 
         batch_flat_grad ./= batch_size
         final_grad = grad_restructure(batch_flat_grad)
         update_model!(model, opt_state, final_grad)
 
-        if haskey(lr_schedule, epoch)
-            current_lr = lr_schedule[epoch]
-            Flux.adjust!(opt_state, current_lr)
+        # Apply warmup LR
+        warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
+        if warmup_lr != lr_state.current_lr
+            lr_state.current_lr = warmup_lr
+            Flux.adjust!(opt_state, warmup_lr)
         end
 
         mean_mse_diff = accum_mse_diff / count
@@ -371,8 +295,12 @@ function run_training_phase!(steps::Int, batch_size::Int,
                             mean_mae_abs, mean_mse_abs,
                             mean_reg)
 
+        # Step plateau based on chosen metric
+        plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
+        step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
+
         println(@sprintf("%s | %s | Epoch: %4d | Batch Size: %3d | Diff MAE: %8.2f | Abs MAE: %8.2f | LR: %.2e",
-                         phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs, current_lr))
+                         phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs, lr_state.current_lr))
     end
 
     return model, opt_state
@@ -388,32 +316,22 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
                   for i in 1:length(system_params_list)]
     ref_data_list = pmap(precompute_reference_data, ref_inputs)
 
-    lr_schedule = Dict(5000 => 0.001,
-                       30000 => 0.0005,
-                       70000 => 0.0001,
-                       95000 => 0.00005,
-                       99000 => 0.00001)
+    model,
+    opt_state = run_training_phase!(pretrain_params.steps,
+                                    pretrain_params.batch_size,
+                                    pretrain_params.use_diff_gradient,
+                                    pretrain_params.use_all_particles,
+                                    system_params_list,
+                                    ref_data_list,
+                                    model,
+                                    nn_params,
+                                    pretrain_params,
+                                    optimizer,
+                                    log_prefix=pretrain_params.output_prefix)
 
-    # lr_schedule = Dict(10 => 0.0001,
-    #                    4900 => 0.00005)
-
-    # @load "pt-model-1.bson" model
-
-    model, opt_state = run_training_phase!(100000,      # Steps
-                                           1,           # Batch Size
-                                           false,       # Use gradient for Difference
-                                           true,        # Move all particles
-                                           system_params_list,
-                                           ref_data_list,
-                                           model,
-                                           nn_params,
-                                           pretrain_params,
-                                           optimizer,
-                                           lr_schedule,
-                                           pretrain_params.learning_rate,
-                                           log_prefix="phase1")
-
-    @save "pt-model-1.bson" model
-    @save "pt-opt-state-1.bson" optimizer
+    prefix = pretrain_params.output_prefix
+    od = pretrain_params.output_dir
+    @save joinpath(od, "$prefix-model-1.bson") model
+    @save joinpath(od, "$prefix-opt-state-1.bson") opt_state
     return model
 end

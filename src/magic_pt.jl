@@ -7,7 +7,6 @@ using Distributed
 using Dates
 using BSON: @save, @load
 
-
 struct MagicPreComputedInput
     nn_params::NeuralNetParameters
     system_params::SystemParameters
@@ -19,6 +18,8 @@ struct MagicReferenceData
     histograms::Vector{Vector{Float64}}
     precomputed_energy::Vector{Float64}
     g2_matrices::Vector{Matrix{Float64}}
+    g3_matrices::Vector{Matrix{Float64}}
+    g9_matrices::Vector{Matrix{Float64}}
 end
 
 struct PotentialData
@@ -183,6 +184,10 @@ function create_magic_reference_data(input::MagicPreComputedInput,
     distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
     histograms = Vector{Vector{Float64}}(undef, n_frames)
     g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
+    g3_matrices = isempty(nn_params.g3_functions) ? Matrix{Float64}[] :
+                  Vector{Matrix{Float64}}(undef, n_frames)
+    g9_matrices = isempty(nn_params.g9_functions) ? Matrix{Float64}[] :
+                  Vector{Matrix{Float64}}(undef, n_frames)
     potential_per_frame = Vector{Float64}(undef, n_frames)
 
     for frame_id in 1:n_frames
@@ -196,11 +201,16 @@ function create_magic_reference_data(input::MagicPreComputedInput,
         # Считаем потенциальную энергию фрейма с помощью предвычисленной таблицы
         potential_per_frame[frame_id] = compute_potential_energy(distance_matrices[frame_id], lookup, sys_params)
 
-        # Только G2 матрицы
         g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
+        if !isempty(nn_params.g3_functions)
+            g3_matrices[frame_id] = build_g3_matrix(distance_matrices[frame_id], positions(frame), box, nn_params)
+        end
+        if !isempty(nn_params.g9_functions)
+            g9_matrices[frame_id] = build_g9_matrix(distance_matrices[frame_id], positions(frame), box, nn_params)
+        end
     end
 
-    return MagicReferenceData(distance_matrices, histograms, potential_per_frame, g2_matrices)
+    return MagicReferenceData(distance_matrices, histograms, potential_per_frame, g2_matrices, g3_matrices, g9_matrices)
 end
 
 function magic_single_particle_move!(ref_data::MagicReferenceData,
@@ -215,7 +225,10 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
 
     # Исходные данные
     distance_matrix = ref_data.distance_matrices[frame_id]
-    symm1 = ref_data.g2_matrices[frame_id]  # Напрямую используем g2 матрицу
+    g2_1 = ref_data.g2_matrices[frame_id]
+    g3_1 = isempty(ref_data.g3_matrices) ? Matrix{Float64}[] : ref_data.g3_matrices[frame_id]
+    g9_1 = isempty(ref_data.g9_matrices) ? Matrix{Float64}[] : ref_data.g9_matrices[frame_id]
+    symm1 = combine_symmetry_matrices(g2_1, g3_1, g9_1)
     e_nn1_vector = init_system_energies_vector(symm1, model)
     e_nn1 = sum(e_nn1_vector)
 
@@ -241,11 +254,25 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
 
     update_mask = get_energies_update_mask(distance_vec2, nn_params)
 
-    # Обновляем только G2 матрицу
+    # Обновляем G2 матрицу
     g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
 
-    symm2 = g2_matrix2  # symm2 теперь просто g2_matrix2
+    g3_matrix2 = copy(g3_1)
+    if !isempty(g3_1)
+        coords_for_update = copy(positions(frame))
+        update_g3_matrix!(g3_matrix2, positions(cached_traj.frames[frame_id]), positions(frame), box,
+                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
+    end
+
+    g9_matrix2 = copy(g9_1)
+    if !isempty(g9_1)
+        coords_for_update = copy(positions(frame))
+        update_g9_matrix!(g9_matrix2, positions(cached_traj.frames[frame_id]), positions(frame), box,
+                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
+    end
+
+    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
     e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
     e_nn2 = sum(e_nn2_vector)
 
@@ -273,7 +300,10 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
 
     # Исходные данные
     distance_matrix = ref_data.distance_matrices[frame_id]
-    symm1 = ref_data.g2_matrices[frame_id]  # Напрямую используем g2 матрицу
+    g2_1 = ref_data.g2_matrices[frame_id]
+    g3_1 = isempty(ref_data.g3_matrices) ? Matrix{Float64}[] : ref_data.g3_matrices[frame_id]
+    g9_1 = isempty(ref_data.g9_matrices) ? Matrix{Float64}[] : ref_data.g9_matrices[frame_id]
+    symm1 = combine_symmetry_matrices(g2_1, g3_1, g9_1)
     e_nn1_vector = init_system_energies_vector(symm1, model)
     e_nn1 = sum(e_nn1_vector)
 
@@ -296,10 +326,13 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
     distance_matrix2 = build_distance_matrix(frame)
     e_pot2 = compute_potential_energy(distance_matrix2, lookup, sys_params)
 
-    # Строим только G2 матрицу
     g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
+    g3_matrix2 = isempty(g3_1) ? Matrix{Float64}[] :
+                 build_g3_matrix(distance_matrix2, positions(frame), box, nn_params)
+    g9_matrix2 = isempty(g9_1) ? Matrix{Float64}[] :
+                 build_g9_matrix(distance_matrix2, positions(frame), box, nn_params)
 
-    symm2 = g2_matrix2  # symm2 теперь просто g2_matrix2
+    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
     e_nn2_vector = init_system_energies_vector(symm2, model)
     e_nn2 = sum(e_nn2_vector)
 
@@ -331,8 +364,8 @@ end
 
 function run_magic_training_phase!(steps::Int,
                                    batch_size::Int,
-                                   use_diff_gradient::Bool,  # Use difference or absolute energy
-                                   use_all_particles::Bool,  # Move all particles or just one
+                                   use_diff_gradient::Bool,
+                                   use_all_particles::Bool,
                                    system_params_list,
                                    ref_data_list,
                                    lookup_list,
@@ -340,21 +373,22 @@ function run_magic_training_phase!(steps::Int,
                                    model::Chain,
                                    nn_params::NeuralNetParameters,
                                    pretrain_params::PreTrainingParameters,
-                                   optimizer,
-                                   lr_schedule::Dict{Int, Float64},
-                                   initial_lr::Float64;
+                                   optimizer;
                                    log_prefix::String="magic_pretraining")
     rng = Xoroshiro128Plus()
     n_systems = length(system_params_list)
     opt_state = Flux.setup(optimizer, model)
-    current_lr = initial_lr
-    Flux.adjust!(opt_state, current_lr)
+    lr_config = pretrain_params.lr_scheduler_config
+    initial_lr = pretrain_params.learning_rate
+    lr_state = LRSchedulerState(initial_lr, Inf, 0, 0)
+    Flux.adjust!(opt_state, initial_lr)
 
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
     phase_type = use_diff_gradient ? "diff" : "abs"
     move_type = use_all_particles ? "all" : "single"
-    log_file = "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_detail.dat"
-    avg_log_file = "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_summary.dat"
+    od = pretrain_params.output_dir
+    log_file = joinpath(od, "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_detail.dat")
+    avg_log_file = joinpath(od, "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_summary.dat")
 
     # Предварительно открываем файлы для логирования
     detail_io = open(log_file, "w")
@@ -395,10 +429,10 @@ function run_magic_training_phase!(steps::Int,
                     e_nn2, e_pot2 = move.e_nn2, move.e_pot2
 
                     # Вычисляем градиенты
-                    batch_gradients[sys_id] = compute_gradient!(e_nn2, e_pot2, Δe_nn, Δe_pot,
-                                                                symm1, symm2, model,
-                                                                pretrain_params, nn_params,
-                                                                use_diff_gradient)
+                    batch_gradients[sys_id] = compute_pretraining_gradient!(e_nn2, e_pot2, Δe_nn, Δe_pot,
+                                                                            symm1, symm2, model,
+                                                                            pretrain_params,
+                                                                            use_diff_gradient)
 
                     diff_mse = (Δe_nn - Δe_pot)^2
                     diff_mae = abs(Δe_nn - Δe_pot)
@@ -415,23 +449,16 @@ function run_magic_training_phase!(steps::Int,
                     count += 1
 
                     # Логируем детальную информацию
-                    println(detail_io,
-                            @sprintf("%d %d %d  %.8f %.8f  %.8f %.8f  %.8f %.8f  %.8f %.8f",
-                                     epoch, batch_iter, sys_id,
-                                     diff_mae, diff_mse,
-                                     abs_mae, abs_mse,
-                                     e_nn2, e_pot2,
-                                     Δe_nn, Δe_pot))
+                    log_batch_metrics(detail_io, epoch, batch_iter, sys_id,
+                                      diff_mae, diff_mse,
+                                      abs_mae, abs_mse,
+                                      e_nn2, e_pot2,
+                                      Δe_nn, Δe_pot)
                 end
 
                 # Агрегируем градиенты со всех систем
-                first_flat_grad, grad_restructure = Flux.destructure(batch_gradients[1])
-                for grad in batch_gradients[2:end]
-                    flat_grad, _ = Flux.destructure(grad)
-                    first_flat_grad .+= flat_grad
-                end
-                first_flat_grad ./= n_systems
-                batch_flat_grad = isnothing(batch_flat_grad) ? first_flat_grad : batch_flat_grad .+ first_flat_grad
+                flat_grad, grad_restructure = mean_gradient(batch_gradients)
+                batch_flat_grad = isnothing(batch_flat_grad) ? flat_grad : batch_flat_grad .+ flat_grad
             end
 
             # Применяем агрегированные градиенты
@@ -439,10 +466,11 @@ function run_magic_training_phase!(steps::Int,
             final_grad = grad_restructure(batch_flat_grad)
             update_model!(model, opt_state, final_grad)
 
-            # Обновляем скорость обучения, если запланировано
-            if haskey(lr_schedule, epoch)
-                current_lr = lr_schedule[epoch]
-                Flux.adjust!(opt_state, current_lr)
+            # Apply warmup LR
+            warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
+            if warmup_lr != lr_state.current_lr
+                lr_state.current_lr = warmup_lr
+                Flux.adjust!(opt_state, warmup_lr)
             end
 
             # Вычисляем и логируем средние метрики
@@ -452,22 +480,25 @@ function run_magic_training_phase!(steps::Int,
             mean_mae_abs = accum_mae_abs / count
             mean_reg = accum_reg / count
 
-            println(summary_io,
-                    @sprintf("%d %.8f %.8f %.8f %.8f %.2e",
-                             epoch,
-                             mean_mae_diff, mean_mse_diff,
-                             mean_mae_abs, mean_mse_abs,
-                             mean_reg))
+            log_average_metrics(summary_io, epoch,
+                                mean_mae_diff, mean_mse_diff,
+                                mean_mae_abs, mean_mse_abs,
+                                mean_reg)
+
+            # Step plateau based on chosen metric
+            plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
+            step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
 
             # Выводим прогресс
             println(@sprintf("Magic PT | %s | %s | Epoch: %4d | Batch Size: %3d | Diff MAE: %8.2f | Abs MAE: %8.2f | LR: %.2e",
-                             phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs, current_lr))
+                             phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs,
+                             lr_state.current_lr))
 
             # Сохраняем модель периодически
-            if epoch % 50 == 0 || epoch == steps
+            if epoch % pretrain_params.save_frequency == 0 || epoch == steps
                 mode_str = use_diff_gradient ? "diff" : "abs"
                 move_str = use_all_particles ? "all" : "single"
-                @save "magic-pt-model-$(mode_str)-$(move_str)-epoch-$(epoch).bson" model
+                @save joinpath(od, "magic-pt-model-$(mode_str)-$(move_str)-epoch-$(epoch).bson") model
             end
 
             # Синхронизируем данные логов на диск
@@ -483,19 +514,17 @@ function run_magic_training_phase!(steps::Int,
     return model, opt_state
 end
 
-function magic_pretrain(potential_files::Vector{String},
+function magic_pretrain(magic_params::MagicPreTrainingParameters,
                         pretrain_params::PreTrainingParameters,
                         nn_params::NeuralNetParameters,
                         system_params_list::Vector{SystemParameters},
                         model::Chain,
                         optimizer,
-                        reference_rdfs::Vector{Vector{Float64}};
-                        use_diff_gradient::Bool=true,
-                        use_all_particles::Bool=false)
+                        reference_rdfs::Vector{Vector{Float64}})
 
     # Загружаем данные о потенциалах
     println("Loading potential data from files...")
-    potential_data_list = [load_potential_data(file) for file in potential_files]
+    potential_data_list = [load_potential_data(file) for file in magic_params.potential_files]
 
     # Создаем предвычисленные таблицы значений потенциала для быстрой интерполяции
     println("Creating potential lookup tables...")
@@ -519,36 +548,29 @@ function magic_pretrain(potential_files::Vector{String},
         push!(ref_data_list, create_magic_reference_data(ref_inputs[i], potential_data_list[i], lookup_list[i]))
     end
 
-    # Определяем расписание скорости обучения
-    lr_schedule = Dict(1 => 0.000005,
-                       10 => 0.00002,
-                       30 => 0.00005,
-                       1500 => 0.00002,
-                       1900 => 0.00001)
-
-    @load "run3/magic-pt-final-model-abs-all.bson" model
     println("Starting magic pre-training...")
-    model, opt_state = run_magic_training_phase!(2000,            # Steps
-                                                 200,                 # Batch size
-                                                 use_diff_gradient, # Use difference or absolute mode
-                                                 false, # Move all particles or just one
-                                                 system_params_list,
-                                                 ref_data_list,
-                                                 lookup_list,
-                                                 cached_traj_list,
-                                                 model,
-                                                 nn_params,
-                                                 pretrain_params,
-                                                 optimizer,
-                                                 lr_schedule,
-                                                 pretrain_params.learning_rate,
-                                                 log_prefix="magic_pt")
+    model,
+    opt_state = run_magic_training_phase!(pretrain_params.steps,
+                                          pretrain_params.batch_size,
+                                          magic_params.use_diff_gradient,
+                                          magic_params.use_all_particles,
+                                          system_params_list,
+                                          ref_data_list,
+                                          lookup_list,
+                                          cached_traj_list,
+                                          model,
+                                          nn_params,
+                                          pretrain_params,
+                                          optimizer,
+                                          log_prefix=pretrain_params.output_prefix)
 
     # Сохраняем финальную модель
-    mode_str = use_diff_gradient ? "diff" : "abs"
-    move_str = use_all_particles ? "all" : "single"
-    @save "magic-pt-final-model-$(mode_str)-$(move_str).bson" model
-    @save "magic-pt-final-opt-state-$(mode_str)-$(move_str).bson" optimizer
+    prefix = pretrain_params.output_prefix
+    mode_str = magic_params.use_diff_gradient ? "diff" : "abs"
+    move_str = magic_params.use_all_particles ? "all" : "single"
+    od = pretrain_params.output_dir
+    @save joinpath(od, "$prefix-final-model-$(mode_str)-$(move_str).bson") model
+    @save joinpath(od, "$prefix-final-opt-state-$(mode_str)-$(move_str).bson") opt_state
 
     println("Magic pre-training completed!")
     return model

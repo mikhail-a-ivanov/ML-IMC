@@ -8,3 +8,9 @@ clean:
 .PHONY: install
 install:
 	julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+
+# Format Julia source code
+.PHONY: format
+format:
+	julia -e 'using JuliaFormatter; format("src/")'

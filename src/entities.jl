@@ -23,6 +23,22 @@ struct G9
     rshift::Float64
 end
 
+struct LRSchedulerConfig
+    warmup_epochs::Int
+    warmup_start_lr::Float64
+    patience::Int
+    factor::Float64
+    min_lr::Float64
+    cooldown::Int
+end
+
+mutable struct LRSchedulerState
+    current_lr::Float64
+    best_loss::Float64
+    bad_epochs::Int
+    cooldown_left::Int
+end
+
 struct NeuralNetParameters
     # Symmetry functions
     g2_functions::Vector{G2}
@@ -40,12 +56,18 @@ struct NeuralNetParameters
     iterations::Int
     regularization::Float64
 
+    # Gradient settings
+    gradient_type::String
+
     # Optimizer settings
     optimizer::String
     learning_rate::Float64
     momentum::Float64
     decay_1::Float64
     decay_2::Float64
+
+    # LR scheduler
+    lr_scheduler_config::LRSchedulerConfig
 end
 
 struct SystemParameters
@@ -80,6 +102,7 @@ struct GlobalParameters
     gradients_file::String
     optimizer_file::String
     adaptive_scaling::Bool
+    output_dir::String
 end
 
 struct PreTrainingParameters
@@ -92,4 +115,20 @@ struct PreTrainingParameters
     momentum::Float64
     decay_1::Float64
     decay_2::Float64
+    use_diff_gradient::Bool
+    use_all_particles::Bool
+    gradient_type::String
+    save_frequency::Int
+    output_prefix::String
+    output_dir::String
+
+    # LR scheduler
+    lr_scheduler_config::LRSchedulerConfig
+end
+
+struct MagicPreTrainingParameters
+    model_file::String
+    potential_files::Vector{String}
+    use_diff_gradient::Bool
+    use_all_particles::Bool
 end

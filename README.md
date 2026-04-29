@@ -10,56 +10,67 @@ This project implements an algorithm for creating neural network force fields an
 
 1. **Julia Version:**  Ensure you have Julia version 1.10 or later installed.
 
-2. **Package Installation:** Open the Julia REPL and install the required packages:
-
-  ```julia
-   using Pkg
-   Pkg.instantiate()
-  ```
-
-  or
-
-  ```bash
-  make install
-  ```
-
-## Running the Code
-
-1. **Clone the Repository:**
+2. **Package Installation:**
 
    ```bash
-   git clone https://github.com/mposysoev/ML-IMC --depth=1
+   make install
+   ```
+   or
+   ```julia
+   using Pkg; Pkg.instantiate()
    ```
 
-2. **Configuration:**
-   - Modify the `config.toml` file (example in the folder `configs`) to specify the desired parameters for training or simulation.
-   - Modify the `symmetry_functions.toml` file for specifying trajectory descriptors.
+## Operation Modes
 
-3. **Execution:**
-   - **Training:**
+The project supports 4 independent modes, selected via `mode` in the `[global]` section of `config.toml`:
 
-     ```bash
-     julia -p n src/main.jl configs/config.toml | tee report.out 
-     ```
+| Mode | Description |
+|---|---|
+| `training` | Main ML-IMC training loop. Iteratively samples MC configurations, computes IMC gradients, and updates the neural network potential. |
+| `pmf-pretraining` | Pre-trains the neural network to match Potential of Mean Force (PMF) derived from reference RDF data. |
+| `magic-pretraining` | Pre-trains the neural network on externally obtained IMC potentials (pair potentials from previous IMC calculations). Requires matching `.dat`/`.pot` files. |
+| `simulation` | Runs a production MC simulation with an already trained model. Requires exactly one system and a valid `model_file`. |
 
-     where `n` is the number of systems you want to train.
+No mode requires commenting/uncommenting code or manually editing Julia files. All mode-specific behavior is configured in `config.toml`.
 
-   - **Simulation:**
-     - Set the `mode` parameter in `config.toml` to "simulation".
-     - Specify the input PDB file and trained model file in the appropriate parameters.
-     - Run the same command as for training.
+## Running
 
-## Input Files
+```bash
+julia -p N src/main.jl configs/methanol-data/config.toml | tee report.out
+```
 
-- **`config.toml`:**  Main input file containing Global parameters, Monte Carlo settings, Neural Network parameters, and Pre-training parameters.
-- **`symmetry_functions.toml`:**  Defines the symmetry functions to be used as input features for the neural network.
-- **System Input Files (`.toml`):**  Individual input files for each system to be trained, containing information such as topology, reference RDF, and simulation parameters.
+Where `N` is the number of worker processes (must be divisible by the number of systems).
+
+For `simulation` mode, use exactly one system and set `N = 1`.
+
+### Required fields per mode
+
+| Field | training | pmf-pretraining | magic-pretraining | simulation |
+|---|---|---|---|---|
+| `[global].model_file` | "none" or path | "none" or path | "none" or path | **required** (path to .bson) |
+| `[global].system_files` | 1+ systems | 1+ systems | 1+ systems | **exactly 1** system |
+| `[pretraining]` section | not used | required | required | not used |
+| `[magic_pretraining].potential_files` | not used | not used | **required** (1 per system) | not used |
+
+## Configuration Files
+
+- **`config.toml`:**  Main configuration with `[global]`, `[monte_carlo]`, `[neural_network]`, `[pretraining]`, and `[magic_pretraining]` sections. See `configs/methanol-data/config.toml.example` for a minimal reproducible example.
+- **`symmetry_functions.toml`:**  Defines Behler-Parrinello symmetry functions (G2/G3/G9) used as input features. Set `use_g3 = true` / `use_g9 = true` to enable angular functions.
+- **System `*.toml` files:**  One per system in `configs/methanol-data/`, specifying PDB topology, XTC trajectory, reference RDF, and simulation parameters.
+
+### Magic Potential Format
+
+Magic pre-training potential files (`.dat`/`.pot`) contain two whitespace-separated columns: `r` (distance in Å) and `U(r)` (pair potential). See `scripts/prepare_pot.py` for preprocessing IMC potentials into the expected format.
+
+## Output
+
+All output files are written to `global.output_dir` (default: `run/`). This includes models (`.bson`), optimizer states, RDF predictions, energy time series, and training/pre-training logs.
 
 ## Authors
 
-- Prof. Alexander Lyubartsev (<alexander.lyubartsev@mmk.su.se>) - Principal investigator and method developer
-- Mikhail Ivanov (<mikhail.ivanov@mmk.su.se>) - Software developer
-- Maksim Posysoev (<maksim.posysoev@mmk.su.se>) - Software developer
+- Prof. Alexander Lyubartsev (<alexander.lyubartsev@su.se>) - Principal investigator and method developer
+- Mikhail Ivanov (<mikhail.ivanov@su.se>) - Software developer
+- Maksim Posysoev (<maksim.posysoev@su.se>) - Software developer
 
 ## Acknowledgement
 

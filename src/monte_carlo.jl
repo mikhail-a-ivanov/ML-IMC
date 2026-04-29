@@ -159,10 +159,12 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
 
         # Compute and accumulate loss for training mode
         if global_params.mode == "training"
-            system_loss_mae, system_loss_sse, system_loss_mse, system_loss_rmse = compute_training_loss(system_output.descriptor,
-                                                                                                        reference_rdfs[system_idx],
-                                                                                                        model,
-                                                                                                        nn_params)
+            system_loss_mae, system_loss_sse, system_loss_mse,
+            system_loss_rmse = compute_training_loss(system_output.descriptor,
+                                                     reference_rdfs[system_idx],
+                                                     model,
+                                                     nn_params,
+                                                     global_params.output_dir)
 
             println(@sprintf("| %-15s | %9.4f | %13.4f | %10.4f | %9.4e | %8.4f | %8.4f |",
                              system_params.system_name,
@@ -195,8 +197,9 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     end
 
     # Log loss value
+    od = global_params.output_dir
     try
-        open("avg_sse_loss.dat", "a") do io
+        open(joinpath(od, "avg_sse_loss.dat"), "a") do io
             println(io, round(total_loss_sse; digits=8))
         end
     catch e
@@ -204,7 +207,7 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     end
 
     try
-        open("avg_mae_loss.dat", "a") do io
+        open(joinpath(od, "avg_mae_loss.dat"), "a") do io
             println(io, round(total_loss_mae; digits=8))
         end
     catch e
@@ -322,9 +325,10 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     # Set worker ID and output files
     worker_id::Int = nprocs() == 1 ? myid() : myid() - 1
     worker_id_str::String = lpad(worker_id, 3, "0")
+    od = global_params.output_dir
 
-    traj_file::String = "mctraj-p$(worker_id_str).xtc"
-    pdb_file::String = "confin-p$(worker_id_str).pdb"
+    traj_file::String = joinpath(od, "mctraj-p$(worker_id_str).xtc")
+    pdb_file::String = joinpath(od, "confin-p$(worker_id_str).pdb")
 
     # Initialize RNG
     rng::Xoroshiro128Plus = Xoroshiro128Plus()
@@ -357,13 +361,15 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     distance_matrix::Matrix{Float64} = build_distance_matrix(frame)
     g2_matrix::Matrix{Float64} = build_g2_matrix(distance_matrix, nn_params)
 
-    g3_matrix::Union{Matrix{Float64}, Vector{Float64}} = if !isempty(nn_params.g3_functions)
+    g3_matrix::Union{Matrix{Float64},
+                     Vector{Float64}} = if !isempty(nn_params.g3_functions)
         build_g3_matrix(distance_matrix, positions(frame), box, nn_params)
     else
         Float64[]
     end
 
-    g9_matrix::Union{Matrix{Float64}, Vector{Float64}} = if !isempty(nn_params.g9_functions)
+    g9_matrix::Union{Matrix{Float64},
+                     Vector{Float64}} = if !isempty(nn_params.g9_functions)
         build_g9_matrix(distance_matrix, positions(frame), box, nn_params)
     else
         Float64[]
@@ -397,8 +403,9 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
 
     # Main Monte Carlo loop
     @fastmath for step in 1:(mc_params.steps)
-        mc_arrays, total_energy, energy_vector, accepted = mcmove!(mc_arrays, total_energy, energy_vector, model,
-                                                                   nn_params, system_params, box, rng, step_size)
+        mc_arrays, total_energy, energy_vector,
+        accepted = mcmove!(mc_arrays, total_energy, energy_vector, model,
+                           nn_params, system_params, box, rng, step_size)
         accepted_total += accepted
         accepted_intermediate += accepted
 
