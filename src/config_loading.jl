@@ -10,12 +10,9 @@ function parse_symmetry_functions(filename::String)
     println()
 
     g2_functions = Vector{G2}()
-    g3_functions = Vector{G3}()
-    g9_functions = Vector{G9}()
     scaling_factor = get(symm_data, "scaling", 1.0)
     max_cutoff = 0.0
 
-    # Parse G2 functions
     if haskey(symm_data, "G2")
         for params in symm_data["G2"]
             eta, rcutoff, rshift, norm = params
@@ -25,27 +22,7 @@ function parse_symmetry_functions(filename::String)
         end
     end
 
-    # Parse G3 functions
-    if get(symm_data, "use_g3", true) && haskey(symm_data, "G3")
-        for params in symm_data["G3"]
-            eta, lambda, zeta, rcutoff, rshift = params
-            g3 = G3(eta, lambda, zeta, rcutoff, rshift)
-            push!(g3_functions, g3)
-            max_cutoff = max(max_cutoff, rcutoff)
-        end
-    end
-
-    # Parse G9 functions
-    if get(symm_data, "use_g9", true) && haskey(symm_data, "G9")
-        for params in symm_data["G9"]
-            eta, lambda, zeta, rcutoff, rshift = params
-            g9 = G9(eta, lambda, zeta, rcutoff, rshift)
-            push!(g9_functions, g9)
-            max_cutoff = max(max_cutoff, rcutoff)
-        end
-    end
-
-    return g2_functions, g3_functions, g9_functions, max_cutoff, scaling_factor
+    return g2_functions, max_cutoff, scaling_factor
 end
 
 function parse_system_parameters(filename::String)
@@ -129,10 +106,9 @@ function parameters_init()
                                      config["monte_carlo"]["output_frequency"])
 
     # Parse symmetry functions
-    g2_funcs, g3_funcs, g9_funcs, max_cutoff, scaling = parse_symmetry_functions(global_params.symmetry_function_file)
+    g2_funcs, max_cutoff, scaling = parse_symmetry_functions(global_params.symmetry_function_file)
 
-    # Calculate input layer size based on total number of symmetry functions
-    input_layer_size = length(g2_funcs) + length(g3_funcs) + length(g9_funcs)
+    input_layer_size = length(g2_funcs)
 
     # Parse neural network parameters
     nn_section = config["neural_network"]
@@ -146,8 +122,6 @@ function parameters_init()
     end
 
     nn_params = NeuralNetParameters(g2_funcs,
-                                    g3_funcs,
-                                    g9_funcs,
                                     max_cutoff,
                                     scaling,
                                     neurons,

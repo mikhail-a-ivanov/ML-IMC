@@ -55,7 +55,7 @@ For `simulation` mode, use exactly one system and set `N = 1`.
 ## Configuration Files
 
 - **`config.toml`:**  Main configuration with `[global]`, `[monte_carlo]`, `[neural_network]`, `[pretraining]`, and `[magic_pretraining]` sections. See `configs/methanol-data/config.toml.example` for a minimal reproducible example.
-- **`symmetry_functions.toml`:**  Defines Behler-Parrinello symmetry functions (G2/G3/G9) used as input features. Set `use_g3 = true` / `use_g9 = true` to enable angular functions.
+- **`symmetry_functions.toml`:**  Defines Behler-Parrinello symmetry functions (G2) used as input features.
 - **System `*.toml` files:**  One per system in `configs/methanol-data/`, specifying PDB topology, XTC trajectory, reference RDF, and simulation parameters.
 
 ### Magic Potential Format

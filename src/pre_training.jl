@@ -11,8 +11,6 @@ struct ReferenceData
     histograms::Vector{Vector{Float64}}
     pmf::Vector{Float64}
     g2_matrices::Vector{Matrix{Float64}}
-    g3_matrices::Vector{Matrix{Float64}}
-    g9_matrices::Vector{Matrix{Float64}}
 end
 
 function read_random_frame(sys_params::SystemParameters, rng::Xoroshiro128Plus)
@@ -27,8 +25,7 @@ end
 function compute_initial_energies(ref_data::ReferenceData, frame_id::Int, model::Chain)
     hist = ref_data.histograms[frame_id]
     pmf = ref_data.pmf
-    symm = combine_symmetry_matrices(ref_data.g2_matrices[frame_id], ref_data.g3_matrices[frame_id],
-                                     ref_data.g9_matrices[frame_id])
+    symm = ref_data.g2_matrices[frame_id]
     e_nn_vector = init_system_energies_vector(symm, model)
     e_nn = sum(e_nn_vector)
     e_pmf = sum(hist .* pmf)
@@ -58,35 +55,23 @@ function precompute_reference_data(input::PreComputedInput)::ReferenceData
 
     pmf = compute_pmf(ref_rdf, sys_params)
     traj = read_xtc(sys_params)
-    n_frames = Int(size(traj)) - 1  # пропускаем первый кадр
+    n_frames = Int(size(traj)) - 1
 
     distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
     histograms = Vector{Vector{Float64}}(undef, n_frames)
     g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-    g3_matrices = isempty(nn_params.g3_functions) ? Matrix{Float64}[] :
-                  Vector{Matrix{Float64}}(undef, n_frames)
-    g9_matrices = isempty(nn_params.g9_functions) ? Matrix{Float64}[] :
-                  Vector{Matrix{Float64}}(undef, n_frames)
 
     for frame_id in 1:n_frames
         frame = read_step(traj, frame_id)
-        box = lengths(UnitCell(frame))
-        coords = positions(frame)
 
         distance_matrices[frame_id] = build_distance_matrix(frame)
         histograms[frame_id] = zeros(Float64, sys_params.n_bins)
         update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], sys_params)
 
         g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
-        if !isempty(nn_params.g3_functions)
-            g3_matrices[frame_id] = build_g3_matrix(distance_matrices[frame_id], coords, box, nn_params)
-        end
-        if !isempty(nn_params.g9_functions)
-            g9_matrices[frame_id] = build_g9_matrix(distance_matrices[frame_id], coords, box, nn_params)
-        end
     end
 
-    return ReferenceData(distance_matrices, histograms, pmf, g2_matrices, g3_matrices, g9_matrices)
+    return ReferenceData(distance_matrices, histograms, pmf, g2_matrices)
 end
 
 function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
@@ -95,12 +80,10 @@ function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
     frame, frame_id, box = read_random_frame(sys_params, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
-    # Исходные данные
     distance_matrix = ref_data.distance_matrices[frame_id]
     symm1, hist, e_nn1, e_pmf1, e_nn1_vector = compute_initial_energies(ref_data, frame_id, model)
     distance_vec1 = distance_matrix[:, point_index]
 
-    # Смещение частицы
     dr = sys_params.max_displacement * (rand(rng, Float64, 3) .- 0.5)
     positions(frame)[:, point_index] .+= dr
 
@@ -109,36 +92,14 @@ function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
     update_distance_histogram_vectors!(hist, distance_vec1, distance_vec2, sys_params)
     update_mask = get_energies_update_mask(distance_vec2, nn_params)
 
-    coords_for_update = (isempty(ref_data.g3_matrices) && isempty(ref_data.g9_matrices)) ? nothing :
-                        copy(positions(frame))
-
     g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
 
-    g3_matrix2 = if !isempty(ref_data.g3_matrices)
-        g3_copy = copy(ref_data.g3_matrices[frame_id])
-        update_g3_matrix!(g3_copy, coords_for_update, positions(frame), box,
-                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
-        g3_copy
-    else
-        []
-    end
-
-    g9_matrix2 = if !isempty(ref_data.g9_matrices)
-        g9_copy = copy(ref_data.g9_matrices[frame_id])
-        update_g9_matrix!(g9_copy, coords_for_update, positions(frame), box,
-                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
-        g9_copy
-    else
-        []
-    end
-
-    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
+    symm2 = g2_matrix2
     e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
     e_nn2 = sum(e_nn2_vector)
     e_pmf2 = sum(hist .* ref_data.pmf)
 
-    # Восстанавливаем исходное состояние
     positions(frame)[:, point_index] .-= dr
     update_distance_histogram_vectors!(hist, distance_vec2, distance_vec1, sys_params)
 
@@ -167,12 +128,8 @@ function all_particle_move!(ref_data::ReferenceData, model::Flux.Chain,
     update_distance_histogram!(distance_matrix2, hist2, sys_params)
 
     g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
-    g3_matrix2 = isempty(nn_params.g3_functions) ? Matrix{Float64}[] :
-                 build_g3_matrix(distance_matrix2, positions(frame), box, nn_params)
-    g9_matrix2 = isempty(nn_params.g9_functions) ? Matrix{Float64}[] :
-                 build_g9_matrix(distance_matrix2, positions(frame), box, nn_params)
 
-    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
+    symm2 = g2_matrix2
     e_nn2_vector = init_system_energies_vector(symm2, model)
     e_nn2 = sum(e_nn2_vector)
     e_pmf2 = sum(hist2 .* ref_data.pmf)

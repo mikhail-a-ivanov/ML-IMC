@@ -46,23 +46,3 @@ G2 = [
     [30.0, 12.00, 7.95, 1.00],
     [30.0, 12.00, 8.10, 1.00],
 ]
-
-# G3 symmetry functions (narrow angular symmetry)
-# To enable G3: set use_g3 = true and uncomment the section.
-# Format: eta (Å^-2), lambda (+1/-1), zeta, rcutoff (Å), rshift (Å)
-use_g3 = false
-# G3 = [
-#     # eta  lambda  zeta  rcutoff  rshift
-#     [0.001,  1.0, 1.0, 5.0, 0.0],
-#     [0.001, -1.0, 1.0, 5.0, 0.0],
-# ]
-
-# G9 symmetry functions (wide angular symmetry)
-# To enable G9: set use_g9 = true and uncomment the section.
-# Format: eta (Å^-2), lambda (+1/-1), zeta, rcutoff (Å), rshift (Å)
-use_g9 = false
-# G9 = [
-#     # eta  lambda  zeta  rcutoff  rshift
-#     [0.001,  1.0, 1.0, 5.0, 0.0],
-#     [0.001, -1.0, 1.0, 5.0, 0.0],
-# ]

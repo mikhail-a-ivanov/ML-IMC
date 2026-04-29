@@ -7,22 +7,6 @@ struct G2
     norm::Float64
 end
 
-struct G3
-    eta::Float64
-    lambda::Float64
-    zeta::Float64
-    rcutoff::Float64
-    rshift::Float64
-end
-
-struct G9
-    eta::Float64
-    lambda::Float64
-    zeta::Float64
-    rcutoff::Float64
-    rshift::Float64
-end
-
 struct LRSchedulerConfig
     warmup_epochs::Int
     warmup_start_lr::Float64
@@ -42,8 +26,6 @@ end
 struct NeuralNetParameters
     # Symmetry functions
     g2_functions::Vector{G2}
-    g3_functions::Vector{G3}
-    g9_functions::Vector{G9}
     max_distance_cutoff::Float64
     symm_function_scaling::Float64
 

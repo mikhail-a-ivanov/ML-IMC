@@ -18,8 +18,6 @@ struct MagicReferenceData
     histograms::Vector{Vector{Float64}}
     precomputed_energy::Vector{Float64}
     g2_matrices::Vector{Matrix{Float64}}
-    g3_matrices::Vector{Matrix{Float64}}
-    g9_matrices::Vector{Matrix{Float64}}
 end
 
 struct PotentialData
@@ -177,40 +175,27 @@ function create_magic_reference_data(input::MagicPreComputedInput,
     nn_params = input.nn_params
     sys_params = input.system_params
 
-    # Сначала кэшируем всю траекторию
     cached_traj = cache_trajectory(sys_params)
     n_frames = cached_traj.n_frames
 
     distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
     histograms = Vector{Vector{Float64}}(undef, n_frames)
     g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-    g3_matrices = isempty(nn_params.g3_functions) ? Matrix{Float64}[] :
-                  Vector{Matrix{Float64}}(undef, n_frames)
-    g9_matrices = isempty(nn_params.g9_functions) ? Matrix{Float64}[] :
-                  Vector{Matrix{Float64}}(undef, n_frames)
     potential_per_frame = Vector{Float64}(undef, n_frames)
 
     for frame_id in 1:n_frames
         frame = cached_traj.frames[frame_id]
-        box = cached_traj.boxes[frame_id]
 
         distance_matrices[frame_id] = build_distance_matrix(frame)
         histograms[frame_id] = zeros(Float64, sys_params.n_bins)
         update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], sys_params)
 
-        # Считаем потенциальную энергию фрейма с помощью предвычисленной таблицы
         potential_per_frame[frame_id] = compute_potential_energy(distance_matrices[frame_id], lookup, sys_params)
 
         g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
-        if !isempty(nn_params.g3_functions)
-            g3_matrices[frame_id] = build_g3_matrix(distance_matrices[frame_id], positions(frame), box, nn_params)
-        end
-        if !isempty(nn_params.g9_functions)
-            g9_matrices[frame_id] = build_g9_matrix(distance_matrices[frame_id], positions(frame), box, nn_params)
-        end
     end
 
-    return MagicReferenceData(distance_matrices, histograms, potential_per_frame, g2_matrices, g3_matrices, g9_matrices)
+    return MagicReferenceData(distance_matrices, histograms, potential_per_frame, g2_matrices)
 end
 
 function magic_single_particle_move!(ref_data::MagicReferenceData,
@@ -223,60 +208,36 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
     frame, frame_id, box = read_random_frame_cached(cached_traj, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
-    # Исходные данные
     distance_matrix = ref_data.distance_matrices[frame_id]
-    g2_1 = ref_data.g2_matrices[frame_id]
-    g3_1 = isempty(ref_data.g3_matrices) ? Matrix{Float64}[] : ref_data.g3_matrices[frame_id]
-    g9_1 = isempty(ref_data.g9_matrices) ? Matrix{Float64}[] : ref_data.g9_matrices[frame_id]
-    symm1 = combine_symmetry_matrices(g2_1, g3_1, g9_1)
+    symm1 = ref_data.g2_matrices[frame_id]
     e_nn1_vector = init_system_energies_vector(symm1, model)
     e_nn1 = sum(e_nn1_vector)
 
-    # Используем предвычисленную энергию
     e_pot1 = ref_data.precomputed_energy[frame_id]
 
     distance_vec1 = distance_matrix[:, point_index]
 
-    # Смещаем частицу
     dr = sys_params.max_displacement * (rand(rng, Float64, 3) .- 0.5)
     positions(frame)[:, point_index] .+= dr
 
     point = positions(frame)[:, point_index]
     distance_vec2 = compute_distance_vector(point, positions(frame), box)
 
-    # Создаем новую матрицу расстояний
     distance_matrix2 = copy(distance_matrix)
     distance_matrix2[point_index, :] = distance_vec2
     distance_matrix2[:, point_index] = distance_vec2
 
-    # Рассчитываем потенциальную энергию для нового состояния
     e_pot2 = compute_potential_energy(distance_matrix2, lookup, sys_params)
 
     update_mask = get_energies_update_mask(distance_vec2, nn_params)
 
-    # Обновляем G2 матрицу
     g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
 
-    g3_matrix2 = copy(g3_1)
-    if !isempty(g3_1)
-        coords_for_update = copy(positions(frame))
-        update_g3_matrix!(g3_matrix2, positions(cached_traj.frames[frame_id]), positions(frame), box,
-                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
-    end
-
-    g9_matrix2 = copy(g9_1)
-    if !isempty(g9_1)
-        coords_for_update = copy(positions(frame))
-        update_g9_matrix!(g9_matrix2, positions(cached_traj.frames[frame_id]), positions(frame), box,
-                          distance_vec1, distance_vec2, sys_params, nn_params, point_index)
-    end
-
-    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
+    symm2 = g2_matrix2
     e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
     e_nn2 = sum(e_nn2_vector)
 
-    # Восстанавливаем исходное состояние
     positions(frame)[:, point_index] .-= dr
 
     return (symm1=symm1,
@@ -298,45 +259,31 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
                                   rng::Xoroshiro128Plus)
     frame, frame_id, box = read_random_frame_cached(cached_traj, rng)
 
-    # Исходные данные
     distance_matrix = ref_data.distance_matrices[frame_id]
-    g2_1 = ref_data.g2_matrices[frame_id]
-    g3_1 = isempty(ref_data.g3_matrices) ? Matrix{Float64}[] : ref_data.g3_matrices[frame_id]
-    g9_1 = isempty(ref_data.g9_matrices) ? Matrix{Float64}[] : ref_data.g9_matrices[frame_id]
-    symm1 = combine_symmetry_matrices(g2_1, g3_1, g9_1)
+    symm1 = ref_data.g2_matrices[frame_id]
     e_nn1_vector = init_system_energies_vector(symm1, model)
     e_nn1 = sum(e_nn1_vector)
 
-    # Используем предвычисленную энергию
     e_pot1 = ref_data.precomputed_energy[frame_id]
 
-    # Сохраняем исходные координаты
     old_coords = copy(positions(frame))
 
-    # Смещаем все частицы
     dr = sys_params.max_displacement * (rand(rng, Float64, 3, sys_params.n_atoms) .- 0.5)
     positions(frame) .+= dr
 
-    # Применяем периодические граничные условия
     for i in 1:(sys_params.n_atoms)
         apply_periodic_boundaries!(frame, box, i)
     end
 
-    # Строим новую матрицу расстояний и вычисляем потенциальную энергию
     distance_matrix2 = build_distance_matrix(frame)
     e_pot2 = compute_potential_energy(distance_matrix2, lookup, sys_params)
 
     g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
-    g3_matrix2 = isempty(g3_1) ? Matrix{Float64}[] :
-                 build_g3_matrix(distance_matrix2, positions(frame), box, nn_params)
-    g9_matrix2 = isempty(g9_1) ? Matrix{Float64}[] :
-                 build_g9_matrix(distance_matrix2, positions(frame), box, nn_params)
 
-    symm2 = combine_symmetry_matrices(g2_matrix2, g3_matrix2, g9_matrix2)
+    symm2 = g2_matrix2
     e_nn2_vector = init_system_energies_vector(symm2, model)
     e_nn2 = sum(e_nn2_vector)
 
-    # Восстанавливаем исходное состояние
     positions(frame) .= old_coords
 
     return (symm1=symm1,

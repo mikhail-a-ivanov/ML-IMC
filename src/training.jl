@@ -160,8 +160,7 @@ function train!(global_params::GlobalParameters,
 
         # Update model with computed gradients
         tmp_symm_func_matrix::Matrix{Float64} = zeros(1,
-                                                      length(nn_params.g2_functions) + length(nn_params.g3_functions) +
-                                                      length(nn_params.g9_functions))
+                                                      length(nn_params.g2_functions))
         tmp_energy_gradients = compute_energy_gradients(tmp_symm_func_matrix, model)
         _, gradient_restructure = Flux.destructure(tmp_energy_gradients)
         mean_loss_gradients = gradient_restructure(mean_loss_gradients)
