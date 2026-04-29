@@ -228,10 +228,12 @@ function run_training_phase!(steps::Int, batch_size::Int,
             final_grad = grad_restructure(batch_flat_grad)
             update_model!(model, opt_state, final_grad)
 
-            warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
-            if warmup_lr != lr_state.current_lr
-                lr_state.current_lr = warmup_lr
-                Flux.adjust!(opt_state, warmup_lr)
+            if epoch <= lr_config.warmup_epochs
+                warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
+                if warmup_lr != lr_state.current_lr
+                    lr_state.current_lr = warmup_lr
+                    Flux.adjust!(opt_state, warmup_lr)
+                end
             end
 
             mean_mae_diff = accum_mae_diff / count
@@ -243,9 +245,14 @@ function run_training_phase!(steps::Int, batch_size::Int,
             plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
             step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
 
-            println(@sprintf("%s | %s | Epoch: %4d | Batch Size: %3d | Diff MAE: %8.2f | Abs MAE: %8.2f | LR: %.2e",
+            println(@sprintf("PMF PT | %s | %s | Epoch: %4d | Batch: %3d | DiffMAE: %.3e | AbsMAE: %.3e | |∇|: %.3e | LR: %.2e",
                              phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs,
-                             lr_state.current_lr))
+                             grad_norm, lr_state.current_lr))
+
+            if epoch % pretrain_params.save_frequency == 0 || epoch == steps
+                @save joinpath(od, "$(log_prefix)-model-$(phase_type)-$(move_type)-epoch-$(epoch).bson") model
+                @save joinpath(od, "$(log_prefix)-opt-state-$(phase_type)-$(move_type)-epoch-$(epoch).bson") opt_state
+            end
 
             flush(summary_io)
         end

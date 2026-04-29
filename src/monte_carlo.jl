@@ -89,7 +89,7 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     system_outputs::Vector{MonteCarloAverages} = Vector{MonteCarloAverages}()
     system_losses::Vector{Float64} = Vector{Float64}()
 
-    println("| System          | Acc.Ratio | Avg.Displ.(Å) | MAE      |")
+    println("| System          | Acc.Ratio | Avg.Displ.(Å) | MAE         |")
 
     for (system_idx, system_params) in enumerate(system_params_list)
         descriptors::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
@@ -149,7 +149,7 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                                      model,
                                                      nn_params)
 
-            println(@sprintf("| %-15s | %9.4f | %13.4f | %8.4f |",
+            println(@sprintf("| %-15s | %9.4f | %13.4f | %.3e |",
                              system_params.system_name,
                              avg_acceptance,
                              avg_displacement,
@@ -164,9 +164,6 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
 
     if global_params.mode == "training"
         total_loss_mae /= length(system_params_list)
-        println()
-        println(@sprintf("Epoch: %d | Steps: %d | MAE: %.8f | LR: %.2e",
-                         epoch, mc_steps, total_loss_mae, lr))
     end
 
     return (system_outputs, system_losses)

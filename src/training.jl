@@ -75,10 +75,12 @@ function train!(global_params::GlobalParameters,
 
             println("\n--------------------------------- Iteration $iteration ---------------------------------\n")
 
-            warmup_lr = lr_for_epoch(lr_config, nn_params.learning_rate, iteration)
-            if warmup_lr != lr_state.current_lr
-                lr_state.current_lr = warmup_lr
-                Flux.adjust!(opt_state, warmup_lr)
+            if iteration <= lr_config.warmup_epochs
+                warmup_lr = lr_for_epoch(lr_config, nn_params.learning_rate, iteration)
+                if warmup_lr != lr_state.current_lr
+                    lr_state.current_lr = warmup_lr
+                    Flux.adjust!(opt_state, warmup_lr)
+                end
             end
             lr = lr_state.current_lr
 
@@ -140,6 +142,9 @@ function train!(global_params::GlobalParameters,
 
             avg_mae = sum(system_losses) / length(system_losses)
             step_plateau!(lr_config, lr_state, opt_state, avg_mae)
+
+            println(@sprintf("Epoch: %d | Steps: %d | MAE: %.3e | |∇|: %.3e | LR: %.2e",
+                             iteration, mc_params.steps, avg_mae, grad_norm, lr))
 
             println(training_log_io,
                     @sprintf("%d,%.17e,%.17e,%.17e", iteration, avg_mae, grad_norm, lr))
