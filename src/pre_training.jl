@@ -112,16 +112,16 @@ function compute_gradient!(e_nn::T, e_pmf::T, Δe_nn::T, Δe_pmf::T,
 
     if !use_diff_gradient
         grad_final = compute_energy_gradients(symm2, model)
-        # gradient_scale = 2 * (e_nn - e_pmf)
-        gradient_scale = sign(e_nn - e_pmf)
+        gradient_scale = 2 * (e_nn - e_pmf)
+        # gradient_scale = sign(e_nn - e_pmf)
         flat_grad, restructure = Flux.destructure(grad_final)
         loss_gradient = @. gradient_scale * flat_grad
         return restructure(loss_gradient + reg_gradient)
     else
         grad1 = compute_energy_gradients(symm1, model)
         grad2 = compute_energy_gradients(symm2, model)
-        # gradient_scale = 2 * (Δe_nn - Δe_pmf)
-        gradient_scale = sign(Δe_nn - Δe_pmf)
+        gradient_scale = 2 * (Δe_nn - Δe_pmf)
+        # gradient_scale = sign(Δe_nn - Δe_pmf)
         flat_grad1, restructure = Flux.destructure(grad1)
         flat_grad2, _ = Flux.destructure(grad2)
         loss_gradient = @. gradient_scale * (flat_grad2 - flat_grad1)
@@ -389,12 +389,10 @@ function pretrain_model!(pretrain_params::PreTrainingParameters,
     ref_data_list = pmap(precompute_reference_data, ref_inputs)
 
     lr_schedule = Dict(5000 => 0.001,
-                       20000 => 0.0005,
-                       30000 => 0.00001,
-                       50000 => 0.00005,
-                       70000 => 0.00001,
+                       30000 => 0.0005,
+                       70000 => 0.0001,
                        95000 => 0.00005,
-                       99000 => 0.000001)
+                       99000 => 0.00001)
 
     # lr_schedule = Dict(10 => 0.0001,
     #                    4900 => 0.00005)
