@@ -33,3 +33,7 @@ trash/*
 .mypy_cache/
 
 benchmarks/*
+
+AGENTS.md
+
+dev_plan.md

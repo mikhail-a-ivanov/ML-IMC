@@ -41,7 +41,7 @@ function parse_system_parameters(filename::String)
     # Read RDF data
     bins, rdf = read_rdf(system_data["rdf_file_path"])
     n_bins = length(bins)
-    bin_width = bins[1]
+    bin_width = infer_bin_width(bins)
 
     # Calculate beta from temperature
     temperature = system_data["temperature"]

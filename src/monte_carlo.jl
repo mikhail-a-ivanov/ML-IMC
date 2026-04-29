@@ -67,8 +67,8 @@ function normalize_hist_to_rdf!(histogram::AbstractVector{T},
     n_pairs = system_params.n_atoms * (system_params.n_atoms - 1) ÷ 2
 
     bin_width = system_params.bin_width
-    bins = [(i * bin_width) for i in 1:(system_params.n_bins)]
-    shell_volumes = [4 * π * system_params.bin_width * bins[i]^2 for i in eachindex(bins)]
+    shell_volumes = [(4 * π / 3) * ((i * bin_width)^3 - ((i - 1) * bin_width)^3)
+                     for i in 1:(system_params.n_bins)]
 
     normalization_factors = fill(box_volume / n_pairs, system_params.n_bins) ./ shell_volumes
 
@@ -84,15 +84,12 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                  nn_params::Union{NeuralNetParameters, Nothing},
                                  model::Union{Flux.Chain, Nothing}, lr::Float64,
                                  epoch, mc_steps)::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
-    total_loss_sse::Float64 = 0.0
-    total_loss_mse::Float64 = 0.0
-    total_loss_rmse::Float64 = 0.0
     total_loss_mae::Float64 = 0.0
 
     system_outputs::Vector{MonteCarloAverages} = Vector{MonteCarloAverages}()
     system_losses::Vector{Float64} = Vector{Float64}()
 
-    println("| System          | Acc.Ratio | Avg.Displ.(Å) | SSE        | MSE        | RMSE     | MAE      |")
+    println("| System          | Acc.Ratio | Avg.Displ.(Å) | MAE      |")
 
     for (system_idx, system_params) in enumerate(system_params_list)
         descriptors::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
@@ -146,25 +143,18 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
         end
 
         if global_params.mode == "training"
-            system_loss_mae, system_loss_sse, system_loss_mse,
+            system_loss_mae,
             system_loss_rmse = compute_training_loss(system_output.descriptor,
                                                      reference_rdfs[system_idx],
                                                      model,
-                                                     nn_params,
-                                                     global_params.output_dir)
+                                                     nn_params)
 
-            println(@sprintf("| %-15s | %9.4f | %13.4f | %10.4f | %9.4e | %8.4f | %8.4f |",
+            println(@sprintf("| %-15s | %9.4f | %13.4f | %8.4f |",
                              system_params.system_name,
                              avg_acceptance,
                              avg_displacement,
-                             system_loss_sse,
-                             system_loss_mse,
-                             system_loss_rmse,
                              system_loss_mae))
 
-            total_loss_sse += system_loss_sse
-            total_loss_mse += system_loss_mse
-            total_loss_rmse += system_loss_rmse
             total_loss_mae += system_loss_mae
             push!(system_losses, system_loss_mae)
         end
@@ -173,30 +163,10 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     end
 
     if global_params.mode == "training"
-        total_loss_sse /= length(system_params_list)
-        total_loss_mse /= length(system_params_list)
-        total_loss_rmse /= length(system_params_list)
         total_loss_mae /= length(system_params_list)
         println()
-        println(@sprintf("Epoch: %d | Steps: %d | SSE: %.5f | MSE: %.4e | RMSE: %.8f | MAE: %.8f | LR: %.2e",
-                         epoch, mc_steps, total_loss_sse, total_loss_mse, total_loss_rmse, total_loss_mae, lr))
-    end
-
-    od = global_params.output_dir
-    try
-        open(joinpath(od, "avg_sse_loss.dat"), "a") do io
-            println(io, round(total_loss_sse; digits=8))
-        end
-    catch e
-        @warn "Failed to write to log file: avg_sse_loss.dat" exception=e
-    end
-
-    try
-        open(joinpath(od, "avg_mae_loss.dat"), "a") do io
-            println(io, round(total_loss_mae; digits=8))
-        end
-    catch e
-        @warn "Failed to write to log file: avg_mae_loss.dat" exception=e
+        println(@sprintf("Epoch: %d | Steps: %d | MAE: %.8f | LR: %.2e",
+                         epoch, mc_steps, total_loss_mae, lr))
     end
 
     return (system_outputs, system_losses)

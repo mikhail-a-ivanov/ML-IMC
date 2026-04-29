@@ -4,7 +4,7 @@
 # Input files with system configurations
 system_files = [
     # 10
-    "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
+    "configs/methanol-data/10CH3OH/10CH3OH-CG.toml",
     # 40
     "configs/methanol-data/40CH3OH/40CH3OH-CG.toml",
     # 60
@@ -16,11 +16,11 @@ system_files = [
 # File defining the symmetry functions for atomic descriptors.
 symmetry_function_file = "configs/methanol-data/symmetry_functions.toml" 
 
-# Operation mode: "training" to train the NN, or "simulation" to run an MC simulation with a trained model.
-mode = "simulation"
+# VALID_MODES = ("training", "pmf-pretraining", "magic-pretraining", "simulation")
+mode = "pmf-pretraining"
 
 # Output detail level: "default" shows RDFs and Energies, "verbose" also writes trajectory files.
-output_mode = "verbose"
+output_mode = "default"
 
 # Model and optimization file paths
 model_file = "none"      # Path to a pre-trained model. "none" => random initialization.

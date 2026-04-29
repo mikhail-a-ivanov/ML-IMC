@@ -15,14 +15,14 @@ function read_pdb(system_params::SystemParameters)
 end
 
 function write_rdf(outname::AbstractString, rdf::Vector{Float64}, system_params::SystemParameters)
-    bins = [bin * system_params.bin_width for bin in 1:(system_params.n_bins)]
+    bin_centers = [(bin - 0.5) * system_params.bin_width for bin in 1:(system_params.n_bins)]
 
     open(outname, "w") do io
         println(io, "# System: $(system_params.system_name)")
         println(io, "# RDF data ($(system_params.atom_name) - $(system_params.atom_name))")
-        println(io, "# r, Å; g(r);")
-        for (bin, g) in zip(bins, rdf)
-            println(io, @sprintf("%6.4f %12.4f", bin, g))
+        println(io, "# r_center, Å; g(r);")
+        for (bin_center, g) in zip(bin_centers, rdf)
+            println(io, @sprintf("%.17e %.17e", bin_center, g))
         end
     end
 
@@ -39,7 +39,7 @@ function write_energies(outname::AbstractString, energies::Vector{Float64},
         println(io, "# System: $(system_params.system_name)")
         println(io, @sprintf("# %8s %22s", "Step", "Total energy, kJ/mol"))
         for (step, energy) in zip(steps, sliced_energies)
-            println(io, @sprintf("%9d %10.4f", step, energy))
+            println(io, @sprintf("%9d %.17e", step, energy))
         end
     end
 
@@ -88,6 +88,27 @@ function read_rdf(rdfname::AbstractString)
     isempty(bins) && @warn "No data found in $rdfname"
 
     return bins, rdf
+end
+
+function infer_bin_width(bins::AbstractVector{T}; atol::T=convert(T, 1e-8))::T where {T <: AbstractFloat}
+    isempty(bins) && throw(ArgumentError("RDF bins vector cannot be empty"))
+
+    if length(bins) == 1
+        bins[1] > zero(T) || throw(ArgumentError("RDF bin width must be positive"))
+        return bins[1]
+    end
+
+    bin_width = bins[2] - bins[1]
+    bin_width > zero(T) || throw(ArgumentError("RDF bins must be strictly increasing"))
+
+    for i in 3:length(bins)
+        step = bins[i] - bins[i - 1]
+        if !isapprox(step, bin_width; atol=atol, rtol=sqrt(eps(T)))
+            throw(ArgumentError("RDF bins must be uniformly spaced"))
+        end
+    end
+
+    return bin_width
 end
 
 function compute_adaptive_gradient_coefficients(system_losses::AbstractVector{T})::Vector{T} where {T <: AbstractFloat}

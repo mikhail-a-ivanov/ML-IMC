@@ -43,29 +43,6 @@ Where `N` is the number of worker processes (must be divisible by the number of 
 
 For `simulation` mode, use exactly one system and set `N = 1`.
 
-### Required fields per mode
-
-| Field | training | pmf-pretraining | magic-pretraining | simulation |
-|---|---|---|---|---|
-| `[global].model_file` | "none" or path | "none" or path | "none" or path | **required** (path to .bson) |
-| `[global].system_files` | 1+ systems | 1+ systems | 1+ systems | **exactly 1** system |
-| `[pretraining]` section | not used | required | required | not used |
-| `[magic_pretraining].potential_files` | not used | not used | **required** (1 per system) | not used |
-
-## Configuration Files
-
-- **`config.toml`:**  Main configuration with `[global]`, `[monte_carlo]`, `[neural_network]`, `[pretraining]`, and `[magic_pretraining]` sections. See `configs/methanol-data/config.toml.example` for a minimal reproducible example.
-- **`symmetry_functions.toml`:**  Defines Behler-Parrinello symmetry functions (G2) used as input features.
-- **System `*.toml` files:**  One per system in `configs/methanol-data/`, specifying PDB topology, XTC trajectory, reference RDF, and simulation parameters.
-
-### Magic Potential Format
-
-Magic pre-training potential files (`.dat`/`.pot`) contain two whitespace-separated columns: `r` (distance in Å) and `U(r)` (pair potential). See `scripts/prepare_pot.py` for preprocessing IMC potentials into the expected format.
-
-## Output
-
-All output files are written to `global.output_dir` (default: `run/`). This includes models (`.bson`), optimizer states, RDF predictions, energy time series, and training/pre-training logs.
-
 ## Authors
 
 - Prof. Alexander Lyubartsev (<alexander.lyubartsev@su.se>) - Principal investigator and method developer

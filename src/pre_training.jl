@@ -175,89 +175,82 @@ function run_training_phase!(steps::Int, batch_size::Int,
     phase_type = use_diff_gradient ? "diff" : "abs"
     move_type = use_all_particles ? "all" : "single"
     od = pretrain_params.output_dir
-    log_file = joinpath(od, "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_detail.dat")
-    avg_log_file = joinpath(od, "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_summary.dat")
+    summary_file = joinpath(od, "$(log_prefix)_$(phase_type)_$(move_type)_$(timestamp)_summary.csv")
 
-    for epoch in 1:steps
-        accum_mse_diff = 0.0
-        accum_mae_diff = 0.0
-        accum_mse_abs = 0.0
-        accum_mae_abs = 0.0
-        accum_reg = 0.0
-        count = 0
-        batch_flat_grad = nothing
-        grad_restructure = nothing
+    summary_io = open(summary_file, "w")
+    println(summary_io, "# epoch,mean_diff_mae,mean_abs_mae,grad_norm,lr")
 
-        for batch_iter in 1:batch_size
-            batch_gradients = Vector{Any}(undef, n_systems)
-            for sys_id in 1:n_systems
-                move = make_mc_move!(use_all_particles,
-                                     ref_data_list[sys_id],
-                                     model,
-                                     nn_params,
-                                     system_params_list[sys_id],
-                                     rng)
-                symm1, symm2 = move.symm1, move.symm2
-                Δe_nn, Δe_pmf = move.Δe_nn, move.Δe_pmf
-                e_nn1, e_pmf1 = move.e_nn1, move.e_pmf1
-                e_nn2, e_pmf2 = move.e_nn2, move.e_pmf2
+    try
+        for epoch in 1:steps
+            accum_mae_diff = 0.0
+            accum_mae_abs = 0.0
+            count = 0
+            batch_flat_grad = nothing
+            grad_restructure = nothing
 
-                batch_gradients[sys_id] = compute_pretraining_gradient!(e_nn2, e_pmf2, Δe_nn, Δe_pmf,
-                                                                        symm1, symm2, model,
-                                                                        pretrain_params,
-                                                                        use_diff_gradient)
+            for batch_iter in 1:batch_size
+                batch_gradients = Vector{Any}(undef, n_systems)
+                for sys_id in 1:n_systems
+                    move = make_mc_move!(use_all_particles,
+                                         ref_data_list[sys_id],
+                                         model,
+                                         nn_params,
+                                         system_params_list[sys_id],
+                                         rng)
+                    symm1, symm2 = move.symm1, move.symm2
+                    Δe_nn, Δe_pmf = move.Δe_nn, move.Δe_pmf
+                    e_nn2, e_pmf2 = move.e_nn2, move.e_pmf2
+                    n_atoms = system_params_list[sys_id].n_atoms
 
-                diff_mse = (Δe_nn - Δe_pmf)^2
-                diff_mae = abs(Δe_nn - Δe_pmf)
-                abs_mse = (e_nn2 - e_pmf2)^2
-                abs_mae = abs(e_nn2 - e_pmf2)
-                model_params = Flux.trainables(model)
-                reg_loss = pretrain_params.regularization * sum(x -> sum(abs2, x), model_params)
+                    norm = if use_diff_gradient && !use_all_particles
+                        1.0
+                    else
+                        Float64(n_atoms)
+                    end
 
-                accum_mse_diff += diff_mse
-                accum_mae_diff += diff_mae
-                accum_mse_abs += abs_mse
-                accum_mae_abs += abs_mae
-                accum_reg += reg_loss
-                count += 1
+                    batch_gradients[sys_id] = compute_pretraining_gradient!(e_nn2, e_pmf2, Δe_nn, Δe_pmf,
+                                                                            symm1, symm2, model,
+                                                                            pretrain_params,
+                                                                            use_diff_gradient,
+                                                                            norm_factor=norm)
 
-                log_batch_metrics(log_file, epoch, batch_iter, sys_id,
-                                  diff_mae, diff_mse, abs_mae, abs_mse,
-                                  e_nn2, e_pmf2, Δe_nn, Δe_pmf)
+                    accum_mae_diff += abs(Δe_nn - Δe_pmf) / n_atoms
+                    accum_mae_abs += abs(e_nn2 - e_pmf2) / n_atoms
+                    count += 1
+                end
+
+                flat_grad, grad_restructure = mean_gradient(batch_gradients)
+                batch_flat_grad = isnothing(batch_flat_grad) ? flat_grad : batch_flat_grad .+ flat_grad
             end
 
-            flat_grad, grad_restructure = mean_gradient(batch_gradients)
-            batch_flat_grad = isnothing(batch_flat_grad) ? flat_grad : batch_flat_grad .+ flat_grad
+            batch_flat_grad ./= batch_size
+            grad_norm = norm(batch_flat_grad)
+            final_grad = grad_restructure(batch_flat_grad)
+            update_model!(model, opt_state, final_grad)
+
+            warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
+            if warmup_lr != lr_state.current_lr
+                lr_state.current_lr = warmup_lr
+                Flux.adjust!(opt_state, warmup_lr)
+            end
+
+            mean_mae_diff = accum_mae_diff / count
+            mean_mae_abs = accum_mae_abs / count
+
+            log_pretraining_summary(summary_io, epoch, mean_mae_diff, mean_mae_abs,
+                                    grad_norm, lr_state.current_lr)
+
+            plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
+            step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
+
+            println(@sprintf("%s | %s | Epoch: %4d | Batch Size: %3d | Diff MAE: %8.2f | Abs MAE: %8.2f | LR: %.2e",
+                             phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs,
+                             lr_state.current_lr))
+
+            flush(summary_io)
         end
-
-        batch_flat_grad ./= batch_size
-        final_grad = grad_restructure(batch_flat_grad)
-        update_model!(model, opt_state, final_grad)
-
-        # Apply warmup LR
-        warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
-        if warmup_lr != lr_state.current_lr
-            lr_state.current_lr = warmup_lr
-            Flux.adjust!(opt_state, warmup_lr)
-        end
-
-        mean_mse_diff = accum_mse_diff / count
-        mean_mae_diff = accum_mae_diff / count
-        mean_mse_abs = accum_mse_abs / count
-        mean_mae_abs = accum_mae_abs / count
-        mean_reg = accum_reg / count
-
-        log_average_metrics(avg_log_file, epoch,
-                            mean_mae_diff, mean_mse_diff,
-                            mean_mae_abs, mean_mse_abs,
-                            mean_reg)
-
-        # Step plateau based on chosen metric
-        plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
-        step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
-
-        println(@sprintf("%s | %s | Epoch: %4d | Batch Size: %3d | Diff MAE: %8.2f | Abs MAE: %8.2f | LR: %.2e",
-                         phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs, lr_state.current_lr))
+    finally
+        close(summary_io)
     end
 
     return model, opt_state
