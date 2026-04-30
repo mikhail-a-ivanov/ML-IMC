@@ -304,8 +304,8 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
         write_trajectory(positions(frame), box, system_params, pdb_file, 'w')
     end
 
-    total_points::Int = round(Int, mc_params.steps / mc_params.output_frequency)
-    production_points::Int = round(Int, (mc_params.steps - mc_params.equilibration_steps) / mc_params.output_frequency)
+    total_steps::Int = mc_params.equilibration_steps + mc_params.steps
+    total_output_points::Int = round(Int, total_steps / mc_params.output_frequency)
 
     distance_matrix::Matrix{Float64} = build_distance_matrix(frame)
     g2_matrix::Matrix{Float64} = build_g2_matrix(distance_matrix, nn_params)
@@ -323,13 +323,14 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     symm_func_matrix::Matrix{Float64} = g2_matrix
     energy_vector::Vector{Float64} = init_system_energies_vector(symm_func_matrix, model)
     total_energy::Float64 = sum(energy_vector)
-    energies::Vector{Float64} = zeros(total_points + 1)
+    energies::Vector{Float64} = zeros(total_output_points + 1)
     energies[1] = total_energy
 
     accepted_total::Int = 0
     accepted_intermediate::Int = 0
+    collected_samples::Int = 0
 
-    for step in 1:(mc_params.steps)
+    for step in 1:total_steps
         total_energy,
         accepted = mcmove!(frame, distance_matrix, g2_matrix,
                            total_energy, energy_vector, model,
@@ -354,6 +355,7 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
         end
 
         if step % mc_params.output_frequency == 0 && step > mc_params.equilibration_steps
+            collected_samples += 1
             if global_params.mode == "training"
                 hist = update_distance_histogram!(distance_matrix, hist, system_params)
                 hist_accumulator .+= hist
@@ -368,15 +370,19 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
         end
     end
 
-    acceptance_ratio::Float64 = accepted_total / mc_params.steps
+    acceptance_ratio::Float64 = accepted_total / total_steps
+
+    if collected_samples == 0
+        error("No production samples collected in mcsample!. Check configuration: steps=$(mc_params.steps), equilibration=$(mc_params.equilibration_steps), output_frequency=$(mc_params.output_frequency).")
+    end
 
     if global_params.mode == "training"
-        cross_accumulators ./= production_points
-        g2_accumulator ./= production_points
+        cross_accumulators ./= collected_samples
+        g2_accumulator ./= collected_samples
         symm_func_accumulator = g2_accumulator
     end
 
-    hist_accumulator ./= production_points
+    hist_accumulator ./= collected_samples
     normalize_hist_to_rdf!(hist_accumulator, system_params, box)
 
     if global_params.mode == "training"

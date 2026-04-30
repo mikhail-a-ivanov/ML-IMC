@@ -171,7 +171,7 @@ function run_training_phase!(steps::Int, batch_size::Int,
                   for sys in system_params_list]
     opt_state = Flux.setup(optimizer, model)
     lr_config = pretrain_params.lr_scheduler_config
-    initial_lr = pretrain_params.learning_rate
+    initial_lr = pretrain_params.optimizer_config.learning_rate
     lr_state = LRSchedulerState(initial_lr, Inf, 0, 0)
     Flux.adjust!(opt_state, initial_lr)
 
@@ -186,6 +186,14 @@ function run_training_phase!(steps::Int, batch_size::Int,
 
     try
         for epoch in 1:steps
+            if epoch <= lr_config.warmup_epochs
+                warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
+                if warmup_lr != lr_state.current_lr
+                    lr_state.current_lr = warmup_lr
+                    Flux.adjust!(opt_state, warmup_lr)
+                end
+            end
+
             accum_mae_diff = 0.0
             accum_mae_abs = 0.0
             count = 0
@@ -232,14 +240,6 @@ function run_training_phase!(steps::Int, batch_size::Int,
             grad_norm = norm(batch_flat_grad)
             final_grad = grad_restructure(batch_flat_grad)
             update_model!(model, opt_state, final_grad)
-
-            if epoch <= lr_config.warmup_epochs
-                warmup_lr = lr_for_epoch(lr_config, initial_lr, epoch)
-                if warmup_lr != lr_state.current_lr
-                    lr_state.current_lr = warmup_lr
-                    Flux.adjust!(opt_state, warmup_lr)
-                end
-            end
 
             mean_mae_diff = accum_mae_diff / count
             mean_mae_abs = accum_mae_abs / count

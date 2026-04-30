@@ -62,7 +62,7 @@ function train!(global_params::GlobalParameters,
 
     od = global_params.output_dir
     lr_config = nn_params.lr_scheduler_config
-    lr_state = LRSchedulerState(nn_params.learning_rate, Inf, 0, 0)
+    lr_state = LRSchedulerState(nn_params.optimizer_config.learning_rate, Inf, 0, 0)
 
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
     training_log_file = joinpath(od, "training_$(timestamp)_summary.csv")
@@ -76,7 +76,7 @@ function train!(global_params::GlobalParameters,
             println("\n--------------------------------- Iteration $iteration ---------------------------------\n")
 
             if iteration <= lr_config.warmup_epochs
-                warmup_lr = lr_for_epoch(lr_config, nn_params.learning_rate, iteration)
+                warmup_lr = lr_for_epoch(lr_config, nn_params.optimizer_config.learning_rate, iteration)
                 if warmup_lr != lr_state.current_lr
                     lr_state.current_lr = warmup_lr
                     Flux.adjust!(opt_state, warmup_lr)
@@ -132,12 +132,12 @@ function train!(global_params::GlobalParameters,
             @save joinpath(od, "opt-iter-$(iter_string).bson") opt_state
             @save joinpath(od, "gradients-iter-$(iter_string).bson") mean_loss_gradients
 
-            tmp_symm_func_matrix::Matrix{Float64} = zeros(1,
-                                                          length(nn_params.g2_functions))
+            tmp_symm_func_matrix::Matrix{Float64} = zeros(length(nn_params.g2_functions),
+                                                          1)
             tmp_energy_gradients = compute_energy_gradients(tmp_symm_func_matrix, model)
             _, gradient_restructure = Flux.destructure(tmp_energy_gradients)
-            mean_loss_gradients = gradient_restructure(mean_loss_gradients)
             grad_norm = norm(mean_loss_gradients)
+            mean_loss_gradients = gradient_restructure(mean_loss_gradients)
             update_model!(model, opt_state, mean_loss_gradients)
 
             avg_mae = sum(system_losses) / length(system_losses)

@@ -135,15 +135,19 @@ function adjust_monte_carlo_step!(current_step_size::T,
                                   mc_params::MonteCarloParameters,
                                   accepted_moves::Integer)::T where {T <: AbstractFloat}
     # Calculate minimum and maximum step sizes based on box dimensions
-    min_step_size = 0.5  # å
+    min_step_size = T(0.1)  # Å - lowered for better flexibility
     min_box_length = minimum(box)
-    max_step_size = min_box_length / 2.0
+    max_step_size = min_box_length * T(0.3) # Tightened from 0.5 to 0.3
 
     # Calculate current acceptance ratio
-    acceptance_ratio = accepted_moves / mc_params.step_adjust_frequency
+    acceptance_ratio = T(accepted_moves) / T(mc_params.step_adjust_frequency)
+    target = T(system_params.target_acceptance_ratio)
 
-    # Adjust step size based on target acceptance ratio
-    new_step_size = (acceptance_ratio / system_params.target_acceptance_ratio) * current_step_size
+    # Use a damped adjustment to handle noisy models
+    # Formula: new = old * (1 + damping * (acc - target) / target)
+    damping = T(0.2)
+    scaling = one(T) + damping * (acceptance_ratio - target) / target
+    new_step_size = current_step_size * scaling
 
     # Enforce step size bounds
     return clamp(new_step_size, min_step_size, max_step_size)

@@ -16,14 +16,19 @@ function init_optimizer(params::Union{NeuralNetParameters, PreTrainingParameters
                          "OAdam" => OAdam,
                          "AdaBelief" => AdaBelief)
 
-    optimizer_func = get(OPTIMIZER_MAP, params.optimizer, Descent)
+    opt_config = params.optimizer_config
+
+    optimizer_func = get(OPTIMIZER_MAP, opt_config.name, nothing)
+    if isnothing(optimizer_func)
+        throw(ArgumentError("Unknown optimizer: $(opt_config.name). Supported: $(join(keys(OPTIMIZER_MAP), ", "))"))
+    end
 
     if optimizer_func in (Momentum, Nesterov, RMSProp)
-        return optimizer_func(params.learning_rate, params.momentum)
+        return optimizer_func(opt_config.learning_rate, opt_config.momentum)
     elseif optimizer_func in (Adam, RAdam, AdaMax, AMSGrad, NAdam, AdamW, OAdam, AdaBelief)
-        return optimizer_func(params.learning_rate, (params.decay_1, params.decay_2))
+        return optimizer_func(opt_config.learning_rate, (opt_config.decay_1, opt_config.decay_2))
     else
-        return optimizer_func(params.learning_rate)
+        return optimizer_func(opt_config.learning_rate)
     end
 end
 

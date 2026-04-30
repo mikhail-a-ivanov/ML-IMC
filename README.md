@@ -8,7 +8,7 @@ This project implements an algorithm for creating neural network force fields an
 
 ## Installation
 
-1. **Julia Version:**  Ensure you have Julia version 1.10 or later installed.
+1. **Julia Version:**  Ensure you have Julia version 1.11 or later installed.
 
 2. **Package Installation:**
 

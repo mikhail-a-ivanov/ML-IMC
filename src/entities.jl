@@ -23,6 +23,14 @@ mutable struct LRSchedulerState
     cooldown_left::Int
 end
 
+struct OptimizerConfig
+    name::String
+    learning_rate::Float64
+    momentum::Float64
+    decay_1::Float64
+    decay_2::Float64
+end
+
 struct NeuralNetParameters
     # Symmetry functions
     g2_functions::Vector{G2}
@@ -42,11 +50,7 @@ struct NeuralNetParameters
     gradient_type::String
 
     # Optimizer settings
-    optimizer::String
-    learning_rate::Float64
-    momentum::Float64
-    decay_1::Float64
-    decay_2::Float64
+    optimizer_config::OptimizerConfig
 
     # LR scheduler
     lr_scheduler_config::LRSchedulerConfig
@@ -91,11 +95,7 @@ struct PreTrainingParameters
     batch_size::Int
     output_frequency::Int
     regularization::Float64
-    optimizer::String
-    learning_rate::Float64
-    momentum::Float64
-    decay_1::Float64
-    decay_2::Float64
+    optimizer_config::OptimizerConfig
     use_diff_gradient::Bool
     use_all_particles::Bool
     gradient_type::String
