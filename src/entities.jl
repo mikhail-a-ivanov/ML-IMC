@@ -124,3 +124,11 @@ function MonteCarloWorkspace{T}(n_atoms::Int, n_g2::Int) where {T <: AbstractFlo
                            Vector{Int}(undef, n_atoms),
                            Matrix{T}(undef, n_g2, n_atoms))
 end
+
+mutable struct PretrainingWorkspace{T <: AbstractFloat}
+    symm2_scratch::Matrix{T}
+end
+
+function PretrainingWorkspace{T}(n_atoms::Int, n_g2::Int) where {T <: AbstractFloat}
+    PretrainingWorkspace{T}(Matrix{T}(undef, n_g2, n_atoms))
+end

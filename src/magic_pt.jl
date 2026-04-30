@@ -186,14 +186,14 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
                                      nn_params::NeuralNetParameters,
                                      sys_params::SystemParameters,
                                      lookup::PotentialLookup,
-                                     rng::Xoroshiro128Plus)
+                                     rng::Xoroshiro128Plus,
+                                     workspace::PretrainingWorkspace{Float64})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
     distance_matrix = ref_data.cache.distance_matrices[frame_id]
     symm1 = ref_data.cache.g2_matrices[frame_id]
-    e_nn1_vector = init_system_energies_vector(symm1, model)
-    e_nn1 = sum(e_nn1_vector)
+    e_nn1 = compute_system_total_energy_scalar(symm1, model)
 
     e_pot1 = ref_data.precomputed_energy[frame_id]
 
@@ -205,14 +205,12 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
 
     e_pot2 = e_pot1 + compute_potential_energy_delta(distance_vec1, distance_vec2, lookup, sys_params, point_index)
 
-    update_mask = get_energies_update_mask(distance_vec1, distance_vec2, nn_params)
-
-    g2_matrix2 = copy(ref_data.cache.g2_matrices[frame_id])
+    g2_matrix2 = workspace.symm2_scratch
+    copyto!(g2_matrix2, ref_data.cache.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
 
     symm2 = g2_matrix2
-    e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
-    e_nn2 = sum(e_nn2_vector)
+    e_nn2 = compute_system_total_energy_scalar(symm2, model)
 
     return (symm1=symm1,
             symm2=symm2,
@@ -229,12 +227,12 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
                                   nn_params::NeuralNetParameters,
                                   sys_params::SystemParameters,
                                   lookup::PotentialLookup,
-                                  rng::Xoroshiro128Plus)
+                                  rng::Xoroshiro128Plus,
+                                  workspace::PretrainingWorkspace{Float64})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
 
     symm1 = ref_data.cache.g2_matrices[frame_id]
-    e_nn1_vector = init_system_energies_vector(symm1, model)
-    e_nn1 = sum(e_nn1_vector)
+    e_nn1 = compute_system_total_energy_scalar(symm1, model)
 
     e_pot1 = ref_data.precomputed_energy[frame_id]
 
@@ -245,8 +243,7 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
     g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
 
     symm2 = g2_matrix2
-    e_nn2_vector = init_system_energies_vector(symm2, model)
-    e_nn2 = sum(e_nn2_vector)
+    e_nn2 = compute_system_total_energy_scalar(symm2, model)
 
     return (symm1=symm1,
             symm2=symm2,
@@ -264,10 +261,11 @@ function make_magic_mc_move!(use_all_particles::Bool,
                              nn_params::NeuralNetParameters,
                              sys_params::SystemParameters,
                              lookup::PotentialLookup,
-                             rng::Xoroshiro128Plus)
+                             rng::Xoroshiro128Plus,
+                             workspace::PretrainingWorkspace{Float64})
     return use_all_particles ?
-           magic_all_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng) :
-           magic_single_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng)
+           magic_all_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng, workspace) :
+           magic_single_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng, workspace)
 end
 
 function run_magic_training_phase!(steps::Int,
@@ -284,6 +282,8 @@ function run_magic_training_phase!(steps::Int,
                                    log_prefix::String="magic_pretraining")
     rng = Xoroshiro128Plus()
     n_systems = length(system_params_list)
+    workspaces = [PretrainingWorkspace{Float64}(sys.n_atoms, length(nn_params.g2_functions))
+                  for sys in system_params_list]
     opt_state = Flux.setup(optimizer, model)
     lr_config = pretrain_params.lr_scheduler_config
     initial_lr = pretrain_params.learning_rate
@@ -320,7 +320,8 @@ function run_magic_training_phase!(steps::Int,
                                                nn_params,
                                                system_params_list[sys_id],
                                                system_lookup,
-                                               rng)
+                                               rng,
+                                               workspaces[sys_id])
 
                     symm1, symm2 = move.symm1, move.symm2
                     Δe_nn, Δe_pot = move.Δe_nn, move.Δe_pot

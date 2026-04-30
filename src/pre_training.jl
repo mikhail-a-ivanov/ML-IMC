@@ -14,10 +14,9 @@ end
 
 function compute_initial_energies(ref_data::ReferenceData, frame_id::Int, model::Chain)
     symm = ref_data.cache.g2_matrices[frame_id]
-    e_nn_vector = init_system_energies_vector(symm, model)
-    e_nn = sum(e_nn_vector)
+    e_nn = compute_system_total_energy_scalar(symm, model)
     e_pmf = ref_data.pmf_energies[frame_id]
-    return symm, e_nn, e_pmf, e_nn_vector
+    return symm, e_nn, e_pmf
 end
 
 function compute_pmf(rdf::AbstractVector{T}, system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
@@ -88,26 +87,25 @@ end
 
 function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
                            nn_params::NeuralNetParameters, sys_params::SystemParameters,
-                           rng::Xoroshiro128Plus)
+                           rng::Xoroshiro128Plus,
+                           workspace::PretrainingWorkspace{Float64})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
     distance_matrix = ref_data.cache.distance_matrices[frame_id]
-    symm1, e_nn1, e_pmf1, e_nn1_vector = compute_initial_energies(ref_data, frame_id, model)
+    symm1, e_nn1, e_pmf1 = compute_initial_energies(ref_data, frame_id, model)
     distance_vec1 = @view distance_matrix[:, point_index]
 
     point = random_displaced_position(coordinates, point_index, box, sys_params.max_displacement, rng)
     distance_vec2 = compute_distance_vector(point, coordinates, box)
     distance_vec2[point_index] = 0.0
 
-    update_mask = get_energies_update_mask(distance_vec1, distance_vec2, nn_params)
-
-    g2_matrix2 = copy(ref_data.cache.g2_matrices[frame_id])
+    g2_matrix2 = workspace.symm2_scratch
+    copyto!(g2_matrix2, ref_data.cache.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
 
     symm2 = g2_matrix2
-    e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
-    e_nn2 = sum(e_nn2_vector)
+    e_nn2 = compute_system_total_energy_scalar(symm2, model)
     e_pmf2 = e_pmf1 + compute_binned_pair_energy_delta(distance_vec1, distance_vec2, ref_data.pmf,
                                               sys_params, point_index)
 
@@ -123,9 +121,10 @@ end
 
 function all_particle_move!(ref_data::ReferenceData, model::Flux.Chain,
                             nn_params::NeuralNetParameters, sys_params::SystemParameters,
-                            rng::Xoroshiro128Plus)
+                            rng::Xoroshiro128Plus,
+                            workspace::PretrainingWorkspace{Float64})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
-    symm1, e_nn1, e_pmf1, _ = compute_initial_energies(ref_data, frame_id, model)
+    symm1, e_nn1, e_pmf1 = compute_initial_energies(ref_data, frame_id, model)
 
     coordinates2 = random_displaced_coordinates(coordinates, box, sys_params.max_displacement, rng)
     distance_matrix2 = build_distance_matrix(coordinates2, box)
@@ -135,8 +134,7 @@ function all_particle_move!(ref_data::ReferenceData, model::Flux.Chain,
     g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
 
     symm2 = g2_matrix2
-    e_nn2_vector = init_system_energies_vector(symm2, model)
-    e_nn2 = sum(e_nn2_vector)
+    e_nn2 = compute_system_total_energy_scalar(symm2, model)
     e_pmf2 = compute_histogram_energy(hist2, ref_data.pmf)
 
     return (symm1=symm1,
@@ -154,10 +152,11 @@ function make_mc_move!(use_all_particles::Bool,
                        model::Chain,
                        nn_params::NeuralNetParameters,
                        sys_params::SystemParameters,
-                       rng::Xoroshiro128Plus)
+                       rng::Xoroshiro128Plus,
+                       workspace::PretrainingWorkspace{Float64})
     return use_all_particles ?
-           all_particle_move!(ref_data, model, nn_params, sys_params, rng) :
-           pretraining_move!(ref_data, model, nn_params, sys_params, rng)
+           all_particle_move!(ref_data, model, nn_params, sys_params, rng, workspace) :
+           pretraining_move!(ref_data, model, nn_params, sys_params, rng, workspace)
 end
 
 function run_training_phase!(steps::Int, batch_size::Int,
@@ -168,6 +167,8 @@ function run_training_phase!(steps::Int, batch_size::Int,
                              optimizer; log_prefix::String="pretraining")
     rng = Xoroshiro128Plus()
     n_systems = length(system_params_list)
+    workspaces = [PretrainingWorkspace{Float64}(sys.n_atoms, length(nn_params.g2_functions))
+                  for sys in system_params_list]
     opt_state = Flux.setup(optimizer, model)
     lr_config = pretrain_params.lr_scheduler_config
     initial_lr = pretrain_params.learning_rate
@@ -199,7 +200,8 @@ function run_training_phase!(steps::Int, batch_size::Int,
                                          model,
                                          nn_params,
                                          system_params_list[sys_id],
-                                         rng)
+                                         rng,
+                                         workspaces[sys_id])
                     symm1, symm2 = move.symm1, move.symm2
                     Δe_nn, Δe_pmf = move.Δe_nn, move.Δe_pmf
                     e_nn2, e_pmf2 = move.e_nn2, move.e_pmf2

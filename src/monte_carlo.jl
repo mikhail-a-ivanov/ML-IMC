@@ -251,7 +251,7 @@ function mcmove!(frame::Frame,
         @inbounds for k in 1:n_affected
             atom_i = workspace.affected_indices[k]
             for g in 1:n_g2
-                g2_matrix[atom_i, g] = workspace.g2_rows_scratch[g, k]
+                g2_matrix[g, atom_i] = workspace.g2_rows_scratch[g, k]
             end
         end
 

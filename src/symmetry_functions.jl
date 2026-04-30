@@ -37,12 +37,12 @@ function build_g2_matrix(distance_matrix::AbstractMatrix{T},
                          nn_params::NeuralNetParameters)::Matrix{T} where {T <: AbstractFloat}
     n_atoms = size(distance_matrix, 1)
     n_g2_functions = length(nn_params.g2_functions)
-    g2_matrix = Matrix{T}(undef, n_atoms, n_g2_functions)
+    g2_matrix = Matrix{T}(undef, n_g2_functions, n_atoms)
 
     for i in 1:n_atoms
         distance_vector = @view distance_matrix[i, :]
         for (j, g2_func) in enumerate(nn_params.g2_functions)
-            g2_matrix[i, j] = compute_g2(distance_vector,
+            g2_matrix[j, i] = compute_g2(distance_vector,
                                          g2_func.eta,
                                          g2_func.rcutoff,
                                          g2_func.rshift, g2_func.norm)
@@ -62,7 +62,7 @@ function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
     scaling = nn_params.symm_function_scaling
 
     @inbounds for (j, g2_func) in enumerate(nn_params.g2_functions)
-        g2_matrix[point_index, j] = compute_g2(distance_vector2,
+        g2_matrix[j, point_index] = compute_g2(distance_vector2,
                                                g2_func.eta,
                                                g2_func.rcutoff,
                                                g2_func.rshift, g2_func.norm) * scaling
@@ -78,7 +78,7 @@ function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
             if (zero(T) < dist1 < r_cutoff) || (zero(T) < dist2 < r_cutoff)
                 δg2 = compute_g2_element(dist2, g2_func.eta, r_cutoff, g2_func.rshift, g2_func.norm) -
                       compute_g2_element(dist1, g2_func.eta, r_cutoff, g2_func.rshift, g2_func.norm)
-                g2_matrix[i, j] += δg2 * scaling
+                g2_matrix[j, i] += δg2 * scaling
             end
         end
     end
@@ -114,7 +114,7 @@ function compute_changed_g2_rows!(g2_scratch::AbstractMatrix{T},
                                        g2_func.rshift, g2_func.norm) -
                     compute_g2_element(dist1, g2_func.eta, r_cutoff,
                                        g2_func.rshift, g2_func.norm)
-            g2_scratch[j, k] = g2_matrix[i, j] + delta * scaling
+            g2_scratch[j, k] = g2_matrix[j, i] + delta * scaling
         end
     end
 
