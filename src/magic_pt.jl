@@ -14,10 +14,8 @@ struct MagicPreComputedInput
 end
 
 struct MagicReferenceData
-    distance_matrices::Vector{Matrix{Float64}}
-    histograms::Vector{Vector{Float64}}
+    cache::PretrainingReferenceCache
     precomputed_energy::Vector{Float64}
-    g2_matrices::Vector{Matrix{Float64}}
 end
 
 struct PotentialData
@@ -31,12 +29,6 @@ struct PotentialLookup
     r_step::Float64
     r_min::Float64
     r_max::Float64
-end
-
-struct CachedTrajectory
-    frames::Vector{Frame}
-    n_frames::Int
-    boxes::Vector{Vector{Float64}}
 end
 
 function load_potential_data(filename::AbstractString)::PotentialData
@@ -126,29 +118,6 @@ end
     return v1 + t * (v2 - v1)
 end
 
-function cache_trajectory(sys_params::SystemParameters)::CachedTrajectory
-    println("Caching trajectory for system: $(sys_params.system_name)")
-    traj = read_xtc(sys_params)
-    n_frames = Int(size(traj)) - 1
-    frames = Vector{Frame}(undef, n_frames)
-    boxes = Vector{Vector{Float64}}(undef, n_frames)
-
-    for i in 1:n_frames
-        frames[i] = deepcopy(read_step(traj, i))
-        boxes[i] = lengths(UnitCell(frames[i]))
-    end
-
-    println("Cached $(n_frames) frames for system: $(sys_params.system_name)")
-    return CachedTrajectory(frames, n_frames, boxes)
-end
-
-function read_random_frame_cached(cached_traj::CachedTrajectory, rng::Xoroshiro128Plus)
-    frame_id = rand(rng, 1:(cached_traj.n_frames))
-    frame = deepcopy(cached_traj.frames[frame_id])
-    box = cached_traj.boxes[frame_id]
-    return frame, frame_id, box
-end
-
 function compute_potential_energy(distance_matrix::Matrix{Float64},
                                   lookup::PotentialLookup,
                                   system_params::SystemParameters)::Float64
@@ -169,33 +138,47 @@ function compute_potential_energy(distance_matrix::Matrix{Float64},
     return total_energy
 end
 
+function compute_potential_energy_delta(old_distances::AbstractVector{Float64},
+                                        new_distances::AbstractVector{Float64},
+                                        lookup::PotentialLookup,
+                                        system_params::SystemParameters,
+                                        point_index::Integer)::Float64
+    delta = 0.0
+    cutoff = system_params.n_bins * system_params.bin_width
+
+    @inbounds for i in eachindex(old_distances, new_distances)
+        i == point_index && continue
+
+        old_r = old_distances[i]
+        if old_r > 0.0 && old_r < cutoff
+            delta -= fast_interpolate_potential(old_r, lookup)
+        end
+
+        new_r = new_distances[i]
+        if new_r > 0.0 && new_r < cutoff
+            delta += fast_interpolate_potential(new_r, lookup)
+        end
+    end
+
+    return delta
+end
+
 function create_magic_reference_data(input::MagicPreComputedInput,
-                                     potential_data::PotentialData,
                                      lookup::PotentialLookup)::MagicReferenceData
     nn_params = input.nn_params
     sys_params = input.system_params
 
-    cached_traj = cache_trajectory(sys_params)
-    n_frames = cached_traj.n_frames
-
-    distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-    histograms = Vector{Vector{Float64}}(undef, n_frames)
-    g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
+    ref_cache = precompute_reference_cache(nn_params, sys_params)
+    n_frames = ref_cache.trajectory.n_frames
     potential_per_frame = Vector{Float64}(undef, n_frames)
 
     for frame_id in 1:n_frames
-        frame = cached_traj.frames[frame_id]
-
-        distance_matrices[frame_id] = build_distance_matrix(frame)
-        histograms[frame_id] = zeros(Float64, sys_params.n_bins)
-        update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], sys_params)
-
-        potential_per_frame[frame_id] = compute_potential_energy(distance_matrices[frame_id], lookup, sys_params)
-
-        g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
+        potential_per_frame[frame_id] = compute_potential_energy(ref_cache.distance_matrices[frame_id],
+                                                                 lookup,
+                                                                 sys_params)
     end
 
-    return MagicReferenceData(distance_matrices, histograms, potential_per_frame, g2_matrices)
+    return MagicReferenceData(ref_cache, potential_per_frame)
 end
 
 function magic_single_particle_move!(ref_data::MagicReferenceData,
@@ -203,42 +186,33 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
                                      nn_params::NeuralNetParameters,
                                      sys_params::SystemParameters,
                                      lookup::PotentialLookup,
-                                     cached_traj::CachedTrajectory,
                                      rng::Xoroshiro128Plus)
-    frame, frame_id, box = read_random_frame_cached(cached_traj, rng)
+    coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
-    distance_matrix = ref_data.distance_matrices[frame_id]
-    symm1 = ref_data.g2_matrices[frame_id]
+    distance_matrix = ref_data.cache.distance_matrices[frame_id]
+    symm1 = ref_data.cache.g2_matrices[frame_id]
     e_nn1_vector = init_system_energies_vector(symm1, model)
     e_nn1 = sum(e_nn1_vector)
 
     e_pot1 = ref_data.precomputed_energy[frame_id]
 
-    distance_vec1 = distance_matrix[:, point_index]
+    distance_vec1 = @view distance_matrix[:, point_index]
 
-    dr = sys_params.max_displacement * (rand(rng, Float64, 3) .- 0.5)
-    positions(frame)[:, point_index] .+= dr
+    point = random_displaced_position(coordinates, point_index, box, sys_params.max_displacement, rng)
+    distance_vec2 = compute_distance_vector(point, coordinates, box)
+    distance_vec2[point_index] = 0.0
 
-    point = positions(frame)[:, point_index]
-    distance_vec2 = compute_distance_vector(point, positions(frame), box)
-
-    distance_matrix2 = copy(distance_matrix)
-    distance_matrix2[point_index, :] = distance_vec2
-    distance_matrix2[:, point_index] = distance_vec2
-
-    e_pot2 = compute_potential_energy(distance_matrix2, lookup, sys_params)
+    e_pot2 = e_pot1 + compute_potential_energy_delta(distance_vec1, distance_vec2, lookup, sys_params, point_index)
 
     update_mask = get_energies_update_mask(distance_vec1, distance_vec2, nn_params)
 
-    g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
+    g2_matrix2 = copy(ref_data.cache.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
 
     symm2 = g2_matrix2
     e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
     e_nn2 = sum(e_nn2_vector)
-
-    positions(frame)[:, point_index] .-= dr
 
     return (symm1=symm1,
             symm2=symm2,
@@ -255,27 +229,17 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
                                   nn_params::NeuralNetParameters,
                                   sys_params::SystemParameters,
                                   lookup::PotentialLookup,
-                                  cached_traj::CachedTrajectory,
                                   rng::Xoroshiro128Plus)
-    frame, frame_id, box = read_random_frame_cached(cached_traj, rng)
+    coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
 
-    distance_matrix = ref_data.distance_matrices[frame_id]
-    symm1 = ref_data.g2_matrices[frame_id]
+    symm1 = ref_data.cache.g2_matrices[frame_id]
     e_nn1_vector = init_system_energies_vector(symm1, model)
     e_nn1 = sum(e_nn1_vector)
 
     e_pot1 = ref_data.precomputed_energy[frame_id]
 
-    old_coords = copy(positions(frame))
-
-    dr = sys_params.max_displacement * (rand(rng, Float64, 3, sys_params.n_atoms) .- 0.5)
-    positions(frame) .+= dr
-
-    for i in 1:(sys_params.n_atoms)
-        apply_periodic_boundaries!(frame, box, i)
-    end
-
-    distance_matrix2 = build_distance_matrix(frame)
+    coordinates2 = random_displaced_coordinates(coordinates, box, sys_params.max_displacement, rng)
+    distance_matrix2 = build_distance_matrix(coordinates2, box)
     e_pot2 = compute_potential_energy(distance_matrix2, lookup, sys_params)
 
     g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
@@ -283,8 +247,6 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
     symm2 = g2_matrix2
     e_nn2_vector = init_system_energies_vector(symm2, model)
     e_nn2 = sum(e_nn2_vector)
-
-    positions(frame) .= old_coords
 
     return (symm1=symm1,
             symm2=symm2,
@@ -302,11 +264,10 @@ function make_magic_mc_move!(use_all_particles::Bool,
                              nn_params::NeuralNetParameters,
                              sys_params::SystemParameters,
                              lookup::PotentialLookup,
-                             cached_traj::CachedTrajectory,
                              rng::Xoroshiro128Plus)
     return use_all_particles ?
-           magic_all_particle_move!(ref_data, model, nn_params, sys_params, lookup, cached_traj, rng) :
-           magic_single_particle_move!(ref_data, model, nn_params, sys_params, lookup, cached_traj, rng)
+           magic_all_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng) :
+           magic_single_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng)
 end
 
 function run_magic_training_phase!(steps::Int,
@@ -316,7 +277,6 @@ function run_magic_training_phase!(steps::Int,
                                    system_params_list,
                                    ref_data_list,
                                    lookup_list,
-                                   cached_traj_list,
                                    model::Chain,
                                    nn_params::NeuralNetParameters,
                                    pretrain_params::PreTrainingParameters,
@@ -353,7 +313,6 @@ function run_magic_training_phase!(steps::Int,
                 for sys_id in 1:n_systems
                     system_ref_data = ref_data_list[sys_id]
                     system_lookup = lookup_list[sys_id]
-                    system_cached_traj = cached_traj_list[sys_id]
 
                     move = make_magic_mc_move!(use_all_particles,
                                                system_ref_data,
@@ -361,7 +320,6 @@ function run_magic_training_phase!(steps::Int,
                                                nn_params,
                                                system_params_list[sys_id],
                                                system_lookup,
-                                               system_cached_traj,
                                                rng)
 
                     symm1, symm2 = move.symm1, move.symm2
@@ -450,10 +408,6 @@ function magic_pretrain(magic_params::MagicPreTrainingParameters,
                                            system_params_list[i].n_bins)
                    for i in 1:length(potential_data_list)]
 
-    # Кэшируем траектории для каждой системы
-    println("Caching trajectories...")
-    cached_traj_list = [cache_trajectory(system_params) for system_params in system_params_list]
-
     # Создаем референсные данные для каждой системы
     println("Creating reference data for magic pre-training...")
     ref_inputs = [MagicPreComputedInput(nn_params, system_params_list[i], reference_rdfs[i])
@@ -462,7 +416,7 @@ function magic_pretrain(magic_params::MagicPreTrainingParameters,
     ref_data_list = []
     for i in 1:length(ref_inputs)
         println("Processing system $(i)...")
-        push!(ref_data_list, create_magic_reference_data(ref_inputs[i], potential_data_list[i], lookup_list[i]))
+        push!(ref_data_list, create_magic_reference_data(ref_inputs[i], lookup_list[i]))
     end
 
     println("Starting magic pre-training...")
@@ -474,7 +428,6 @@ function magic_pretrain(magic_params::MagicPreTrainingParameters,
                                           system_params_list,
                                           ref_data_list,
                                           lookup_list,
-                                          cached_traj_list,
                                           model,
                                           nn_params,
                                           pretrain_params,

@@ -7,29 +7,17 @@ struct PreComputedInput
 end
 
 struct ReferenceData
-    distance_matrices::Vector{Matrix{Float64}}
-    histograms::Vector{Vector{Float64}}
+    cache::PretrainingReferenceCache
     pmf::Vector{Float64}
-    g2_matrices::Vector{Matrix{Float64}}
-end
-
-function read_random_frame(sys_params::SystemParameters, rng::Xoroshiro128Plus)
-    traj = read_xtc(sys_params)
-    nframes = Int(size(traj)) - 1  # пропускаем первый кадр
-    frame_id = rand(rng, 1:nframes)
-    frame = read_step(traj, frame_id)
-    box = lengths(UnitCell(frame))
-    return frame, frame_id, box
+    pmf_energies::Vector{Float64}
 end
 
 function compute_initial_energies(ref_data::ReferenceData, frame_id::Int, model::Chain)
-    hist = ref_data.histograms[frame_id]
-    pmf = ref_data.pmf
-    symm = ref_data.g2_matrices[frame_id]
+    symm = ref_data.cache.g2_matrices[frame_id]
     e_nn_vector = init_system_energies_vector(symm, model)
     e_nn = sum(e_nn_vector)
-    e_pmf = sum(hist .* pmf)
-    return symm, hist, e_nn, e_pmf, e_nn_vector
+    e_pmf = ref_data.pmf_energies[frame_id]
+    return symm, e_nn, e_pmf, e_nn_vector
 end
 
 function compute_pmf(rdf::AbstractVector{T}, system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
@@ -48,60 +36,80 @@ function compute_pmf(rdf::AbstractVector{T}, system_params::SystemParameters)::V
     return pmf ./ 2.0
 end
 
+function compute_histogram_energy(histogram::AbstractVector{T},
+                                  pair_energies::AbstractVector{T})::T where {T <: AbstractFloat}
+    energy = zero(T)
+
+    @inbounds @simd for i in eachindex(histogram, pair_energies)
+        energy += histogram[i] * pair_energies[i]
+    end
+
+    return energy
+end
+
+function compute_binned_pair_energy_delta(old_distances::AbstractVector{T},
+                                          new_distances::AbstractVector{T},
+                                          pair_energies::AbstractVector{T},
+                                          system_params::SystemParameters,
+                                          point_index::Integer)::T where {T <: AbstractFloat}
+    delta = zero(T)
+    n_bins = system_params.n_bins
+    bin_width = system_params.bin_width
+
+    @inbounds for i in eachindex(old_distances, new_distances)
+        i == point_index && continue
+
+        old_bin = floor(Int, 1 + old_distances[i] / bin_width)
+        if 1 <= old_bin <= n_bins
+            delta -= pair_energies[old_bin]
+        end
+
+        new_bin = floor(Int, 1 + new_distances[i] / bin_width)
+        if 1 <= new_bin <= n_bins
+            delta += pair_energies[new_bin]
+        end
+    end
+
+    return delta
+end
+
 function precompute_reference_data(input::PreComputedInput)::ReferenceData
     nn_params = input.nn_params
     sys_params = input.system_params
     ref_rdf = input.reference_rdf
 
     pmf = compute_pmf(ref_rdf, sys_params)
-    traj = read_xtc(sys_params)
-    n_frames = Int(size(traj)) - 1
+    ref_cache = precompute_reference_cache(nn_params, sys_params)
+    pmf_energies = [compute_histogram_energy(histogram, pmf)
+                    for histogram in ref_cache.histograms]
 
-    distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-    histograms = Vector{Vector{Float64}}(undef, n_frames)
-    g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-
-    for frame_id in 1:n_frames
-        frame = read_step(traj, frame_id)
-
-        distance_matrices[frame_id] = build_distance_matrix(frame)
-        histograms[frame_id] = zeros(Float64, sys_params.n_bins)
-        update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], sys_params)
-
-        g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
-    end
-
-    return ReferenceData(distance_matrices, histograms, pmf, g2_matrices)
+    return ReferenceData(ref_cache, pmf, pmf_energies)
 end
 
 function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
                            nn_params::NeuralNetParameters, sys_params::SystemParameters,
                            rng::Xoroshiro128Plus)
-    frame, frame_id, box = read_random_frame(sys_params, rng)
+    coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
-    distance_matrix = ref_data.distance_matrices[frame_id]
-    symm1, hist, e_nn1, e_pmf1, e_nn1_vector = compute_initial_energies(ref_data, frame_id, model)
-    distance_vec1 = distance_matrix[:, point_index]
+    distance_matrix = ref_data.cache.distance_matrices[frame_id]
+    symm1, e_nn1, e_pmf1, e_nn1_vector = compute_initial_energies(ref_data, frame_id, model)
+    distance_vec1 = @view distance_matrix[:, point_index]
 
-    dr = sys_params.max_displacement * (rand(rng, Float64, 3) .- 0.5)
-    positions(frame)[:, point_index] .+= dr
+    point = random_displaced_position(coordinates, point_index, box, sys_params.max_displacement, rng)
+    distance_vec2 = compute_distance_vector(point, coordinates, box)
+    distance_vec2[point_index] = 0.0
 
-    point = positions(frame)[:, point_index]
-    distance_vec2 = compute_distance_vector(point, positions(frame), box)
-    update_distance_histogram_vectors!(hist, distance_vec1, distance_vec2, sys_params)
     update_mask = get_energies_update_mask(distance_vec1, distance_vec2, nn_params)
 
-    g2_matrix2 = copy(ref_data.g2_matrices[frame_id])
+    g2_matrix2 = copy(ref_data.cache.g2_matrices[frame_id])
     update_g2_matrix!(g2_matrix2, distance_vec1, distance_vec2, sys_params, nn_params, point_index)
 
     symm2 = g2_matrix2
     e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
     e_nn2 = sum(e_nn2_vector)
-    e_pmf2 = sum(hist .* ref_data.pmf)
-
-    positions(frame)[:, point_index] .-= dr
-    update_distance_histogram_vectors!(hist, distance_vec2, distance_vec1, sys_params)
+    e_pmf2 = e_pmf1 + compute_binned_pair_energy_delta(distance_vec1, distance_vec2, ref_data.pmf,
+                                                        sys_params, point_index)
 
     return (symm1=symm1,
             symm2=symm2,
@@ -116,14 +124,11 @@ end
 function all_particle_move!(ref_data::ReferenceData, model::Flux.Chain,
                             nn_params::NeuralNetParameters, sys_params::SystemParameters,
                             rng::Xoroshiro128Plus)
-    frame, frame_id, box = read_random_frame(sys_params, rng)
-    symm1, hist, e_nn1, e_pmf1, _ = compute_initial_energies(ref_data, frame_id, model)
+    coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
+    symm1, e_nn1, e_pmf1, _ = compute_initial_energies(ref_data, frame_id, model)
 
-    old_coords = copy(positions(frame))
-    dr = sys_params.max_displacement * (rand(rng, Float64, 3, sys_params.n_atoms) .- 0.5)
-    positions(frame) .+= dr
-
-    distance_matrix2 = build_distance_matrix(frame)
+    coordinates2 = random_displaced_coordinates(coordinates, box, sys_params.max_displacement, rng)
+    distance_matrix2 = build_distance_matrix(coordinates2, box)
     hist2 = zeros(Float64, sys_params.n_bins)
     update_distance_histogram!(distance_matrix2, hist2, sys_params)
 
@@ -132,9 +137,7 @@ function all_particle_move!(ref_data::ReferenceData, model::Flux.Chain,
     symm2 = g2_matrix2
     e_nn2_vector = init_system_energies_vector(symm2, model)
     e_nn2 = sum(e_nn2_vector)
-    e_pmf2 = sum(hist2 .* ref_data.pmf)
-
-    positions(frame) .= old_coords
+    e_pmf2 = compute_histogram_energy(hist2, ref_data.pmf)
 
     return (symm1=symm1,
             symm2=symm2,

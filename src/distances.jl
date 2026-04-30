@@ -5,15 +5,22 @@ Build distance matrix for all atoms in the frame.
 """
 function build_distance_matrix(frame::Frame)::Matrix{Float64}
     coordinates = positions(frame)
-    n_atoms = length(frame)
     box = lengths(UnitCell(frame))
 
-    distance_matrix = Matrix{Float64}(undef, n_atoms, n_atoms)
+    return build_distance_matrix(coordinates, box)
+end
+
+"""
+Build distance matrix for all atoms from cached coordinates and box lengths.
+"""
+function build_distance_matrix(coordinates, box::AbstractVector{T})::Matrix{T} where {T <: AbstractFloat}
+    n_atoms = size(coordinates, 2)
+    distance_matrix = Matrix{T}(undef, n_atoms, n_atoms)
 
     @inbounds for i in 1:n_atoms
-        distance_matrix[i, i] = 0.0
+        distance_matrix[i, i] = zero(T)
         @simd for j in (i + 1):n_atoms
-            dist = compute_distance(coordinates[:, i], coordinates[:, j], box)
+            dist = compute_distance_columns(coordinates, i, j, box)
             distance_matrix[i, j] = dist
             distance_matrix[j, i] = dist
         end
@@ -31,6 +38,20 @@ function compute_distance(r1::AbstractVector{T}, r2::AbstractVector{T},
 end
 
 """
+Compute distance between two coordinate columns without allocating column slices.
+"""
+@inline function compute_distance_columns(coordinates,
+                                          i::Integer,
+                                          j::Integer,
+                                          box::AbstractVector{T})::T where {T <: AbstractFloat}
+    acc = zero(T)
+    @inbounds for dim in eachindex(box)
+        acc += compute_squared_distance_component(coordinates[dim, i], coordinates[dim, j], box[dim])
+    end
+    return sqrt(acc)
+end
+
+"""
 Compute distances from one point to all other points.
 """
 function compute_distance_vector(r1::AbstractVector{T}, coordinates::AbstractMatrix{T},
@@ -38,6 +59,24 @@ function compute_distance_vector(r1::AbstractVector{T}, coordinates::AbstractMat
     @fastmath return [sqrt(sum(compute_squared_distance_component(r1[i], coordinates[i, j], box[i])
                                for i in axes(coordinates, 1)))
                       for j in axes(coordinates, 2)]
+end
+
+"""
+Compute distances from one point to all other points into a preallocated buffer.
+"""
+function compute_distance_vector!(distance_vector::AbstractVector{T},
+                                  r1::AbstractVector{T},
+                                  coordinates,
+                                  box::AbstractVector{T})::AbstractVector{T} where {T <: AbstractFloat}
+    @inbounds for j in axes(coordinates, 2)
+        acc = zero(T)
+        @simd for dim in eachindex(r1, box)
+            acc += compute_squared_distance_component(r1[dim], coordinates[dim, j], box[dim])
+        end
+        distance_vector[j] = sqrt(acc)
+    end
+
+    return distance_vector
 end
 
 """
