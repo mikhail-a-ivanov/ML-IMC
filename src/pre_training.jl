@@ -109,7 +109,7 @@ function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
     e_nn2_vector = update_system_energies_vector(symm2, model, update_mask, e_nn1_vector)
     e_nn2 = sum(e_nn2_vector)
     e_pmf2 = e_pmf1 + compute_binned_pair_energy_delta(distance_vec1, distance_vec2, ref_data.pmf,
-                                                        sys_params, point_index)
+                                              sys_params, point_index)
 
     return (symm1=symm1,
             symm2=symm2,

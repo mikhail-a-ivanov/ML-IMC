@@ -80,6 +80,26 @@ function compute_distance_vector!(distance_vector::AbstractVector{T},
 end
 
 """
+Compute distances from column `col_index` of `coordinates` to all other columns,
+writing results into a preallocated buffer. Avoids allocating a column slice.
+"""
+function compute_distance_vector_from_column!(buf::AbstractVector{T},
+                                              coordinates,
+                                              col_index::Int,
+                                              box::AbstractVector{T}) where {T <: AbstractFloat}
+    @inbounds for j in axes(coordinates, 2)
+        acc = zero(T)
+        @simd for dim in eachindex(box)
+            acc += compute_squared_distance_component(coordinates[dim, col_index],
+                                                      coordinates[dim, j],
+                                                      box[dim])
+        end
+        buf[j] = sqrt(acc)
+    end
+    return buf
+end
+
+"""
 Compute squared distance component along one dimension with periodic boundary conditions.
 """
 @inline function compute_squared_distance_component(x1::T, x2::T, box_size::T)::T where {T <: AbstractFloat}

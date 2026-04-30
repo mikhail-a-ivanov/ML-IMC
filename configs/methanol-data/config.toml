@@ -1,102 +1,133 @@
 # Configuration file for ML-IMC
 
-[global]
-# Input files with system configurations
-system_files = [
-    # 10
-    "configs/methanol-data/10CH3OH/10CH3OH-CG.toml",
-    # 40
-    "configs/methanol-data/40CH3OH/40CH3OH-CG.toml",
-    # 60
-    "configs/methanol-data/60CH3OH/60CH3OH-CG.toml",
-    # 100
-    "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
-]
-
-# File defining the symmetry functions for atomic descriptors.
-symmetry_function_file = "configs/methanol-data/symmetry_functions.toml" 
-
-# VALID_MODES = ("training", "pmf-pretraining", "magic-pretraining", "simulation")
+[run]
+# One of: "training", "pmf-pretraining", "magic-pretraining", "simulation".
 mode = "pmf-pretraining"
 
-# Output detail level: "default" shows RDFs and Energies, "verbose" also writes trajectory files.
-output_mode = "default"
+[inputs]
+# System TOML files are loaded in this order. For parallel runs, the number of
+# Julia workers must be divisible by the number of systems.
+system_files = [
+    "configs/methanol-data/10CH3OH/10CH3OH-CG.toml",
+    "configs/methanol-data/40CH3OH/40CH3OH-CG.toml",
+    "configs/methanol-data/60CH3OH/60CH3OH-CG.toml",
+    "configs/methanol-data/100CH3OH/100CH3OH-CG.toml",
+]
+# Defines G2 symmetry functions used as neural-network descriptors.
+symmetry_function_file = "configs/methanol-data/symmetry_functions.toml"
 
-# Model and optimization file paths
-model_file = "none"      # Path to a pre-trained model. "none" => random initialization.
-                         # NOTE: simulation mode REQUIRES a valid .bson model file.
-gradients_file = "none"  # Path to pre-calculated gradients. "none" => default initialization.
-optimizer_file = "none"  # Path to saved optimizer state. "none" => default state.
-adaptive_scaling = false # true => adapt gradient scaling per system; false => uniform averaging.
-output_dir = "run"       # Directory to save all outputs (models, logs, RDFs, etc.).
+[output]
+# All generated models, logs, RDFs, energies, and trajectories are written here.
+dir = "run"
+# "default" writes RDFs and energies; "verbose" also writes MC trajectories.
+detail = "default"
+
+[checkpoint]
+# "none" starts from a randomly initialized model.
+# Simulation mode requires model_file to point to a saved .bson model.
+model_file = "none"
+# Optional saved optimizer state for continuing training/pretraining.
+optimizer_file = "none"
+
+[model]
+# Hidden/output layer sizes. Input size is inferred from G2 symmetry functions.
+layer_sizes = [64, 64, 64, 64, 1]
+# One activation per network layer transition, including identity at the input.
+activations = ["identity", "relu", "relu", "relu", "identity"]
+# Enables bias terms in Dense layers.
+bias = true
 
 [monte_carlo]
-# Monte Carlo simulation parameters
-steps = 1500000                   # Total number of MC steps to run.
-equilibration_steps = 500000      # MC steps for equilibration before data collection.
-step_adjust_frequency = 500       # Adjust max MC displacement every N steps to maintain acceptance rate.
-trajectory_output_frequency = 500 # Write system configuration to trajectory file every N steps. (Only in verbose mode)
-output_frequency = 500            # Sampling frequency for system states and energy recording.
-                                  # Recommended to be slightly above system size N.
+# Total MC steps per sampling run.
+steps = 1500000
+# Samples are accumulated only after this many equilibration steps.
+equilibration_steps = 500000
+# Adjust trial displacement every N equilibration steps. Set 0 to disable.
+step_adjust_frequency = 500
+# Trajectory write interval; used only when output.detail = "verbose".
+trajectory_frequency = 500
+# Energy/RDF sampling interval. Keep it at least on the order of system size.
+sample_frequency = 500
 
-[neural_network]
-# Neural network architecture
-neurons = [64, 64, 64, 64, 1]   # Neurons per layer (output included). Input equals number of symmetry functions.
-bias = true                    # Whether to use bias in each layer.
-# Activation function for each layer.
-activations = ["identity", "relu", "relu", "relu", "identity"] 
+[training]
+# Number of outer ML-IMC iterations.
+iterations = 2
+# Loss used for RDF gradient construction: "mse" or "mae".
+loss = "mse"
+# L2 regularization coefficient. Use 0.0 to disable.
+regularization = 0.0
+# If true, weight each system gradient by its current loss.
+adaptive_scaling = false
 
+[training.optimizer]
+# Optimizer for the main ML-IMC training loop.
+name = "Adam"
+learning_rate = 0.001
+# Used by optimizers that accept momentum-like parameters.
+momentum = 0.9
+# First and second moment decay rates for Adam-family optimizers.
+decay_rates = [0.9, 0.999]
 
-# Training hyperparameters
-iterations = 2             # Number of training iterations.
-regularization = 0.0       # L2 regularization coefficient (0.0 = disabled).
-gradient_type = "mse"      # Loss gradient type: "mse" or "mae".
-
-# Optimizer configuration
-optimizer = "Adam"         # Recommended: "Adam", "AMSGrad", "AdamW"
-learning_rate = 0.001      # Optimizer learning rate.
-momentum = 0.9             # Momentum factor (used in Adam-based optimizers).
-decay_rates = [0.9, 0.999] # Exponential decay for first & second moment estimates.
-
-# LR scheduler configuration (warmup + reduce-on-plateau)
-lr_warmup_epochs = 0       # Number of epochs for linear LR warmup. 0 disables warmup.
-lr_warmup_start = 1.0e-7   # Initial LR for warmup.
-lr_patience = 50           # Epochs without improvement before reducing LR. 0 disables plateau.
-lr_factor = 0.5            # Factor by which LR is multiplied on plateau.
-lr_min = 1.0e-8            # Minimum LR for plateau scheduler.
-lr_cooldown = 0            # Cooldown epochs after LR reduction.
+[training.lr_scheduler]
+# Linear warmup length. Set 0 to start directly at learning_rate.
+warmup_epochs = 0
+warmup_start = 1.0e-7
+# Reduce LR after this many epochs without improvement. Set 0 to disable.
+patience = 50
+factor = 0.5
+min_lr = 1.0e-8
+cooldown = 0
 
 [pretraining]
-# Pre-training settings
-steps = 500000             # Number of MC steps for neural network pre-training.
-batch_size = 1             # Initial Batch Size for pre-training.
-output_frequency = 1       # Report progress every N steps during pre-training.
-regularization = 0.0       # L2 regularization (0.0 = disabled) for pre-training.
+# Number of PMF/magic pretraining epochs.
+steps = 500000
+# Number of random moves per system before each model update.
+batch_size = 1
+# Loss used for pretraining energy matching: "mse" or "mae".
+loss = "mse"
+regularization = 0.0
+# true matches energy differences; false matches absolute energies.
+use_diff_gradient = true
+# false moves one particle per sample; true moves all particles.
+move_all_particles = false
+# Console/log output interval for pretraining.
+output_frequency = 1
+# Save model and optimizer state every N epochs.
+save_frequency = 10000
+# Prefix for saved pretraining artifacts.
+output_prefix = "pt"
 
-# Pre-training optimizer settings
-optimizer = "Adam"         # Optimizer type for pre-training.
-learning_rate = 0.001      # Learning rate during pre-training.
-momentum = 0.9             # Momentum factor during pre-training.
-decay_rates = [0.9, 0.999] # Decay parameters for first/second moments during pre-training.
+[pretraining.optimizer]
+# Optimizer for PMF and magic pretraining.
+name = "Adam"
+learning_rate = 0.001
+momentum = 0.9
+decay_rates = [0.9, 0.999]
 
-# Pre-training behavior
-use_diff_gradient = true   # Use difference gradient (true) or absolute energy matching (false).
-use_all_particles = false  # Move all particles (true) or just one (false) per MC step.
-gradient_type = "mse"      # Loss gradient type: "mse" or "mae".
-save_frequency = 10000     # Save model every N epochs during pre-training.
-output_prefix = "pt"       # Prefix for saved model/optimizer files.
-
-# LR scheduler configuration (warmup + reduce-on-plateau)
-lr_warmup_epochs = 0       # Number of epochs for linear LR warmup. 0 disables warmup.
-lr_warmup_start = 1.0e-7   # Initial LR for warmup.
-lr_patience = 10000        # Epochs without improvement before reducing LR. 0 disables plateau.
-lr_factor = 0.5            # Factor by which LR is multiplied on plateau.
-lr_min = 1.0e-8            # Minimum LR for plateau scheduler.
-lr_cooldown = 0            # Cooldown epochs after LR reduction.
+[pretraining.lr_scheduler]
+# Scheduler settings for PMF and magic pretraining.
+warmup_epochs = 0
+warmup_start = 1.0e-7
+patience = 10000
+factor = 0.5
+min_lr = 1.0e-8
+cooldown = 0
 
 [magic_pretraining]
-# Magic pre-training settings (overrides global.model_file when mode = "magic-pretraining")
-model_file = "none"        # Path to a pre-trained model for magic pre-training. "none" => use global.model_file.
-potential_files = []       # List of .dat/.pot files, one per system.
-use_diff_gradient = false  # Use difference gradient.
-use_all_particles = false  # Move all particles per MC step.
+# Explicitly map each system_name from the system TOML to its potential file.
+# This avoids relying on positional ordering.
+[[magic_pretraining.potentials]]
+system = "10CH3OH-CG"
+file = "configs/methanol-data/methanol-IMC-potentials/10_CH3OH_magic_pot.dat"
+
+[[magic_pretraining.potentials]]
+system = "40CH3OH-CG"
+file = "configs/methanol-data/methanol-IMC-potentials/40_CH3OH_magic_pot.dat"
+
+[[magic_pretraining.potentials]]
+system = "60CH3OH-CG"
+file = "configs/methanol-data/methanol-IMC-potentials/60_CH3OH_magic_pot.dat"
+
+[[magic_pretraining.potentials]]
+system = "100CH3OH-CG"
+file = "configs/methanol-data/methanol-IMC-potentials/100_CH3OH_magic_pot.dat"

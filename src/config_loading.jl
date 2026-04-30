@@ -61,6 +61,27 @@ function parse_system_parameters(filename::String)
                             system_data["target_acceptance_ratio"])
 end
 
+function parse_lr_scheduler(section)
+    return LRSchedulerConfig(get(section, "warmup_epochs", 0),
+                             get(section, "warmup_start", 1.0e-7),
+                             get(section, "patience", 50),
+                             get(section, "factor", 0.5),
+                             get(section, "min_lr", 1.0e-8),
+                             get(section, "cooldown", 0))
+end
+
+function parse_magic_potential_files(magic_section, system_params_list::Vector{SystemParameters})
+    potential_entries = get(magic_section, "potentials", [])
+    isempty(potential_entries) && return String[]
+
+    potential_by_system = Dict{String, String}()
+    for entry in potential_entries
+        potential_by_system[entry["system"]] = entry["file"]
+    end
+
+    return [potential_by_system[system_params.system_name] for system_params in system_params_list]
+end
+
 function parameters_init()
     # Handle command line arguments
     if length(ARGS) == 0
@@ -79,121 +100,106 @@ function parameters_init()
     TOML.print(config)
     println()
 
-    # Validate mode
+    # Parse run parameters
     VALID_MODES = ("training", "pmf-pretraining", "magic-pretraining", "simulation")
-    mode = config["global"]["mode"]
+    mode = config["run"]["mode"]
     if !(mode in VALID_MODES)
         throw(ArgumentError("Unknown mode '$mode'. Valid modes: $(join(VALID_MODES, ", "))"))
     end
 
-    # Parse global parameters
-    output_dir = get(config["global"], "output_dir", "run")
-    global_params = GlobalParameters(config["global"]["system_files"],
-                                     config["global"]["symmetry_function_file"],
+    # Parse top-level execution parameters
+    inputs_section = config["inputs"]
+    output_section = config["output"]
+    checkpoint_section = config["checkpoint"]
+    training_section = config["training"]
+
+    output_dir = get(output_section, "dir", "run")
+    global_params = GlobalParameters(inputs_section["system_files"],
+                                     inputs_section["symmetry_function_file"],
                                      mode,
-                                     config["global"]["output_mode"],
-                                     config["global"]["model_file"],
-                                     config["global"]["gradients_file"],
-                                     config["global"]["optimizer_file"],
-                                     config["global"]["adaptive_scaling"],
+                                     output_section["detail"],
+                                     checkpoint_section["model_file"],
+                                     checkpoint_section["optimizer_file"],
+                                     training_section["adaptive_scaling"],
                                      output_dir)
 
     # Parse Monte Carlo parameters
-    mc_params = MonteCarloParameters(config["monte_carlo"]["steps"],
-                                     config["monte_carlo"]["equilibration_steps"],
-                                     config["monte_carlo"]["step_adjust_frequency"],
-                                     config["monte_carlo"]["trajectory_output_frequency"],
-                                     config["monte_carlo"]["output_frequency"])
+    mc_section = config["monte_carlo"]
+    mc_params = MonteCarloParameters(mc_section["steps"],
+                                     mc_section["equilibration_steps"],
+                                     mc_section["step_adjust_frequency"],
+                                     mc_section["trajectory_frequency"],
+                                     mc_section["sample_frequency"])
 
     # Parse symmetry functions
     g2_funcs, max_cutoff, scaling = parse_symmetry_functions(global_params.symmetry_function_file)
 
     input_layer_size = length(g2_funcs)
 
-    # Parse neural network parameters
-    nn_section = config["neural_network"]
+    # Parse neural network and training parameters
+    model_section = config["model"]
+    training_optimizer_section = training_section["optimizer"]
+    training_lr_section = training_section["lr_scheduler"]
 
     # Prepend input layer size to existing neurons array
-    neurons = [input_layer_size; nn_section["neurons"]]
+    neurons = [input_layer_size; model_section["layer_sizes"]]
 
-    gradient_type = get(nn_section, "gradient_type", "mse")
+    gradient_type = get(training_section, "loss", "mse")
     if !(gradient_type in ("mse", "mae"))
-        throw(ArgumentError("Unknown gradient_type '$gradient_type'. Valid values: mse, mae"))
+        throw(ArgumentError("Unknown training.loss '$gradient_type'. Valid values: mse, mae"))
     end
 
     nn_params = NeuralNetParameters(g2_funcs,
                                     max_cutoff,
                                     scaling,
                                     neurons,
-                                    nn_section["activations"],
-                                    nn_section["bias"],
-                                    nn_section["iterations"],
-                                    nn_section["regularization"],
+                                    model_section["activations"],
+                                    model_section["bias"],
+                                    training_section["iterations"],
+                                    training_section["regularization"],
                                     gradient_type,
-                                    nn_section["optimizer"],
-                                    nn_section["learning_rate"],
-                                    nn_section["momentum"],
-                                    nn_section["decay_rates"][1],
-                                    nn_section["decay_rates"][2],
-                                    LRSchedulerConfig(get(nn_section, "lr_warmup_epochs", 0),
-                                                      get(nn_section, "lr_warmup_start", 1.0e-7),
-                                                      get(nn_section, "lr_patience", 50),
-                                                      get(nn_section, "lr_factor", 0.5),
-                                                      get(nn_section, "lr_min", 1.0e-8),
-                                                      get(nn_section, "lr_cooldown", 0)))
+                                    training_optimizer_section["name"],
+                                    training_optimizer_section["learning_rate"],
+                                    training_optimizer_section["momentum"],
+                                    training_optimizer_section["decay_rates"][1],
+                                    training_optimizer_section["decay_rates"][2],
+                                    parse_lr_scheduler(training_lr_section))
 
     # Parse pre-training parameters
     pt_section = config["pretraining"]
-    pt_gradient_type = get(pt_section, "gradient_type", "mse")
+    pt_optimizer_section = pt_section["optimizer"]
+    pt_lr_section = pt_section["lr_scheduler"]
+    pt_gradient_type = get(pt_section, "loss", "mse")
     if !(pt_gradient_type in ("mse", "mae"))
-        throw(ArgumentError("Unknown pretraining.gradient_type '$pt_gradient_type'. Valid values: mse, mae"))
+        throw(ArgumentError("Unknown pretraining.loss '$pt_gradient_type'. Valid values: mse, mae"))
     end
 
     pretrain_params = PreTrainingParameters(pt_section["steps"],
                                             pt_section["batch_size"],
                                             pt_section["output_frequency"],
                                             pt_section["regularization"],
-                                            pt_section["optimizer"],
-                                            pt_section["learning_rate"],
-                                            pt_section["momentum"],
-                                            pt_section["decay_rates"][1],
-                                            pt_section["decay_rates"][2],
+                                            pt_optimizer_section["name"],
+                                            pt_optimizer_section["learning_rate"],
+                                            pt_optimizer_section["momentum"],
+                                            pt_optimizer_section["decay_rates"][1],
+                                            pt_optimizer_section["decay_rates"][2],
                                             get(pt_section, "use_diff_gradient", false),
-                                            get(pt_section, "use_all_particles", true),
+                                            get(pt_section, "move_all_particles", false),
                                             pt_gradient_type,
                                             get(pt_section, "save_frequency", 50),
                                             get(pt_section, "output_prefix", "pt"),
                                             output_dir,
-                                            LRSchedulerConfig(get(pt_section, "lr_warmup_epochs", 0),
-                                                              get(pt_section, "lr_warmup_start", 1.0e-7),
-                                                              get(pt_section, "lr_patience", 50),
-                                                              get(pt_section, "lr_factor", 0.5),
-                                                              get(pt_section, "lr_min", 1.0e-8),
-                                                              get(pt_section, "lr_cooldown", 0)))
+                                            parse_lr_scheduler(pt_lr_section))
 
     # Parse magic pre-training parameters
     magic_section = get(config, "magic_pretraining", Dict{String, Any}())
-    magic_params = MagicPreTrainingParameters(get(magic_section, "model_file", "none"),
-                                              get(magic_section, "potential_files", String[]),
-                                              get(magic_section, "use_diff_gradient", true),
-                                              get(magic_section, "use_all_particles", false))
 
     # Parse system parameters for each system file
     system_params_list = [parse_system_parameters(system_file) for system_file in global_params.system_files]
-
-    # Validate magic-pretraining configuration
-    if global_params.mode == "magic-pretraining"
-        if length(magic_params.potential_files) != length(system_params_list)
-            throw(ArgumentError("Magic pretraining requires one potential file per system. " *
-                                "Got $(length(magic_params.potential_files)) potential files and $(length(system_params_list)) systems."))
-        end
-        for pf in magic_params.potential_files
-            check_file(pf)
-        end
-        if magic_params.model_file != "none"
-            check_file(magic_params.model_file)
-        end
-    end
+    magic_potential_files = mode == "magic-pretraining" ?
+                            parse_magic_potential_files(magic_section, system_params_list) :
+                            String[]
+    magic_params = MagicPreTrainingParameters(magic_potential_files)
 
     # Create output directory
     mkpath(global_params.output_dir)

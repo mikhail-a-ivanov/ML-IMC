@@ -423,8 +423,8 @@ function magic_pretrain(magic_params::MagicPreTrainingParameters,
     model,
     opt_state = run_magic_training_phase!(pretrain_params.steps,
                                           pretrain_params.batch_size,
-                                          magic_params.use_diff_gradient,
-                                          magic_params.use_all_particles,
+                                          pretrain_params.use_diff_gradient,
+                                          pretrain_params.use_all_particles,
                                           system_params_list,
                                           ref_data_list,
                                           lookup_list,
@@ -436,8 +436,8 @@ function magic_pretrain(magic_params::MagicPreTrainingParameters,
 
     # Сохраняем финальную модель
     prefix = pretrain_params.output_prefix
-    mode_str = magic_params.use_diff_gradient ? "diff" : "abs"
-    move_str = magic_params.use_all_particles ? "all" : "single"
+    mode_str = pretrain_params.use_diff_gradient ? "diff" : "abs"
+    move_str = pretrain_params.use_all_particles ? "all" : "single"
     od = pretrain_params.output_dir
     @save joinpath(od, "$prefix-final-model-$(mode_str)-$(move_str).bson") model
     @save joinpath(od, "$prefix-final-opt-state-$(mode_str)-$(move_str).bson") opt_state

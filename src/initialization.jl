@@ -9,11 +9,7 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
     mode = global_params.mode
     model = nothing
 
-    # Determine which model file to use
     model_file = global_params.model_file
-    if mode == "magic-pretraining" && magic_params.model_file != "none"
-        model_file = magic_params.model_file
-    end
 
     # Initialize or load model
     model = if model_file == "none"
@@ -26,7 +22,7 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
 
     # For simulation, model is mandatory
     if mode == "simulation" && model_file == "none"
-        throw(ArgumentError("Simulation mode requires a model file. Set global.model_file to a valid .bson path."))
+        throw(ArgumentError("Simulation mode requires a model file. Set checkpoint.model_file to a valid .bson path."))
     end
 
     # For simulation, no optimizer needed

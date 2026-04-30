@@ -188,53 +188,85 @@ function apply_periodic_boundaries!(frame::Frame,
     return frame
 end
 
-function mcmove!(mc_arrays::Tuple{Frame, Matrix{T}, Matrix{T}},
+function mcmove!(frame::Frame,
+                 distance_matrix::Matrix{T},
+                 g2_matrix::Matrix{T},
                  current_energy::T,
-                 energy_prev_vec::Vector{T},
+                 energy_vector::Vector{T},
                  model::Flux.Chain,
                  nn_params::NeuralNetParameters,
                  system_params::SystemParameters,
                  box::Vector{T},
                  rng::Xoroshiro128Plus,
-                 step_size::T)::Tuple{Tuple{Frame, Matrix{T}, Matrix{T}},
-                                      T,
-                                      Vector{T},
-                                      Int} where {T <: AbstractFloat}
-    frame, distance_matrix, g2_matrix = mc_arrays
+                 step_size::T,
+                 workspace::MonteCarloWorkspace{T})::Tuple{T, Int} where {T <: AbstractFloat}
+    n_atoms = system_params.n_atoms
+    max_cutoff = nn_params.max_distance_cutoff
+    n_g2 = length(nn_params.g2_functions)
 
-    particle_index = rand(rng, 1:(system_params.n_atoms))
-    distances_orig = @view distance_matrix[:, particle_index]
-    energy_orig = copy(current_energy)
+    particle_index = rand(rng, 1:n_atoms)
+    energy_orig = current_energy
 
-    displacement = step_size * (rand(rng, T, 3) .- 0.5)
-    positions(frame)[:, particle_index] .+= displacement
+    pos = positions(frame)
+    @inbounds for dim in 1:3
+        workspace.displacement[dim] = step_size * (rand(rng, T) - T(0.5))
+        pos[dim, particle_index] += workspace.displacement[dim]
+    end
     apply_periodic_boundaries!(frame, box, particle_index)
 
-    new_position = positions(frame)[:, particle_index]
-    distances_new = compute_distance_vector(new_position, positions(frame), box)
+    old_distances = @view distance_matrix[:, particle_index]
+    compute_distance_vector_from_column!(workspace.new_distances, pos, particle_index, box)
 
-    indexes_for_update = get_energies_update_mask(distances_orig, distances_new, nn_params)
+    empty!(workspace.affected_indices)
+    push!(workspace.affected_indices, particle_index)
+    @inbounds for i in 1:n_atoms
+        i == particle_index && continue
+        if old_distances[i] < max_cutoff || workspace.new_distances[i] < max_cutoff
+            push!(workspace.affected_indices, i)
+        end
+    end
+    n_affected = length(workspace.affected_indices)
 
-    g2_matrix_new = copy(g2_matrix)
-    update_g2_matrix!(g2_matrix_new, distances_orig, distances_new, system_params, nn_params, particle_index)
+    compute_changed_g2_rows!(workspace.g2_rows_scratch, workspace.affected_indices, n_affected,
+                             g2_matrix, old_distances, workspace.new_distances, nn_params, particle_index)
 
-    energy_vector_new = update_system_energies_vector(g2_matrix_new, model, indexes_for_update, energy_prev_vec)
-    energy_new = sum(energy_vector_new)
+    proposed_energies = vec(model(@view workspace.g2_rows_scratch[:, 1:n_affected]))
+
+    delta_energy = zero(T)
+    @inbounds for k in 1:n_affected
+        i = workspace.affected_indices[k]
+        delta_energy += proposed_energies[k] - energy_vector[i]
+    end
+    energy_new = current_energy + delta_energy
 
     accepted = 0
     if rand(rng, T) < exp(-((energy_new - energy_orig) * system_params.beta))
         accepted = 1
+
+        @inbounds for i in 1:n_atoms
+            distance_matrix[particle_index, i] = workspace.new_distances[i]
+            distance_matrix[i, particle_index] = workspace.new_distances[i]
+        end
+
+        @inbounds for k in 1:n_affected
+            atom_i = workspace.affected_indices[k]
+            for g in 1:n_g2
+                g2_matrix[atom_i, g] = workspace.g2_rows_scratch[g, k]
+            end
+        end
+
+        @inbounds for k in 1:n_affected
+            energy_vector[workspace.affected_indices[k]] = proposed_energies[k]
+        end
         current_energy = energy_new
-        distance_matrix[particle_index, :] = distances_new
-        distance_matrix[:, particle_index] = distances_new
-        return ((frame, distance_matrix, g2_matrix_new),
-                current_energy, energy_vector_new, accepted)
     else
-        positions(frame)[:, particle_index] .-= displacement
+        @inbounds for dim in 1:3
+            pos[dim, particle_index] -= workspace.displacement[dim]
+        end
         apply_periodic_boundaries!(frame, box, particle_index)
-        return ((frame, distance_matrix, g2_matrix),
-                current_energy, energy_prev_vec, accepted)
     end
+
+    return (current_energy, accepted)
 end
 
 function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
@@ -278,7 +310,7 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     distance_matrix::Matrix{Float64} = build_distance_matrix(frame)
     g2_matrix::Matrix{Float64} = build_g2_matrix(distance_matrix, nn_params)
 
-    mc_arrays::Tuple = (frame, distance_matrix, g2_matrix)
+    workspace = MonteCarloWorkspace{Float64}(system_params.n_atoms, length(nn_params.g2_functions))
 
     hist_accumulator::Vector{Float64} = zeros(Float64, system_params.n_bins)
 
@@ -298,9 +330,10 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     accepted_intermediate::Int = 0
 
     for step in 1:(mc_params.steps)
-        mc_arrays, total_energy, energy_vector,
-        accepted = mcmove!(mc_arrays, total_energy, energy_vector, model,
-                           nn_params, system_params, box, rng, step_size)
+        total_energy,
+        accepted = mcmove!(frame, distance_matrix, g2_matrix,
+                           total_energy, energy_vector, model,
+                           nn_params, system_params, box, rng, step_size, workspace)
         accepted_total += accepted
         accepted_intermediate += accepted
 
@@ -317,12 +350,10 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
 
         if global_params.output_mode == "verbose" &&
            step % mc_params.trajectory_output_frequency == 0
-            write_trajectory(positions(mc_arrays[1]), box, system_params, traj_file, 'a')
+            write_trajectory(positions(frame), box, system_params, traj_file, 'a')
         end
 
         if step % mc_params.output_frequency == 0 && step > mc_params.equilibration_steps
-            frame, distance_matrix, g2_matrix = mc_arrays
-
             if global_params.mode == "training"
                 hist = update_distance_histogram!(distance_matrix, hist, system_params)
                 hist_accumulator .+= hist

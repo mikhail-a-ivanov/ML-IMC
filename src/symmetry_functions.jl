@@ -85,3 +85,38 @@ function update_g2_matrix!(g2_matrix::AbstractMatrix{T},
 
     return g2_matrix
 end
+
+function compute_changed_g2_rows!(g2_scratch::AbstractMatrix{T},
+                                  affected_indices::AbstractVector{Int},
+                                  n_affected::Int,
+                                  g2_matrix::AbstractMatrix{T},
+                                  old_distances::AbstractVector{T},
+                                  new_distances::AbstractVector{T},
+                                  nn_params::NeuralNetParameters,
+                                  point_index::Int)::Nothing where {T <: AbstractFloat}
+    scaling = nn_params.symm_function_scaling
+
+    @inbounds for (j, g2_func) in enumerate(nn_params.g2_functions)
+        g2_scratch[j, 1] = compute_g2(new_distances,
+                                      g2_func.eta,
+                                      g2_func.rcutoff,
+                                      g2_func.rshift,
+                                      g2_func.norm) * scaling
+    end
+
+    @inbounds for k in 2:n_affected
+        i = affected_indices[k]
+        dist1 = old_distances[i]
+        dist2 = new_distances[i]
+        for (j, g2_func) in enumerate(nn_params.g2_functions)
+            r_cutoff = g2_func.rcutoff
+            delta = compute_g2_element(dist2, g2_func.eta, r_cutoff,
+                                       g2_func.rshift, g2_func.norm) -
+                    compute_g2_element(dist1, g2_func.eta, r_cutoff,
+                                       g2_func.rshift, g2_func.norm)
+            g2_scratch[j, k] = g2_matrix[i, j] + delta * scaling
+        end
+    end
+
+    return nothing
+end

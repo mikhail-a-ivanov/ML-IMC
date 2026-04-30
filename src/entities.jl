@@ -81,7 +81,6 @@ struct GlobalParameters
     mode::String
     output_mode::String
     model_file::String
-    gradients_file::String
     optimizer_file::String
     adaptive_scaling::Bool
     output_dir::String
@@ -109,8 +108,19 @@ struct PreTrainingParameters
 end
 
 struct MagicPreTrainingParameters
-    model_file::String
     potential_files::Vector{String}
-    use_diff_gradient::Bool
-    use_all_particles::Bool
+end
+
+mutable struct MonteCarloWorkspace{T <: AbstractFloat}
+    new_distances::Vector{T}
+    displacement::Vector{T}
+    affected_indices::Vector{Int}
+    g2_rows_scratch::Matrix{T}
+end
+
+function MonteCarloWorkspace{T}(n_atoms::Int, n_g2::Int) where {T <: AbstractFloat}
+    MonteCarloWorkspace{T}(Vector{T}(undef, n_atoms),
+                           Vector{T}(undef, 3),
+                           Vector{Int}(undef, n_atoms),
+                           Matrix{T}(undef, n_g2, n_atoms))
 end
