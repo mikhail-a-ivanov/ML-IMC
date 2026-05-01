@@ -14,8 +14,10 @@ function read_pdb(system_params::SystemParameters)
     return Trajectory(system_params.topology_file)
 end
 
-function write_rdf(outname::AbstractString, rdf::Vector{Float64}, system_params::SystemParameters)
-    bin_centers = [(bin - 0.5) * system_params.bin_width for bin in 1:(system_params.n_bins)]
+function write_rdf(outname::AbstractString, rdf::AbstractVector{T},
+                   system_params::SystemParameters) where {T <: AbstractFloat}
+    bin_width = T(system_params.bin_width)
+    bin_centers = [(T(bin) - T(0.5)) * bin_width for bin in 1:(system_params.n_bins)]
 
     open(outname, "w") do io
         println(io, "# System: $(system_params.system_name)")
@@ -29,7 +31,7 @@ function write_rdf(outname::AbstractString, rdf::Vector{Float64}, system_params:
     check_file(outname)
 end
 
-function write_energies(outname::AbstractString, energies::Vector{Float64},
+function write_energies(outname::AbstractString, energies::AbstractVector{<:AbstractFloat},
                         mc_params::MonteCarloParameters, system_params::SystemParameters,
                         slicing::Int=1)
     steps = 0:(mc_params.output_frequency * slicing):(mc_params.steps)
@@ -46,15 +48,17 @@ function write_energies(outname::AbstractString, energies::Vector{Float64},
     check_file(outname)
 end
 
-function write_trajectory(conf::Chemfiles.ChemfilesArray, box::Vector{Float64},
+function write_trajectory(conf::AbstractMatrix{T}, box::AbstractVector{T},
                           system_params::SystemParameters, outname::AbstractString,
-                          mode::Char='w')
+                          mode::Char='w') where {T <: AbstractFloat}
     frame = Frame()
-    box_center = box ./ 2
-    set_cell!(frame, UnitCell(box))
+    box_center = box ./ T(2)
+    # Chemfiles' write API accepts Cdouble arrays; simulation state remains Float32.
+    cell = UnitCell(Cdouble.(box))
+    set_cell!(frame, cell)
 
     for i in 1:(system_params.n_atoms)
-        wrapped_atom_coords = wrap!(UnitCell(frame), conf[:, i]) .+ box_center
+        wrapped_atom_coords = wrap!(cell, Cdouble.(conf[:, i])) .+ Cdouble.(box_center)
         add_atom!(frame, Atom(system_params.atom_name), wrapped_atom_coords)
     end
 
@@ -68,8 +72,8 @@ end
 function read_rdf(rdfname::AbstractString)
     check_file(rdfname)
 
-    bins = Float64[]
-    rdf = Float64[]
+    bins = Float32[]
+    rdf = Float32[]
 
     open(rdfname, "r") do file
         for line in eachline(file)
@@ -80,8 +84,8 @@ function read_rdf(rdfname::AbstractString)
             values = split(stripped_line)
             length(values) < 2 && continue  # Skip lines with insufficient data
 
-            push!(bins, parse(Float64, values[1]))
-            push!(rdf, parse(Float64, values[2]))
+            push!(bins, parse(Float32, values[1]))
+            push!(rdf, parse(Float32, values[2]))
         end
     end
 
@@ -90,7 +94,7 @@ function read_rdf(rdfname::AbstractString)
     return bins, rdf
 end
 
-function infer_bin_width(bins::AbstractVector{T}; atol::T=convert(T, 1e-8))::T where {T <: AbstractFloat}
+function infer_bin_width(bins::AbstractVector{T}; atol::T=convert(T, 1.0f-8))::T where {T <: AbstractFloat}
     isempty(bins) && throw(ArgumentError("RDF bins vector cannot be empty"))
 
     if length(bins) == 1

@@ -1,13 +1,13 @@
 using ..ML_IMC
 
 struct MonteCarloAverages
-    descriptor::Vector{Float64}
-    energies::Vector{Float64}
-    cross_accumulators::Union{Nothing, Matrix{Float64}}
-    symmetry_matrix_accumulator::Union{Nothing, Matrix{Float64}}
-    acceptance_ratio::Float64
+    descriptor::Vector{Float32}
+    energies::Vector{Float32}
+    cross_accumulators::Union{Nothing, Matrix{Float32}}
+    symmetry_matrix_accumulator::Union{Nothing, Matrix{Float32}}
+    acceptance_ratio::Float32
     system_params::SystemParameters
-    step_size::Float64
+    step_size::Float32
 end
 
 struct MonteCarloSampleInput
@@ -15,21 +15,21 @@ struct MonteCarloSampleInput
     mc_params::MonteCarloParameters
     nn_params::NeuralNetParameters
     system_params::SystemParameters
-    model::Chain
+    model_weights::Vector{Float32}
 end
 
 function update_distance_histogram!(distance_matrix::Matrix{T},
                                     histogram::Vector{T},
                                     system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
     n_atoms = system_params.n_atoms
-    bin_width = system_params.bin_width
+    bin_width = T(system_params.bin_width)
     n_bins = system_params.n_bins
 
     @inbounds for i in 1:n_atoms
         @fastmath for j in 1:(i - 1)
             bin_index = floor(Int, 1 + distance_matrix[i, j] / bin_width)
             if bin_index <= n_bins
-                histogram[bin_index] += 1
+                histogram[bin_index] += one(T)
             end
         end
     end
@@ -42,18 +42,18 @@ function update_distance_histogram_vectors!(histogram::Vector{T},
                                             new_distances::Vector{T},
                                             system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
     n_atoms = system_params.n_atoms
-    bin_width = system_params.bin_width
+    bin_width = T(system_params.bin_width)
     n_bins = system_params.n_bins
 
     @inbounds @fastmath for i in 1:n_atoms
         old_bin = floor(Int, 1 + old_distances[i] / bin_width)
         if old_bin <= n_bins
-            histogram[old_bin] -= 1
+            histogram[old_bin] -= one(T)
         end
 
         new_bin = floor(Int, 1 + new_distances[i] / bin_width)
         if new_bin <= n_bins
-            histogram[new_bin] += 1
+            histogram[new_bin] += one(T)
         end
     end
 
@@ -64,10 +64,11 @@ function normalize_hist_to_rdf!(histogram::AbstractVector{T},
                                 system_params::SystemParameters,
                                 box::AbstractVector{T})::AbstractVector{T} where {T <: AbstractFloat}
     box_volume = prod(box)
-    n_pairs = system_params.n_atoms * (system_params.n_atoms - 1) ÷ 2
+    n_pairs = T(system_params.n_atoms * (system_params.n_atoms - 1) ÷ 2)
 
-    bin_width = system_params.bin_width
-    shell_volumes = [(4 * π / 3) * ((i * bin_width)^3 - ((i - 1) * bin_width)^3)
+    bin_width = T(system_params.bin_width)
+    shell_volume_factor = T(4) * T(π) / T(3)
+    shell_volumes = [shell_volume_factor * ((T(i) * bin_width)^3 - ((T(i) - one(T)) * bin_width)^3)
                      for i in 1:(system_params.n_bins)]
 
     normalization_factors = fill(box_volume / n_pairs, system_params.n_bins) ./ shell_volumes
@@ -82,23 +83,23 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
                                  system_params_list::Vector{SystemParameters},
                                  global_params::GlobalParameters,
                                  nn_params::Union{NeuralNetParameters, Nothing},
-                                 model::Union{Flux.Chain, Nothing}, lr::Float64,
-                                 epoch, mc_steps)::Tuple{Vector{MonteCarloAverages}, Vector{Float64}}
-    total_loss_mae::Float64 = 0.0
+                                 model::Union{Flux.Chain, Nothing}, lr::Float32,
+                                 epoch, mc_steps)::Tuple{Vector{MonteCarloAverages}, Vector{Float32}}
+    total_loss_mae::Float32 = 0.0f0
 
     system_outputs::Vector{MonteCarloAverages} = Vector{MonteCarloAverages}()
-    system_losses::Vector{Float64} = Vector{Float64}()
+    system_losses::Vector{Float32} = Vector{Float32}()
 
-    println("| System          | Acc.Ratio | Avg.Displ.(Å) | MAE         |")
+    println("| System          | Acc.Ratio | Avg.Displ.(Å) | MAE       |")
 
     for (system_idx, system_params) in enumerate(system_params_list)
-        descriptors::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
-        energies::Vector{Vector{Float64}} = Vector{Vector{Float64}}()
-        acceptance_ratios::Vector{Float64} = Vector{Float64}()
-        max_displacements::Vector{Float64} = Vector{Float64}()
+        descriptors::Vector{Vector{Float32}} = Vector{Vector{Float32}}()
+        energies::Vector{Vector{Float32}} = Vector{Vector{Float32}}()
+        acceptance_ratios::Vector{Float32} = Vector{Float32}()
+        max_displacements::Vector{Float32} = Vector{Float32}()
 
-        cross_accumulators::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}()
-        symm_func_accumulators::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}()
+        cross_accumulators::Vector{Matrix{Float32}} = Vector{Matrix{Float32}}()
+        symm_func_accumulators::Vector{Matrix{Float32}} = Vector{Matrix{Float32}}()
 
         for output in outputs
             if system_params.system_name == output.system_params.system_name
@@ -114,13 +115,13 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
             end
         end
 
-        avg_descriptor::Vector{Float64} = mean(descriptors)
-        avg_energies::Vector{Float64} = mean(energies)
-        avg_acceptance::Float64 = mean(acceptance_ratios)
-        avg_displacement::Float64 = mean(max_displacements)
+        avg_descriptor::Vector{Float32} = mean(descriptors)
+        avg_energies::Vector{Float32} = mean(energies)
+        avg_acceptance::Float32 = mean(acceptance_ratios)
+        avg_displacement::Float32 = mean(max_displacements)
 
-        avg_cross_acc::Union{Matrix{Float64}, Nothing} = nothing
-        avg_symm_func::Union{Matrix{Float64}, Nothing} = nothing
+        avg_cross_acc::Union{Matrix{Float32}, Nothing} = nothing
+        avg_symm_func::Union{Matrix{Float32}, Nothing} = nothing
 
         if global_params.mode == "training"
             avg_cross_acc = mean(cross_accumulators)
@@ -163,32 +164,13 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     end
 
     if global_params.mode == "training"
-        total_loss_mae /= length(system_params_list)
+        total_loss_mae /= Float32(length(system_params_list))
     end
 
     return (system_outputs, system_losses)
 end
 
-function apply_periodic_boundaries!(frame::Frame,
-                                    box::AbstractVector{T},
-                                    point_index::Integer) where {T <: AbstractFloat}
-    pos = positions(frame)
-
-    @inbounds for dim in 1:3
-        coord = pos[dim, point_index]
-        box_length = box[dim]
-
-        if coord < zero(T)
-            pos[dim, point_index] += box_length
-        elseif coord > box_length
-            pos[dim, point_index] -= box_length
-        end
-    end
-
-    return frame
-end
-
-function mcmove!(frame::Frame,
+function mcmove!(coordinates::AbstractMatrix{T},
                  distance_matrix::Matrix{T},
                  g2_matrix::Matrix{T},
                  current_energy::T,
@@ -207,15 +189,14 @@ function mcmove!(frame::Frame,
     particle_index = rand(rng, 1:n_atoms)
     energy_orig = current_energy
 
-    pos = positions(frame)
     @inbounds for dim in 1:3
         workspace.displacement[dim] = step_size * (rand(rng, T) - T(0.5))
-        pos[dim, particle_index] += workspace.displacement[dim]
+        coordinates[dim, particle_index] += workspace.displacement[dim]
     end
-    apply_periodic_boundaries!(frame, box, particle_index)
+    apply_periodic_boundaries!(coordinates, box, particle_index)
 
     old_distances = @view distance_matrix[:, particle_index]
-    compute_distance_vector_from_column!(workspace.new_distances, pos, particle_index, box)
+    compute_distance_vector_from_column!(workspace.new_distances, coordinates, particle_index, box)
 
     empty!(workspace.affected_indices)
     push!(workspace.affected_indices, particle_index)
@@ -261,22 +242,28 @@ function mcmove!(frame::Frame,
         current_energy = energy_new
     else
         @inbounds for dim in 1:3
-            pos[dim, particle_index] -= workspace.displacement[dim]
+            coordinates[dim, particle_index] -= workspace.displacement[dim]
         end
-        apply_periodic_boundaries!(frame, box, particle_index)
+        apply_periodic_boundaries!(coordinates, box, particle_index)
     end
 
     return (current_energy, accepted)
 end
 
 function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
-    model = input.model
     global_params = input.global_params
     mc_params = input.mc_params
     nn_params = input.nn_params
     system_params = input.system_params
+    model_weights = input.model_weights
 
-    step_size::Float64 = copy(system_params.max_displacement)
+    # Rebuild model from weights on the worker
+    # This avoids serialization issues with the model structure itself
+    model = model_init(nn_params)
+    _, rebuild = Flux.destructure(model)
+    model = f32(rebuild(model_weights))
+
+    step_size::Float32 = copy(system_params.max_displacement)
 
     worker_id::Int = nprocs() == 1 ? myid() : myid() - 1
     worker_id_str::String = lpad(worker_id, 3, "0")
@@ -297,33 +284,35 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
         deepcopy(read_step(pdb, 0))
     end
 
-    box::Vector{Float64} = lengths(UnitCell(frame))
+    coordinates::Matrix{Float32} = Matrix{Float32}(positions(frame))
+    box::Vector{Float32} = Vector{Float32}(lengths(UnitCell(frame)))
 
     if global_params.output_mode == "verbose"
-        write_trajectory(positions(frame), box, system_params, traj_file, 'w')
-        write_trajectory(positions(frame), box, system_params, pdb_file, 'w')
+        write_trajectory(coordinates, box, system_params, traj_file, 'w')
+        write_trajectory(coordinates, box, system_params, pdb_file, 'w')
     end
 
     total_steps::Int = mc_params.equilibration_steps + mc_params.steps
-    total_output_points::Int = round(Int, total_steps / mc_params.output_frequency)
+    total_output_points::Int = round(Int, Float32(total_steps) / Float32(mc_params.output_frequency))
 
-    distance_matrix::Matrix{Float64} = build_distance_matrix(frame)
-    g2_matrix::Matrix{Float64} = build_g2_matrix(distance_matrix, nn_params)
+    distance_matrix::Matrix{Float32} = build_distance_matrix(coordinates, box)
+    g2_matrix::Matrix{Float32} = build_g2_matrix(distance_matrix, nn_params)
 
-    workspace = MonteCarloWorkspace{Float64}(system_params.n_atoms, length(nn_params.g2_functions))
+    n_params::Int = length(model_weights)
+    workspace = MonteCarloWorkspace{Float32}(system_params.n_atoms, length(nn_params.g2_functions), n_params)
 
-    hist_accumulator::Vector{Float64} = zeros(Float64, system_params.n_bins)
+    hist_accumulator::Vector{Float32} = zeros(Float32, system_params.n_bins)
 
     if global_params.mode == "training"
-        hist::Vector{Float64} = zeros(Float64, system_params.n_bins)
-        g2_accumulator::Matrix{Float64} = zeros(size(g2_matrix))
-        cross_accumulators::Matrix{Float64} = initialize_cross_accumulators(system_params, model)
+        hist::Vector{Float32} = zeros(Float32, system_params.n_bins)
+        g2_accumulator::Matrix{Float32} = zeros(Float32, size(g2_matrix))
+        cross_accumulators::Matrix{Float32} = initialize_cross_accumulators(system_params, model)
     end
 
-    symm_func_matrix::Matrix{Float64} = g2_matrix
-    energy_vector::Vector{Float64} = init_system_energies_vector(symm_func_matrix, model)
-    total_energy::Float64 = sum(energy_vector)
-    energies::Vector{Float64} = zeros(total_output_points + 1)
+    symm_func_matrix::Matrix{Float32} = g2_matrix
+    energy_vector::Vector{Float32} = init_system_energies_vector(symm_func_matrix, model)
+    total_energy::Float32 = sum(energy_vector)
+    energies::Vector{Float32} = zeros(Float32, total_output_points + 1)
     energies[1] = total_energy
 
     accepted_total::Int = 0
@@ -332,7 +321,7 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
 
     for step in 1:total_steps
         total_energy,
-        accepted = mcmove!(frame, distance_matrix, g2_matrix,
+        accepted = mcmove!(coordinates, distance_matrix, g2_matrix,
                            total_energy, energy_vector, model,
                            nn_params, system_params, box, rng, step_size, workspace)
         accepted_total += accepted
@@ -346,12 +335,12 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
         end
 
         if step % mc_params.output_frequency == 0
-            energies[Int(step / mc_params.output_frequency) + 1] = total_energy
+            energies[(step ÷ mc_params.output_frequency) + 1] = total_energy
         end
 
         if global_params.output_mode == "verbose" &&
            step % mc_params.trajectory_output_frequency == 0
-            write_trajectory(positions(frame), box, system_params, traj_file, 'a')
+            write_trajectory(coordinates, box, system_params, traj_file, 'a')
         end
 
         if step % mc_params.output_frequency == 0 && step > mc_params.equilibration_steps
@@ -362,27 +351,27 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
                 g2_accumulator .+= g2_matrix
 
                 normalize_hist_to_rdf!(hist, system_params, box)
-                update_cross_accumulators!(cross_accumulators, g2_matrix, hist, model)
-                hist = zeros(Float64, system_params.n_bins)
+                update_cross_accumulators!(cross_accumulators, g2_matrix, hist, model, workspace.flat_grad_buffer)
+                fill!(hist, 0.0f0)
             else
                 hist_accumulator = update_distance_histogram!(distance_matrix, hist_accumulator, system_params)
             end
         end
     end
 
-    acceptance_ratio::Float64 = accepted_total / total_steps
+    acceptance_ratio::Float32 = Float32(accepted_total) / Float32(total_steps)
 
     if collected_samples == 0
         error("No production samples collected in mcsample!. Check configuration: steps=$(mc_params.steps), equilibration=$(mc_params.equilibration_steps), output_frequency=$(mc_params.output_frequency).")
     end
 
     if global_params.mode == "training"
-        cross_accumulators ./= collected_samples
-        g2_accumulator ./= collected_samples
+        cross_accumulators ./= Float32(collected_samples)
+        g2_accumulator ./= Float32(collected_samples)
         symm_func_accumulator = g2_accumulator
     end
 
-    hist_accumulator ./= collected_samples
+    hist_accumulator ./= Float32(collected_samples)
     normalize_hist_to_rdf!(hist_accumulator, system_params, box)
 
     if global_params.mode == "training"

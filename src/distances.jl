@@ -3,9 +3,9 @@ using ..ML_IMC
 """
 Build distance matrix for all atoms in the frame.
 """
-function build_distance_matrix(frame::Frame)::Matrix{Float64}
-    coordinates = positions(frame)
-    box = lengths(UnitCell(frame))
+function build_distance_matrix(frame::Frame)::Matrix{Float32}
+    coordinates = Matrix{Float32}(positions(frame))
+    box = Vector{Float32}(lengths(UnitCell(frame)))
 
     return build_distance_matrix(coordinates, box)
 end
@@ -13,7 +13,8 @@ end
 """
 Build distance matrix for all atoms from cached coordinates and box lengths.
 """
-function build_distance_matrix(coordinates, box::AbstractVector{T})::Matrix{T} where {T <: AbstractFloat}
+function build_distance_matrix(coordinates::AbstractMatrix{T},
+                               box::AbstractVector{T})::Matrix{T} where {T <: AbstractFloat}
     n_atoms = size(coordinates, 2)
     distance_matrix = Matrix{T}(undef, n_atoms, n_atoms)
 
@@ -66,7 +67,7 @@ Compute distances from one point to all other points into a preallocated buffer.
 """
 function compute_distance_vector!(distance_vector::AbstractVector{T},
                                   r1::AbstractVector{T},
-                                  coordinates,
+                                  coordinates::AbstractMatrix{T},
                                   box::AbstractVector{T})::AbstractVector{T} where {T <: AbstractFloat}
     @inbounds for j in axes(coordinates, 2)
         acc = zero(T)
@@ -84,7 +85,7 @@ Compute distances from column `col_index` of `coordinates` to all other columns,
 writing results into a preallocated buffer. Avoids allocating a column slice.
 """
 function compute_distance_vector_from_column!(buf::AbstractVector{T},
-                                              coordinates,
+                                              coordinates::AbstractMatrix{T},
                                               col_index::Int,
                                               box::AbstractVector{T}) where {T <: AbstractFloat}
     @inbounds for j in axes(coordinates, 2)
@@ -131,15 +132,15 @@ end
 """
 Build distance matrix using Chemfiles native distance calculation.
 """
-function build_distance_matrix_chemfiles(frame::Frame)::Matrix{Float64}
+function build_distance_matrix_chemfiles(frame::Frame)::Matrix{Float32}
     n_atoms = length(frame)
-    distance_matrix = Matrix{Float64}(undef, n_atoms, n_atoms)
+    distance_matrix = Matrix{Float32}(undef, n_atoms, n_atoms)
 
     @inbounds for i in 1:n_atoms
-        distance_matrix[i, i] = 0.0
+        distance_matrix[i, i] = 0.0f0
         @simd for j in (i + 1):n_atoms
             # Note: Chemfiles uses 0-based indexing
-            dist = Chemfiles.distance(frame, i - 1, j - 1)
+            dist = Float32(Chemfiles.distance(frame, i - 1, j - 1))
             distance_matrix[i, j] = dist
             distance_matrix[j, i] = dist
         end
@@ -151,11 +152,11 @@ end
 """
 Update distance vector using Chemfiles native distance calculation.
 """
-function update_distance_vector_chemfiles!(frame::Frame, distance_vector::Vector{Float64},
-                                           point_index::Int)::Vector{Float64}
+function update_distance_vector_chemfiles!(frame::Frame, distance_vector::AbstractVector{T},
+                                           point_index::Int)::AbstractVector{T} where {T <: AbstractFloat}
     @inbounds @simd for i in eachindex(distance_vector)
         # Note: Chemfiles uses 0-based indexing
-        distance_vector[i] = Chemfiles.distance(frame, i - 1, point_index - 1)
+        distance_vector[i] = T(Chemfiles.distance(frame, i - 1, point_index - 1))
     end
     return distance_vector
 end

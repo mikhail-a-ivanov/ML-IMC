@@ -1,41 +1,41 @@
 using ..ML_IMC
 
 struct G2
-    eta::Float64
-    rcutoff::Float64
-    rshift::Float64
-    norm::Float64
+    eta::Float32
+    rcutoff::Float32
+    rshift::Float32
+    norm::Float32
 end
 
 struct LRSchedulerConfig
     warmup_epochs::Int
-    warmup_start_lr::Float64
+    warmup_start_lr::Float32
     patience::Int
-    factor::Float64
-    min_lr::Float64
+    factor::Float32
+    min_lr::Float32
     cooldown::Int
 end
 
 mutable struct LRSchedulerState
-    current_lr::Float64
-    best_loss::Float64
+    current_lr::Float32
+    best_loss::Float32
     bad_epochs::Int
     cooldown_left::Int
 end
 
 struct OptimizerConfig
     name::String
-    learning_rate::Float64
-    momentum::Float64
-    decay_1::Float64
-    decay_2::Float64
+    learning_rate::Float32
+    momentum::Float32
+    decay_1::Float32
+    decay_2::Float32
 end
 
 struct NeuralNetParameters
     # Symmetry functions
     g2_functions::Vector{G2}
-    max_distance_cutoff::Float64
-    symm_function_scaling::Float64
+    max_distance_cutoff::Float32
+    symm_function_scaling::Float32
 
     # Architecture
     neurons::Vector{Int}
@@ -44,7 +44,7 @@ struct NeuralNetParameters
 
     # Training parameters
     iterations::Int
-    regularization::Float64
+    regularization::Float32
 
     # Gradient settings
     gradient_type::String
@@ -64,11 +64,11 @@ struct SystemParameters
     n_atoms::Int
     atom_name::String
     n_bins::Int
-    bin_width::Float64
-    temperature::Float64
-    beta::Float64
-    max_displacement::Float64
-    target_acceptance_ratio::Float64
+    bin_width::Float32
+    temperature::Float32
+    beta::Float32
+    max_displacement::Float32
+    target_acceptance_ratio::Float32
 end
 
 struct MonteCarloParameters
@@ -94,7 +94,7 @@ struct PreTrainingParameters
     steps::Int
     batch_size::Int
     output_frequency::Int
-    regularization::Float64
+    regularization::Float32
     optimizer_config::OptimizerConfig
     use_diff_gradient::Bool
     use_all_particles::Bool
@@ -116,13 +116,15 @@ mutable struct MonteCarloWorkspace{T <: AbstractFloat}
     displacement::Vector{T}
     affected_indices::Vector{Int}
     g2_rows_scratch::Matrix{T}
+    flat_grad_buffer::Vector{T}
 end
 
-function MonteCarloWorkspace{T}(n_atoms::Int, n_g2::Int) where {T <: AbstractFloat}
+function MonteCarloWorkspace{T}(n_atoms::Int, n_g2::Int, n_params::Int) where {T <: AbstractFloat}
     MonteCarloWorkspace{T}(Vector{T}(undef, n_atoms),
                            Vector{T}(undef, 3),
                            Vector{Int}(undef, n_atoms),
-                           Matrix{T}(undef, n_g2, n_atoms))
+                           Matrix{T}(undef, n_g2, n_atoms),
+                           Vector{T}(undef, n_params))
 end
 
 mutable struct PretrainingWorkspace{T <: AbstractFloat}

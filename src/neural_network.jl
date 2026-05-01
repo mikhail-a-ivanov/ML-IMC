@@ -46,7 +46,7 @@ end
 function model_init(nn_params::NeuralNetParameters)
     network = build_network(nn_params)
     model = build_chain(nn_params, network...)
-    model = f64(model)
+    model = f32(model)
 
     return model
 end

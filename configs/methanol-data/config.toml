@@ -18,7 +18,7 @@ symmetry_function_file = "configs/methanol-data/symmetry_functions.toml"
 
 [output]
 # All generated models, logs, RDFs, energies, and trajectories are written here.
-dir = "run"
+dir = "run_1"
 # "default" writes RDFs and energies; "verbose" also writes MC trajectories.
 detail = "default"
 
@@ -39,9 +39,9 @@ bias = true
 
 [monte_carlo]
 # Total MC steps per sampling run.
-steps = 1500000
+steps = 500000
 # Samples are accumulated only after this many equilibration steps.
-equilibration_steps = 500000
+equilibration_steps = 10000
 # Adjust trial displacement every N equilibration steps. Set 0 to disable.
 step_adjust_frequency = 500
 # Trajectory write interval; used only when output.detail = "verbose".
@@ -51,7 +51,7 @@ sample_frequency = 500
 
 [training]
 # Number of outer ML-IMC iterations.
-iterations = 2
+iterations = 20
 # Loss used for RDF gradient construction: "mse" or "mae".
 loss = "mse"
 # L2 regularization coefficient. Use 0.0 to disable.
@@ -71,29 +71,29 @@ decay_rates = [0.9, 0.999]
 [training.lr_scheduler]
 # Linear warmup length. Set 0 to start directly at learning_rate.
 warmup_epochs = 0
-warmup_start = 1.0e-7
+warmup_start = 1.0e-5
 # Reduce LR after this many epochs without improvement. Set 0 to disable.
-patience = 50
-factor = 0.5
-min_lr = 1.0e-8
+patience = 5
+factor = 0.8
+min_lr = 1.0e-5
 cooldown = 0
 
 [pretraining]
 # Number of PMF/magic pretraining epochs.
-steps = 500000
+steps = 20000
 # Number of random moves per system before each model update.
-batch_size = 1
+batch_size = 10
 # Loss used for pretraining energy matching: "mse" or "mae".
 loss = "mse"
 regularization = 0.0
 # true matches energy differences; false matches absolute energies.
-use_diff_gradient = true
+use_diff_gradient = false
 # false moves one particle per sample; true moves all particles.
 move_all_particles = false
 # Console/log output interval for pretraining.
 output_frequency = 1
 # Save model and optimizer state every N epochs.
-save_frequency = 10000
+save_frequency = 1000
 # Prefix for saved pretraining artifacts.
 output_prefix = "pt"
 
@@ -106,11 +106,11 @@ decay_rates = [0.9, 0.999]
 
 [pretraining.lr_scheduler]
 # Scheduler settings for PMF and magic pretraining.
-warmup_epochs = 0
-warmup_start = 1.0e-7
-patience = 10000
-factor = 0.5
-min_lr = 1.0e-8
+warmup_epochs = 1000
+warmup_start = 1.0e-5
+patience = 1000
+factor = 0.8
+min_lr = 1.0e-5
 cooldown = 0
 
 [magic_pretraining]

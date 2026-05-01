@@ -10,15 +10,15 @@ function parse_symmetry_functions(filename::String)
     println()
 
     g2_functions = Vector{G2}()
-    scaling_factor = get(symm_data, "scaling", 1.0)
-    max_cutoff = 0.0
+    scaling_factor = Float32(get(symm_data, "scaling", 1.0f0))
+    max_cutoff = 0.0f0
 
     if haskey(symm_data, "G2")
         for params in symm_data["G2"]
             eta, rcutoff, rshift, norm = params
-            g2 = G2(eta, rcutoff, rshift, norm)
+            g2 = G2(Float32(eta), Float32(rcutoff), Float32(rshift), Float32(norm))
             push!(g2_functions, g2)
-            max_cutoff = max(max_cutoff, rcutoff)
+            max_cutoff = max(max_cutoff, Float32(rcutoff))
         end
     end
 
@@ -27,8 +27,8 @@ end
 
 function parse_system_parameters(filename::String)
     # Constants
-    NA = 6.02214076e23  # Avogadro constant
-    kB = 1.38064852e-23 * NA / 1000  # Boltzmann constant in kJ/(mol·K)
+    NA = 6.0221406f23  # Avogadro constant
+    kB = 1.3806485f-23 * NA / 1000.0f0  # Boltzmann constant in kJ/(mol·K)
 
     system_data = TOML.parsefile(filename)["system"]
 
@@ -44,8 +44,8 @@ function parse_system_parameters(filename::String)
     bin_width = infer_bin_width(bins)
 
     # Calculate beta from temperature
-    temperature = system_data["temperature"]
-    beta = 1 / (kB * temperature)
+    temperature = Float32(system_data["temperature"])
+    beta = 1.0f0 / (kB * temperature)
 
     return SystemParameters(system_data["system_name"],
                             system_data["topology_file_path"],
@@ -57,16 +57,16 @@ function parse_system_parameters(filename::String)
                             bin_width,
                             temperature,
                             beta,
-                            system_data["max_displacement"],
-                            system_data["target_acceptance_ratio"])
+                            Float32(system_data["max_displacement"]),
+                            Float32(system_data["target_acceptance_ratio"]))
 end
 
 function parse_lr_scheduler(section)
     return LRSchedulerConfig(get(section, "warmup_epochs", 0),
-                             get(section, "warmup_start", 1.0e-7),
+                             Float32(get(section, "warmup_start", 1.0f-7)),
                              get(section, "patience", 50),
-                             get(section, "factor", 0.5),
-                             get(section, "min_lr", 1.0e-8),
+                             Float32(get(section, "factor", 0.5f0)),
+                             Float32(get(section, "min_lr", 1.0f-8)),
                              get(section, "cooldown", 0))
 end
 
@@ -156,13 +156,13 @@ function parameters_init()
                                     model_section["activations"],
                                     model_section["bias"],
                                     training_section["iterations"],
-                                    training_section["regularization"],
+                                    Float32(training_section["regularization"]),
                                     gradient_type,
                                     OptimizerConfig(training_optimizer_section["name"],
-                                                    training_optimizer_section["learning_rate"],
-                                                    training_optimizer_section["momentum"],
-                                                    training_optimizer_section["decay_rates"][1],
-                                                    training_optimizer_section["decay_rates"][2]),
+                                                    Float32(training_optimizer_section["learning_rate"]),
+                                                    Float32(training_optimizer_section["momentum"]),
+                                                    Float32(training_optimizer_section["decay_rates"][1]),
+                                                    Float32(training_optimizer_section["decay_rates"][2])),
                                     parse_lr_scheduler(training_lr_section))
 
     # Parse pre-training parameters
@@ -177,12 +177,12 @@ function parameters_init()
     pretrain_params = PreTrainingParameters(pt_section["steps"],
                                             pt_section["batch_size"],
                                             pt_section["output_frequency"],
-                                            pt_section["regularization"],
+                                            Float32(pt_section["regularization"]),
                                             OptimizerConfig(pt_optimizer_section["name"],
-                                                            pt_optimizer_section["learning_rate"],
-                                                            pt_optimizer_section["momentum"],
-                                                            pt_optimizer_section["decay_rates"][1],
-                                                            pt_optimizer_section["decay_rates"][2]),
+                                                            Float32(pt_optimizer_section["learning_rate"]),
+                                                            Float32(pt_optimizer_section["momentum"]),
+                                                            Float32(pt_optimizer_section["decay_rates"][1]),
+                                                            Float32(pt_optimizer_section["decay_rates"][2])),
                                             get(pt_section, "use_diff_gradient", false),
                                             get(pt_section, "move_all_particles", false),
                                             pt_gradient_type,

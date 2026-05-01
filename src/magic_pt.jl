@@ -10,32 +10,32 @@ using BSON: @save, @load
 struct MagicPreComputedInput
     nn_params::NeuralNetParameters
     system_params::SystemParameters
-    reference_rdf::Vector{Float64}
+    reference_rdf::Vector{Float32}
 end
 
 struct MagicReferenceData
     cache::PretrainingReferenceCache
-    precomputed_energy::Vector{Float64}
+    precomputed_energy::Vector{Float32}
 end
 
 struct PotentialData
-    r_values::Vector{Float64}
-    potential_values::Vector{Float64}
+    r_values::Vector{Float32}
+    potential_values::Vector{Float32}
 end
 
 struct PotentialLookup
-    lookup_r::Vector{Float64}
-    lookup_v::Vector{Float64}
-    r_step::Float64
-    r_min::Float64
-    r_max::Float64
+    lookup_r::Vector{Float32}
+    lookup_v::Vector{Float32}
+    r_step::Float32
+    r_min::Float32
+    r_max::Float32
 end
 
 function load_potential_data(filename::AbstractString)::PotentialData
     check_file(filename)
 
-    r_values = Float64[]
-    potential_values = Float64[]
+    r_values = Float32[]
+    potential_values = Float32[]
 
     open(filename, "r") do file
         for line in eachline(file)
@@ -46,8 +46,8 @@ function load_potential_data(filename::AbstractString)::PotentialData
             values = split(stripped_line)
             length(values) < 2 && continue
 
-            push!(r_values, parse(Float64, values[1]))
-            push!(potential_values, parse(Float64, values[2]))
+            push!(r_values, parse(Float32, values[1]))
+            push!(potential_values, parse(Float32, values[2]))
         end
     end
 
@@ -58,22 +58,22 @@ function load_potential_data(filename::AbstractString)::PotentialData
     return PotentialData(r_values, potential_values)
 end
 
-function create_potential_lookup(potential_data::PotentialData, bin_width::Float64, n_bins::Int)::PotentialLookup
+function create_potential_lookup(potential_data::PotentialData, bin_width::Float32, n_bins::Int)::PotentialLookup
     r_min = potential_data.r_values[1]
     r_max = min(potential_data.r_values[end], n_bins * bin_width)
 
     # Увеличиваем разрешение в 10 раз относительно бинов гистограммы
-    n_points = ceil(Int, (r_max - r_min) / (bin_width / 10)) + 1
-    r_step = (r_max - r_min) / (n_points - 1)
+    n_points = ceil(Int, (r_max - r_min) / (bin_width / 10.0f0)) + 1
+    r_step = (r_max - r_min) / Float32(n_points - 1)
 
-    lookup_r = [r_min + i * r_step for i in 0:(n_points - 1)]
+    lookup_r = [r_min + Float32(i) * r_step for i in 0:(n_points - 1)]
     lookup_v = [interpolate_potential(potential_data, r) for r in lookup_r]
 
     println("Created potential lookup table with $(length(lookup_r)) points")
     return PotentialLookup(lookup_r, lookup_v, r_step, r_min, r_max)
 end
 
-function interpolate_potential(potential_data::PotentialData, r::Float64)::Float64
+function interpolate_potential(potential_data::PotentialData, r::Float32)::Float32
     r_values = potential_data.r_values
     potential_values = potential_data.potential_values
 
@@ -95,7 +95,7 @@ function interpolate_potential(potential_data::PotentialData, r::Float64)::Float
     return v1 + t * (v2 - v1)
 end
 
-@inline function fast_interpolate_potential(r::Float64, lookup::PotentialLookup)::Float64
+@inline function fast_interpolate_potential(r::Float32, lookup::PotentialLookup)::Float32
     if r <= lookup.r_min
         return lookup.lookup_v[1]
     elseif r >= lookup.r_max
@@ -118,18 +118,18 @@ end
     return v1 + t * (v2 - v1)
 end
 
-function compute_potential_energy(distance_matrix::Matrix{Float64},
+function compute_potential_energy(distance_matrix::AbstractMatrix{T},
                                   lookup::PotentialLookup,
-                                  system_params::SystemParameters)::Float64
-    total_energy = 0.0
+                                  system_params::SystemParameters)::T where {T <: AbstractFloat}
+    total_energy = zero(T)
     n_atoms = system_params.n_atoms
-    cutoff = system_params.n_bins * system_params.bin_width
+    cutoff = T(system_params.n_bins) * T(system_params.bin_width)
 
     for i in 1:n_atoms
         for j in (i + 1):n_atoms
             r = distance_matrix[i, j]
-            if r > 0.0 && r < cutoff
-                pair_energy = fast_interpolate_potential(r, lookup)
+            if r > zero(T) && r < cutoff
+                pair_energy = T(fast_interpolate_potential(Float32(r), lookup))
                 total_energy += pair_energy
             end
         end
@@ -138,25 +138,25 @@ function compute_potential_energy(distance_matrix::Matrix{Float64},
     return total_energy
 end
 
-function compute_potential_energy_delta(old_distances::AbstractVector{Float64},
-                                        new_distances::AbstractVector{Float64},
+function compute_potential_energy_delta(old_distances::AbstractVector{T},
+                                        new_distances::AbstractVector{T},
                                         lookup::PotentialLookup,
                                         system_params::SystemParameters,
-                                        point_index::Integer)::Float64
-    delta = 0.0
-    cutoff = system_params.n_bins * system_params.bin_width
+                                        point_index::Integer)::T where {T <: AbstractFloat}
+    delta = zero(T)
+    cutoff = T(system_params.n_bins) * T(system_params.bin_width)
 
     @inbounds for i in eachindex(old_distances, new_distances)
         i == point_index && continue
 
         old_r = old_distances[i]
-        if old_r > 0.0 && old_r < cutoff
-            delta -= fast_interpolate_potential(old_r, lookup)
+        if old_r > zero(T) && old_r < cutoff
+            delta -= T(fast_interpolate_potential(Float32(old_r), lookup))
         end
 
         new_r = new_distances[i]
-        if new_r > 0.0 && new_r < cutoff
-            delta += fast_interpolate_potential(new_r, lookup)
+        if new_r > zero(T) && new_r < cutoff
+            delta += T(fast_interpolate_potential(Float32(new_r), lookup))
         end
     end
 
@@ -170,7 +170,7 @@ function create_magic_reference_data(input::MagicPreComputedInput,
 
     ref_cache = precompute_reference_cache(nn_params, sys_params)
     n_frames = ref_cache.trajectory.n_frames
-    potential_per_frame = Vector{Float64}(undef, n_frames)
+    potential_per_frame = Vector{Float32}(undef, n_frames)
 
     for frame_id in 1:n_frames
         potential_per_frame[frame_id] = compute_potential_energy(ref_cache.distance_matrices[frame_id],
@@ -187,7 +187,7 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
                                      sys_params::SystemParameters,
                                      lookup::PotentialLookup,
                                      rng::Xoroshiro128Plus,
-                                     workspace::PretrainingWorkspace{Float64})
+                                     workspace::PretrainingWorkspace{Float32})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
@@ -201,7 +201,7 @@ function magic_single_particle_move!(ref_data::MagicReferenceData,
 
     point = random_displaced_position(coordinates, point_index, box, sys_params.max_displacement, rng)
     distance_vec2 = compute_distance_vector(point, coordinates, box)
-    distance_vec2[point_index] = 0.0
+    distance_vec2[point_index] = zero(eltype(distance_vec2))
 
     e_pot2 = e_pot1 + compute_potential_energy_delta(distance_vec1, distance_vec2, lookup, sys_params, point_index)
 
@@ -228,7 +228,7 @@ function magic_all_particle_move!(ref_data::MagicReferenceData,
                                   sys_params::SystemParameters,
                                   lookup::PotentialLookup,
                                   rng::Xoroshiro128Plus,
-                                  workspace::PretrainingWorkspace{Float64})
+                                  workspace::PretrainingWorkspace{Float32})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
 
     symm1 = ref_data.cache.g2_matrices[frame_id]
@@ -262,7 +262,7 @@ function make_magic_mc_move!(use_all_particles::Bool,
                              sys_params::SystemParameters,
                              lookup::PotentialLookup,
                              rng::Xoroshiro128Plus,
-                             workspace::PretrainingWorkspace{Float64})
+                             workspace::PretrainingWorkspace{Float32})
     return use_all_particles ?
            magic_all_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng, workspace) :
            magic_single_particle_move!(ref_data, model, nn_params, sys_params, lookup, rng, workspace)
@@ -282,12 +282,12 @@ function run_magic_training_phase!(steps::Int,
                                    log_prefix::String="magic_pretraining")
     rng = Xoroshiro128Plus()
     n_systems = length(system_params_list)
-    workspaces = [PretrainingWorkspace{Float64}(sys.n_atoms, length(nn_params.g2_functions))
+    workspaces = [PretrainingWorkspace{Float32}(sys.n_atoms, length(nn_params.g2_functions))
                   for sys in system_params_list]
     opt_state = Flux.setup(optimizer, model)
     lr_config = pretrain_params.lr_scheduler_config
-    initial_lr = pretrain_params.learning_rate
-    lr_state = LRSchedulerState(initial_lr, Inf, 0, 0)
+    initial_lr = pretrain_params.optimizer_config.learning_rate
+    lr_state = LRSchedulerState(initial_lr, Float32(Inf), 0, 0)
     Flux.adjust!(opt_state, initial_lr)
 
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
@@ -301,8 +301,8 @@ function run_magic_training_phase!(steps::Int,
 
     try
         for epoch in 1:steps
-            accum_mae_diff = 0.0
-            accum_mae_abs = 0.0
+            accum_mae_diff = 0.0f0
+            accum_mae_abs = 0.0f0
             count = 0
             batch_flat_grad = nothing
             grad_restructure = nothing
@@ -329,9 +329,9 @@ function run_magic_training_phase!(steps::Int,
                     n_atoms = system_params_list[sys_id].n_atoms
 
                     norm = if use_diff_gradient && !use_all_particles
-                        1.0
+                        1.0f0
                     else
-                        Float64(n_atoms)
+                        Float32(n_atoms)
                     end
 
                     batch_gradients[sys_id] = compute_pretraining_gradient!(e_nn2, e_pot2, Δe_nn, Δe_pot,
@@ -340,8 +340,8 @@ function run_magic_training_phase!(steps::Int,
                                                                             use_diff_gradient,
                                                                             norm_factor=norm)
 
-                    accum_mae_diff += abs(Δe_nn - Δe_pot) / n_atoms
-                    accum_mae_abs += abs(e_nn2 - e_pot2) / n_atoms
+                    accum_mae_diff += abs(Δe_nn - Δe_pot) / Float32(n_atoms)
+                    accum_mae_abs += abs(e_nn2 - e_pot2) / Float32(n_atoms)
                     count += 1
                 end
 
@@ -349,7 +349,7 @@ function run_magic_training_phase!(steps::Int,
                 batch_flat_grad = isnothing(batch_flat_grad) ? flat_grad : batch_flat_grad .+ flat_grad
             end
 
-            batch_flat_grad ./= batch_size
+            batch_flat_grad ./= Float32(batch_size)
             grad_norm = norm(batch_flat_grad)
             final_grad = grad_restructure(batch_flat_grad)
             update_model!(model, opt_state, final_grad)
@@ -362,14 +362,20 @@ function run_magic_training_phase!(steps::Int,
                 end
             end
 
-            mean_mae_diff = accum_mae_diff / count
-            mean_mae_abs = accum_mae_abs / count
+            mean_mae_diff = accum_mae_diff / Float32(count)
+            mean_mae_abs = accum_mae_abs / Float32(count)
 
             log_pretraining_summary(summary_io, epoch, mean_mae_diff, mean_mae_abs,
                                     grad_norm, lr_state.current_lr)
 
-            plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
-            step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
+            if epoch > lr_config.warmup_epochs
+                plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
+                step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
+            elseif epoch == lr_config.warmup_epochs
+                # Reset best_loss and bad_epochs for a fresh start after warmup
+                lr_state.best_loss = Float32(Inf)
+                lr_state.bad_epochs = 0
+            end
 
             println(@sprintf("Magic PT | %s | %s | Epoch: %4d | Batch: %3d | DiffMAE: %.3e | AbsMAE: %.3e | |∇|: %.3e | LR: %.2e",
                              phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs,
@@ -396,7 +402,7 @@ function magic_pretrain(magic_params::MagicPreTrainingParameters,
                         system_params_list::Vector{SystemParameters},
                         model::Chain,
                         optimizer,
-                        reference_rdfs::Vector{Vector{Float64}})
+                        reference_rdfs::Vector{Vector{Float32}})
 
     # Загружаем данные о потенциалах
     println("Loading potential data from files...")
@@ -414,7 +420,7 @@ function magic_pretrain(magic_params::MagicPreTrainingParameters,
     ref_inputs = [MagicPreComputedInput(nn_params, system_params_list[i], reference_rdfs[i])
                   for i in 1:length(system_params_list)]
 
-    ref_data_list = []
+    ref_data_list = MagicReferenceData[]
     for i in 1:length(ref_inputs)
         println("Processing system $(i)...")
         push!(ref_data_list, create_magic_reference_data(ref_inputs[i], lookup_list[i]))

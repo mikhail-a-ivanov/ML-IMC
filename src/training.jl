@@ -32,6 +32,10 @@ function prepare_monte_carlo_inputs(global_params::GlobalParameters,
         throw(ArgumentError("Number of workers ($n_workers) must be divisible by number of systems ($n_systems)"))
     end
 
+    # Get model weights for serialization
+    model_weights, _ = Flux.destructure(model)
+    model_weights = Float32.(model_weights)
+
     # Create input for each system
     reference_inputs = Vector{MonteCarloSampleInput}(undef, n_systems)
     for (i, system_params) in enumerate(system_params_list)
@@ -39,7 +43,7 @@ function prepare_monte_carlo_inputs(global_params::GlobalParameters,
                                                     mc_params,
                                                     nn_params,
                                                     system_params,
-                                                    model)
+                                                    model_weights)
     end
 
     # Replicate inputs for all workers
@@ -62,7 +66,7 @@ function train!(global_params::GlobalParameters,
 
     od = global_params.output_dir
     lr_config = nn_params.lr_scheduler_config
-    lr_state = LRSchedulerState(nn_params.optimizer_config.learning_rate, Inf, 0, 0)
+    lr_state = LRSchedulerState(nn_params.optimizer_config.learning_rate, Float32(Inf), 0, 0)
 
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
     training_log_file = joinpath(od, "training_$(timestamp)_summary.csv")
@@ -132,7 +136,7 @@ function train!(global_params::GlobalParameters,
             @save joinpath(od, "opt-iter-$(iter_string).bson") opt_state
             @save joinpath(od, "gradients-iter-$(iter_string).bson") mean_loss_gradients
 
-            tmp_symm_func_matrix::Matrix{Float64} = zeros(length(nn_params.g2_functions),
+            tmp_symm_func_matrix::Matrix{Float32} = zeros(Float32, length(nn_params.g2_functions),
                                                           1)
             tmp_energy_gradients = compute_energy_gradients(tmp_symm_func_matrix, model)
             _, gradient_restructure = Flux.destructure(tmp_energy_gradients)
@@ -140,7 +144,7 @@ function train!(global_params::GlobalParameters,
             mean_loss_gradients = gradient_restructure(mean_loss_gradients)
             update_model!(model, opt_state, mean_loss_gradients)
 
-            avg_mae = sum(system_losses) / length(system_losses)
+            avg_mae = sum(system_losses) / Float32(length(system_losses))
             step_plateau!(lr_config, lr_state, opt_state, avg_mae)
 
             println(@sprintf("Epoch: %d | Steps: %d | MAE: %.3e | |∇|: %.3e | LR: %.2e",
@@ -151,6 +155,7 @@ function train!(global_params::GlobalParameters,
             flush(training_log_io)
 
             GC.gc()
+            @everywhere GC.gc()
         end
     finally
         close(training_log_io)

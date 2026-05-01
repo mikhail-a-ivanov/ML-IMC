@@ -3,13 +3,13 @@ using ..ML_IMC
 struct PreComputedInput
     nn_params::NeuralNetParameters
     system_params::SystemParameters
-    reference_rdf::Vector{Float64}
+    reference_rdf::Vector{Float32}
 end
 
 struct ReferenceData
     cache::PretrainingReferenceCache
-    pmf::Vector{Float64}
-    pmf_energies::Vector{Float64}
+    pmf::Vector{Float32}
+    pmf_energies::Vector{Float32}
 end
 
 function compute_initial_energies(ref_data::ReferenceData, frame_id::Int, model::Chain)
@@ -21,7 +21,7 @@ end
 
 function compute_pmf(rdf::AbstractVector{T}, system_params::SystemParameters)::Vector{T} where {T <: AbstractFloat}
     n_bins = system_params.n_bins
-    β = system_params.beta
+    β = T(system_params.beta)
     pmf = Vector{T}(undef, n_bins)
     repulsion_mask = rdf .== zero(T)
     n_repulsion = count(repulsion_mask)
@@ -32,7 +32,7 @@ function compute_pmf(rdf::AbstractVector{T}, system_params::SystemParameters)::V
     @inbounds for i in eachindex(pmf)
         pmf[i] = repulsion_mask[i] ? max_pmf + pmf_gradient * (first_valid - i) : -log(rdf[i]) / β
     end
-    return pmf ./ 2.0
+    return pmf ./ T(2)
 end
 
 function compute_histogram_energy(histogram::AbstractVector{T},
@@ -88,7 +88,7 @@ end
 function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
                            nn_params::NeuralNetParameters, sys_params::SystemParameters,
                            rng::Xoroshiro128Plus,
-                           workspace::PretrainingWorkspace{Float64})
+                           workspace::PretrainingWorkspace{Float32})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
     point_index = rand(rng, 1:(sys_params.n_atoms))
 
@@ -98,7 +98,7 @@ function pretraining_move!(ref_data::ReferenceData, model::Flux.Chain,
 
     point = random_displaced_position(coordinates, point_index, box, sys_params.max_displacement, rng)
     distance_vec2 = compute_distance_vector(point, coordinates, box)
-    distance_vec2[point_index] = 0.0
+    distance_vec2[point_index] = zero(eltype(distance_vec2))
 
     g2_matrix2 = workspace.symm2_scratch
     copyto!(g2_matrix2, ref_data.cache.g2_matrices[frame_id])
@@ -122,13 +122,13 @@ end
 function all_particle_move!(ref_data::ReferenceData, model::Flux.Chain,
                             nn_params::NeuralNetParameters, sys_params::SystemParameters,
                             rng::Xoroshiro128Plus,
-                            workspace::PretrainingWorkspace{Float64})
+                            workspace::PretrainingWorkspace{Float32})
     coordinates, frame_id, box = sample_reference_frame(ref_data.cache, rng)
     symm1, e_nn1, e_pmf1 = compute_initial_energies(ref_data, frame_id, model)
 
     coordinates2 = random_displaced_coordinates(coordinates, box, sys_params.max_displacement, rng)
     distance_matrix2 = build_distance_matrix(coordinates2, box)
-    hist2 = zeros(Float64, sys_params.n_bins)
+    hist2 = zeros(Float32, sys_params.n_bins)
     update_distance_histogram!(distance_matrix2, hist2, sys_params)
 
     g2_matrix2 = build_g2_matrix(distance_matrix2, nn_params)
@@ -153,7 +153,7 @@ function make_mc_move!(use_all_particles::Bool,
                        nn_params::NeuralNetParameters,
                        sys_params::SystemParameters,
                        rng::Xoroshiro128Plus,
-                       workspace::PretrainingWorkspace{Float64})
+                       workspace::PretrainingWorkspace{Float32})
     return use_all_particles ?
            all_particle_move!(ref_data, model, nn_params, sys_params, rng, workspace) :
            pretraining_move!(ref_data, model, nn_params, sys_params, rng, workspace)
@@ -167,12 +167,12 @@ function run_training_phase!(steps::Int, batch_size::Int,
                              optimizer; log_prefix::String="pretraining")
     rng = Xoroshiro128Plus()
     n_systems = length(system_params_list)
-    workspaces = [PretrainingWorkspace{Float64}(sys.n_atoms, length(nn_params.g2_functions))
+    workspaces = [PretrainingWorkspace{Float32}(sys.n_atoms, length(nn_params.g2_functions))
                   for sys in system_params_list]
     opt_state = Flux.setup(optimizer, model)
     lr_config = pretrain_params.lr_scheduler_config
     initial_lr = pretrain_params.optimizer_config.learning_rate
-    lr_state = LRSchedulerState(initial_lr, Inf, 0, 0)
+    lr_state = LRSchedulerState(initial_lr, Float32(Inf), 0, 0)
     Flux.adjust!(opt_state, initial_lr)
 
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
@@ -194,8 +194,8 @@ function run_training_phase!(steps::Int, batch_size::Int,
                 end
             end
 
-            accum_mae_diff = 0.0
-            accum_mae_abs = 0.0
+            accum_mae_diff = 0.0f0
+            accum_mae_abs = 0.0f0
             count = 0
             batch_flat_grad = nothing
             grad_restructure = nothing
@@ -216,9 +216,9 @@ function run_training_phase!(steps::Int, batch_size::Int,
                     n_atoms = system_params_list[sys_id].n_atoms
 
                     norm = if use_diff_gradient && !use_all_particles
-                        1.0
+                        1.0f0
                     else
-                        Float64(n_atoms)
+                        Float32(n_atoms)
                     end
 
                     batch_gradients[sys_id] = compute_pretraining_gradient!(e_nn2, e_pmf2, Δe_nn, Δe_pmf,
@@ -227,8 +227,8 @@ function run_training_phase!(steps::Int, batch_size::Int,
                                                                             use_diff_gradient,
                                                                             norm_factor=norm)
 
-                    accum_mae_diff += abs(Δe_nn - Δe_pmf) / n_atoms
-                    accum_mae_abs += abs(e_nn2 - e_pmf2) / n_atoms
+                    accum_mae_diff += abs(Δe_nn - Δe_pmf) / Float32(n_atoms)
+                    accum_mae_abs += abs(e_nn2 - e_pmf2) / Float32(n_atoms)
                     count += 1
                 end
 
@@ -236,19 +236,25 @@ function run_training_phase!(steps::Int, batch_size::Int,
                 batch_flat_grad = isnothing(batch_flat_grad) ? flat_grad : batch_flat_grad .+ flat_grad
             end
 
-            batch_flat_grad ./= batch_size
+            batch_flat_grad ./= Float32(batch_size)
             grad_norm = norm(batch_flat_grad)
             final_grad = grad_restructure(batch_flat_grad)
             update_model!(model, opt_state, final_grad)
 
-            mean_mae_diff = accum_mae_diff / count
-            mean_mae_abs = accum_mae_abs / count
+            mean_mae_diff = accum_mae_diff / Float32(count)
+            mean_mae_abs = accum_mae_abs / Float32(count)
 
             log_pretraining_summary(summary_io, epoch, mean_mae_diff, mean_mae_abs,
                                     grad_norm, lr_state.current_lr)
 
-            plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
-            step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
+            if epoch > lr_config.warmup_epochs
+                plateau_metric = use_diff_gradient ? mean_mae_diff : mean_mae_abs
+                step_plateau!(lr_config, lr_state, opt_state, plateau_metric)
+            elseif epoch == lr_config.warmup_epochs
+                # Reset best_loss and bad_epochs for a fresh start after warmup
+                lr_state.best_loss = Float32(Inf)
+                lr_state.bad_epochs = 0
+            end
 
             println(@sprintf("PMF PT | %s | %s | Epoch: %4d | Batch: %3d | DiffMAE: %.3e | AbsMAE: %.3e | |∇|: %.3e | LR: %.2e",
                              phase_type, move_type, epoch, batch_size, mean_mae_diff, mean_mae_abs,

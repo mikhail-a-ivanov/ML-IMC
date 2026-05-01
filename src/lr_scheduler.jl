@@ -1,14 +1,15 @@
 using ..ML_IMC
 
 function make_default_scheduler_config()
-    return LRSchedulerConfig(0, 1.0e-7, 50, 0.5, 1.0e-8, 0)
+    return LRSchedulerConfig(0, 1.0f-7, 50, 0.5f0, 1.0f-8, 0)
 end
 
-function lr_for_epoch(config::LRSchedulerConfig, initial_lr::Float64, epoch::Int)
+function lr_for_epoch(config::LRSchedulerConfig, initial_lr::Float32, epoch::Int)
     if epoch <= config.warmup_epochs
         if config.warmup_epochs > 1
             return config.warmup_start_lr +
-                   (initial_lr - config.warmup_start_lr) * (epoch - 1) / (config.warmup_epochs - 1)
+                   (initial_lr - config.warmup_start_lr) * Float32(epoch - 1) /
+                   Float32(config.warmup_epochs - 1)
         else
             return initial_lr
         end
@@ -16,7 +17,7 @@ function lr_for_epoch(config::LRSchedulerConfig, initial_lr::Float64, epoch::Int
     return initial_lr
 end
 
-function step_plateau!(config::LRSchedulerConfig, state::LRSchedulerState, opt_state, loss::Float64)
+function step_plateau!(config::LRSchedulerConfig, state::LRSchedulerState, opt_state, loss::Float32)
     if config.patience <= 0
         return state.current_lr
     end

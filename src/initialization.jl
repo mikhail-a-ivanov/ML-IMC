@@ -17,19 +17,19 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
     else
         check_file(model_file)
         data = BSON.load(model_file)
-        
+
         # Validate model key
         if !haskey(data, :model)
             throw(ArgumentError("Loaded BSON file $model_file does not contain a 'model' variable."))
         end
-        
+
         loaded_model = data[:model]
-        
+
         # Validate type
         if !(loaded_model isa Flux.Chain)
             throw(ArgumentError("Loaded object 'model' from $model_file is not a Flux.Chain (got $(typeof(loaded_model)))."))
         end
-        
+
         # Validate input dimension
         n_g2 = length(nn_params.g2_functions)
         first_layer = loaded_model[1]
@@ -37,13 +37,13 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
             n_inputs = size(first_layer.weight, 2)
             if n_inputs != n_g2
                 throw(ArgumentError("Model in $model_file has $n_inputs inputs, but current config specifies $n_g2 symmetry functions. " *
-                                  "Check your configuration and symmetry function file."))
+                                    "Check your configuration and symmetry function file."))
             end
         else
             @warn "Could not verify model input dimension: first layer $(typeof(first_layer)) does not have a weight field."
         end
-        
-        loaded_model
+
+        f32(loaded_model)
     end
 
     # For simulation, model is mandatory
@@ -63,13 +63,13 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
     if optimizer_file != "none"
         check_file(optimizer_file)
         data = BSON.load(optimizer_file)
-        
+
         # Validate optimizer state key
         if !haskey(data, :opt_state)
             throw(ArgumentError("Loaded BSON file $optimizer_file does not contain 'opt_state' variable."))
         end
-        
-        opt_state = data[:opt_state]
+
+        opt_state = f32(data[:opt_state])
     end
 
     # Choose optimizer based on mode

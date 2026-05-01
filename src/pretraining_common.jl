@@ -1,16 +1,16 @@
 using ..ML_IMC
 
 struct CachedTrajectory
-    coordinates::Vector{Matrix{Float64}}
-    boxes::Vector{Vector{Float64}}
+    coordinates::Vector{Matrix{Float32}}
+    boxes::Vector{Vector{Float32}}
     n_frames::Int
 end
 
 struct PretrainingReferenceCache
     trajectory::CachedTrajectory
-    distance_matrices::Vector{Matrix{Float64}}
-    histograms::Vector{Vector{Float64}}
-    g2_matrices::Vector{Matrix{Float64}}
+    distance_matrices::Vector{Matrix{Float32}}
+    histograms::Vector{Vector{Float32}}
+    g2_matrices::Vector{Matrix{Float32}}
 end
 
 function cache_trajectory(sys_params::SystemParameters)::CachedTrajectory
@@ -18,13 +18,13 @@ function cache_trajectory(sys_params::SystemParameters)::CachedTrajectory
 
     traj = read_xtc(sys_params)
     n_frames = Int(size(traj)) - 1
-    coordinates = Vector{Matrix{Float64}}(undef, n_frames)
-    boxes = Vector{Vector{Float64}}(undef, n_frames)
+    coordinates = Vector{Matrix{Float32}}(undef, n_frames)
+    boxes = Vector{Vector{Float32}}(undef, n_frames)
 
     for frame_id in 1:n_frames
         frame = read_step(traj, frame_id)
-        coordinates[frame_id] = Matrix{Float64}(positions(frame))
-        boxes[frame_id] = lengths(UnitCell(frame))
+        coordinates[frame_id] = Matrix{Float32}(positions(frame))
+        boxes[frame_id] = Vector{Float32}(lengths(UnitCell(frame)))
     end
 
     println("Cached $(n_frames) frames for system: $(sys_params.system_name)")
@@ -47,16 +47,16 @@ function precompute_reference_cache(nn_params::NeuralNetParameters,
     cached_traj = cache_trajectory(sys_params)
     n_frames = cached_traj.n_frames
 
-    distance_matrices = Vector{Matrix{Float64}}(undef, n_frames)
-    histograms = Vector{Vector{Float64}}(undef, n_frames)
-    g2_matrices = Vector{Matrix{Float64}}(undef, n_frames)
+    distance_matrices = Vector{Matrix{Float32}}(undef, n_frames)
+    histograms = Vector{Vector{Float32}}(undef, n_frames)
+    g2_matrices = Vector{Matrix{Float32}}(undef, n_frames)
 
     for frame_id in 1:n_frames
         coordinates = cached_traj.coordinates[frame_id]
         box = cached_traj.boxes[frame_id]
 
         distance_matrices[frame_id] = build_distance_matrix(coordinates, box)
-        histograms[frame_id] = zeros(Float64, sys_params.n_bins)
+        histograms[frame_id] = zeros(Float32, sys_params.n_bins)
         update_distance_histogram!(distance_matrices[frame_id], histograms[frame_id], sys_params)
         g2_matrices[frame_id] = build_g2_matrix(distance_matrices[frame_id], nn_params)
     end
@@ -144,7 +144,7 @@ function compute_pretraining_gradient!(e_nn::T, e_ref::T, Δe_nn::T, Δe_ref::T,
                                        norm_factor::T=T(1))::Any where {T <: AbstractFloat}
     model_params = Flux.trainables(model)
     mp, _ = Flux.destructure(model_params)
-    reg_gradient = @. mp * 2 * pretrain_params.regularization
+    reg_gradient = @. mp * T(2) * T(pretrain_params.regularization)
 
     if !use_diff_gradient
         grad_final = compute_energy_gradients(symm2, model)
@@ -174,10 +174,11 @@ end
 function mean_gradient(batch_gradients::Vector{Any})
     n = length(batch_gradients)
     first_flat_grad, grad_restructure = Flux.destructure(batch_gradients[1])
+    T = eltype(first_flat_grad)
     for grad in batch_gradients[2:end]
         flat_grad, _ = Flux.destructure(grad)
         first_flat_grad .+= flat_grad
     end
-    first_flat_grad ./= n
+    first_flat_grad ./= T(n)
     return first_flat_grad, grad_restructure
 end
