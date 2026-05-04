@@ -17,13 +17,6 @@ function compute_energy_gradients(symm_func_matrix::AbstractMatrix{T},
     return energy_gradients
 end
 
-function compute_cross_correlation(descriptor::Vector{T}, energy_gradients)::Matrix{T} where {T <: AbstractFloat}
-    flat_energy_grad, gradient_restructure = Flux.destructure(energy_gradients)
-    cross_correlations = descriptor * transpose(flat_energy_grad)
-
-    return cross_correlations
-end
-
 function initialize_cross_accumulators(system_params::SystemParameters,
                                        model::Flux.Chain)::Matrix{Float32}
     model_params, re = Flux.destructure(model)
@@ -34,6 +27,7 @@ function initialize_cross_accumulators(system_params::SystemParameters,
 end
 
 function flatten_model_gradient!(buffer::Vector{T}, grad) where {T <: AbstractFloat}
+    fill!(buffer, zero(T))
     offset = 1
     if hasproperty(grad, :layers)
         for layer_grad in grad.layers
@@ -59,54 +53,69 @@ end
 
 function update_cross_accumulators!(cross_accumulators::Matrix{T},
                                     symm_func_matrix::Matrix{T},
-                                    descriptor::Vector{T},
+                                    rdf_sample::Vector{T},
                                     model::Chain,
                                     flat_grad_buffer::Vector{T})::Matrix{T} where {T <: AbstractFloat}
     energy_gradients = compute_energy_gradients(symm_func_matrix, model)
     flatten_model_gradient!(flat_grad_buffer, energy_gradients)
-    BLAS.ger!(one(T), descriptor, flat_grad_buffer, cross_accumulators)
+    BLAS.ger!(one(T), rdf_sample, flat_grad_buffer, cross_accumulators)
     return cross_accumulators
 end
 
-function compute_ensemble_correlation(symm_func_matrix::Matrix{T},
-                                      descriptor::Vector{T},
-                                      model::Chain)::Matrix{T} where {T <: AbstractFloat}
-    energy_gradients = compute_energy_gradients(symm_func_matrix, model)
-    ensemble_correlations = compute_cross_correlation(descriptor, energy_gradients)
-    return ensemble_correlations
-end
-
-function compute_descriptor_gradients(cross_accumulators::Matrix{T},
-                                      ensemble_correlations::Matrix{T},
-                                      system_params::SystemParameters)::Matrix{T} where {T <: AbstractFloat}
-    descriptor_gradients = -system_params.beta .* (cross_accumulators - ensemble_correlations)
-    return descriptor_gradients
-end
-
-function compute_loss_gradients(cross_accumulators::Matrix{T},
-                                symm_func_matrix::Matrix{T},
-                                descriptor_nn::Vector{T},
-                                descriptor_ref::Vector{T},
-                                model::Flux.Chain,
+function compute_loss_gradients(mean_rdf_energy_grad::Matrix{T},
+                                mean_energy_grad::Vector{T},
+                                mean_rdf::Vector{T},
+                                rdf_target::Vector{T},
                                 system_params::SystemParameters,
                                 nn_params::NeuralNetParameters)::Vector{T} where {T <: AbstractFloat}
-    flat_params, _ = Flux.destructure(model)
-
-    # Calculate correlations and their gradients for descriptor computation
-    ensemble_correlations = compute_ensemble_correlation(symm_func_matrix, descriptor_nn, model)
-    descriptor_gradients = compute_descriptor_gradients(cross_accumulators, ensemble_correlations, system_params)
-
-    # MSE/MAE loss gradient computation
-    diff = descriptor_nn - descriptor_ref
-    dLdS = if nn_params.gradient_type == "mae"
-        @. sign(diff) / T(length(diff))
+    # Derivation of the loss gradient.
+    #
+    # The system samples the canonical ensemble with energy E_θ(x), where x is a
+    # configuration and θ is the vector of neural-network parameters. The
+    # Boltzmann probability of x is
+    #
+    #     P_θ(x) = exp(-β E_θ(x)) / Z(θ),     Z(θ) = ∫ exp(-β E_θ(x)) dx.
+    #
+    # Let g_i(x) be the contribution of x to the i-th RDF bin and
+    # ḡ_i(θ) = <g_i> = ∫ g_i(x) P_θ(x) dx its ensemble average. Using
+    # ∂(ln Z)/∂θ_p = -β <∂E/∂θ_p> one obtains
+    #
+    #     ∂P_θ(x)/∂θ_p = -β P_θ(x) ( ∂E/∂θ_p - <∂E/∂θ_p> ),
+    #
+    # and inserting this under the integral yields the fluctuation–response
+    # identity
+    #
+    #     ∂ḡ_i/∂θ_p = -β ( <g_i ∂E/∂θ_p> - <g_i> <∂E/∂θ_p> ).
+    #
+    # The loss L depends on θ only through ḡ, hence the chain rule gives
+    #
+    #     ∂L/∂θ_p = Σ_i (∂L/∂ḡ_i) (∂ḡ_i/∂θ_p)
+    #             = -β Σ_i (∂L/∂ḡ_i) ( <g_i ∂E/∂θ_p> - <g_i> <∂E/∂θ_p> ).
+    #
+    # Mapping the averages to the variables used below,
+    #
+    #     mean_rdf_energy_grad[i, p]  = <g_i ∂E/∂θ_p>
+    #     mean_energy_grad[p]         = <∂E/∂θ_p>
+    #     mean_rdf[i]                 = <g_i>
+    #     loss_grad_rdf[i]            = ∂L/∂ḡ_i,
+    #
+    # the gradient takes the compact form
+    #
+    #     ∂L/∂θ = -β ( mean_rdf_energy_grad' * loss_grad_rdf
+    #                  - (mean_rdf · loss_grad_rdf) * mean_energy_grad ),
+    #
+    # which avoids assembling the full n_bins × n_params Jacobian ∂ḡ/∂θ.
+    rdf_residual = mean_rdf - rdf_target
+    inv_n_bins = one(T) / T(length(rdf_residual))
+    loss_grad_rdf = if nn_params.gradient_type == "mae"
+        sign.(rdf_residual) .* inv_n_bins
     else
-        @. (T(2) / T(length(diff))) * diff
+        (T(2) * inv_n_bins) .* rdf_residual
     end
 
-    # Combine descriptor gradients with regularization
-    param_gradients = descriptor_gradients' * dLdS  # (num_params × n_bins) * (n_bins × 1) = (num_params × 1)
-    param_gradients .+= T(2) * T(nn_params.regularization) .* flat_params
+    joint_term = mean_rdf_energy_grad' * loss_grad_rdf
+    product_term = dot(mean_rdf, loss_grad_rdf) .* mean_energy_grad
+    loss_grad_params = -T(system_params.beta) .* (joint_term .- product_term)
 
-    return param_gradients
+    return loss_grad_params
 end

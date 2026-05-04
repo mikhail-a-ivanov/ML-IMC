@@ -27,7 +27,6 @@ include("simulation.jl")
 include("symmetry_functions.jl")
 include("training.jl")
 include("utils.jl")
-
 include("magic_pt.jl")
 
 BLAS.set_num_threads(1)
@@ -53,7 +52,7 @@ function main()
 
     # Initialize input data and model components
     model, optimizer, opt_state,
-    ref_rdfs = input_init(global_params, nn_params, pretrain_params, magic_params, system_params_list)
+    rdf_targets = input_init(global_params, nn_params, pretrain_params, magic_params, system_params_list)
 
     println("----------------------------------- Model -------------------------------------")
     @show model
@@ -64,13 +63,14 @@ function main()
     # Execute workflow based on mode
     if global_params.mode == "training"
         println("================================== Training ===================================")
-        train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, opt_state, ref_rdfs)
+        train!(global_params, mc_params, nn_params, system_params_list, model, optimizer, opt_state, rdf_targets)
     elseif global_params.mode == "pmf-pretraining"
         println("================================ PMF Pre-Training =================================")
-        model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
+        model = pretrain_model!(pretrain_params, nn_params, system_params_list, model, optimizer, rdf_targets)
     elseif global_params.mode == "magic-pretraining"
         println("================================ Magic Pre-Training =================================")
-        model = magic_pretrain(magic_params, pretrain_params, nn_params, system_params_list, model, optimizer, ref_rdfs)
+        model = magic_pretrain(magic_params, pretrain_params, nn_params, system_params_list, model, optimizer,
+                               rdf_targets)
     elseif global_params.mode == "simulation"
         length(system_params_list) == 1 || throw(ArgumentError("Simulation mode supports exactly one system"))
         simulate!(model, global_params, mc_params, nn_params, system_params_list[1])

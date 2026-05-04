@@ -17,14 +17,13 @@ function simulate!(model::Flux.Chain,
 
     # Collect system statistics
     system_outputs,
-    system_losses = collect_system_averages(outputs, nothing, [system_params], global_params,
-                                            nothing, nothing, 0.0f0, 1, mc_params.steps)
+    system_losses = collect_system_averages(outputs, nothing, [system_params], global_params)
 
     # Save simulation results
     system_name = system_params.system_name
     od = global_params.output_dir
     try
-        write_rdf(joinpath(od, "RDFNN-$(system_name).dat"), system_outputs[1].descriptor, system_params)
+        write_rdf(joinpath(od, "RDFNN-$(system_name).dat"), system_outputs[1].rdf, system_params)
         write_energies(joinpath(od, "energies-$(system_name).dat"), system_outputs[1].energies, mc_params,
                        system_params, 1)
     catch e

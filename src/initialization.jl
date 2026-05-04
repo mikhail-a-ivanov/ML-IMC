@@ -3,8 +3,8 @@ using ..ML_IMC
 function input_init(global_params::GlobalParameters, nn_params::NeuralNetParameters,
                     pretrain_params::PreTrainingParameters, magic_params::MagicPreTrainingParameters,
                     system_params_list::Vector{SystemParameters})
-    # Read reference data
-    ref_rdfs = [read_rdf(system_params.rdf_file)[2] for system_params in system_params_list]
+    # Read RDF targets used by training and pretraining losses.
+    rdf_targets = [read_rdf(system_params.rdf_file)[2] for system_params in system_params_list]
 
     mode = global_params.mode
     model = nothing
@@ -53,7 +53,7 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
 
     # For simulation, no optimizer needed
     if mode == "simulation"
-        return (model, nothing, nothing, ref_rdfs)
+        return (model, nothing, nothing, rdf_targets)
     end
 
     # Initialize or load optimizer
@@ -79,5 +79,5 @@ function input_init(global_params::GlobalParameters, nn_params::NeuralNetParamet
         optimizer = init_optimizer(pretrain_params)
     end
 
-    return (model, optimizer, opt_state, ref_rdfs)
+    return (model, optimizer, opt_state, rdf_targets)
 end

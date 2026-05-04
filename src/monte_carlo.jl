@@ -1,10 +1,10 @@
 using ..ML_IMC
 
 struct MonteCarloAverages
-    descriptor::Vector{Float32}
+    rdf::Vector{Float32}
     energies::Vector{Float32}
     cross_accumulators::Union{Nothing, Matrix{Float32}}
-    symmetry_matrix_accumulator::Union{Nothing, Matrix{Float32}}
+    mean_flat_grad::Union{Nothing, Vector{Float32}}
     acceptance_ratio::Float32
     system_params::SystemParameters
     step_size::Float32
@@ -60,31 +60,26 @@ function update_distance_histogram_vectors!(histogram::Vector{T},
     return histogram
 end
 
-function normalize_hist_to_rdf!(histogram::AbstractVector{T},
-                                system_params::SystemParameters,
-                                box::AbstractVector{T})::AbstractVector{T} where {T <: AbstractFloat}
+function compute_rdf_normalization_factors(system_params::SystemParameters,
+                                           box::AbstractVector{T})::Vector{T} where {T <: AbstractFloat}
     box_volume = prod(box)
     n_pairs = T(system_params.n_atoms * (system_params.n_atoms - 1) ÷ 2)
-
     bin_width = T(system_params.bin_width)
     shell_volume_factor = T(4) * T(π) / T(3)
-    shell_volumes = [shell_volume_factor * ((T(i) * bin_width)^3 - ((T(i) - one(T)) * bin_width)^3)
-                     for i in 1:(system_params.n_bins)]
 
-    normalization_factors = fill(box_volume / n_pairs, system_params.n_bins) ./ shell_volumes
-
-    histogram .*= normalization_factors
-
-    return histogram
+    factors = Vector{T}(undef, system_params.n_bins)
+    @inbounds for i in 1:(system_params.n_bins)
+        shell_volume = shell_volume_factor *
+                       ((T(i) * bin_width)^3 - ((T(i) - one(T)) * bin_width)^3)
+        factors[i] = box_volume / (n_pairs * shell_volume)
+    end
+    return factors
 end
 
 function collect_system_averages(outputs::Vector{MonteCarloAverages},
-                                 reference_rdfs::Any,
+                                 rdf_targets::Union{Nothing, Vector{Vector{Float32}}},
                                  system_params_list::Vector{SystemParameters},
-                                 global_params::GlobalParameters,
-                                 nn_params::Union{NeuralNetParameters, Nothing},
-                                 model::Union{Flux.Chain, Nothing}, lr::Float32,
-                                 epoch, mc_steps)::Tuple{Vector{MonteCarloAverages}, Vector{Float32}}
+                                 global_params::GlobalParameters)::Tuple{Vector{MonteCarloAverages}, Vector{Float32}}
     total_loss_mae::Float32 = 0.0f0
 
     system_outputs::Vector{MonteCarloAverages} = Vector{MonteCarloAverages}()
@@ -93,45 +88,45 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
     println("| System          | Acc.Ratio | Avg.Displ.(Å) | MAE       |")
 
     for (system_idx, system_params) in enumerate(system_params_list)
-        descriptors::Vector{Vector{Float32}} = Vector{Vector{Float32}}()
+        rdfs::Vector{Vector{Float32}} = Vector{Vector{Float32}}()
         energies::Vector{Vector{Float32}} = Vector{Vector{Float32}}()
         acceptance_ratios::Vector{Float32} = Vector{Float32}()
         max_displacements::Vector{Float32} = Vector{Float32}()
 
         cross_accumulators::Vector{Matrix{Float32}} = Vector{Matrix{Float32}}()
-        symm_func_accumulators::Vector{Matrix{Float32}} = Vector{Matrix{Float32}}()
+        flat_grad_accumulators::Vector{Vector{Float32}} = Vector{Vector{Float32}}()
 
         for output in outputs
             if system_params.system_name == output.system_params.system_name
-                push!(descriptors, output.descriptor)
+                push!(rdfs, output.rdf)
                 push!(energies, output.energies)
                 push!(acceptance_ratios, output.acceptance_ratio)
                 push!(max_displacements, output.step_size)
 
                 if global_params.mode == "training"
-                    push!(cross_accumulators, output.cross_accumulators)
-                    push!(symm_func_accumulators, output.symmetry_matrix_accumulator)
+                    push!(cross_accumulators, output.cross_accumulators::Matrix{Float32})
+                    push!(flat_grad_accumulators, output.mean_flat_grad::Vector{Float32})
                 end
             end
         end
 
-        avg_descriptor::Vector{Float32} = mean(descriptors)
+        avg_rdf::Vector{Float32} = mean(rdfs)
         avg_energies::Vector{Float32} = mean(energies)
         avg_acceptance::Float32 = mean(acceptance_ratios)
         avg_displacement::Float32 = mean(max_displacements)
 
         avg_cross_acc::Union{Matrix{Float32}, Nothing} = nothing
-        avg_symm_func::Union{Matrix{Float32}, Nothing} = nothing
+        avg_flat_grad::Union{Vector{Float32}, Nothing} = nothing
 
         if global_params.mode == "training"
             avg_cross_acc = mean(cross_accumulators)
-            avg_symm_func = mean(symm_func_accumulators)
+            avg_flat_grad = mean(flat_grad_accumulators)
         end
 
-        system_output = MonteCarloAverages(avg_descriptor,
+        system_output = MonteCarloAverages(avg_rdf,
                                            avg_energies,
                                            avg_cross_acc,
-                                           avg_symm_func,
+                                           avg_flat_grad,
                                            avg_acceptance,
                                            system_params,
                                            avg_displacement)
@@ -144,11 +139,11 @@ function collect_system_averages(outputs::Vector{MonteCarloAverages},
         end
 
         if global_params.mode == "training"
+            isnothing(rdf_targets) && throw(ArgumentError("rdf_targets are required in training mode"))
+
             system_loss_mae,
-            system_loss_rmse = compute_training_loss(system_output.descriptor,
-                                                     reference_rdfs[system_idx],
-                                                     model,
-                                                     nn_params)
+            system_loss_rmse = compute_training_loss(system_output.rdf,
+                                                     rdf_targets[system_idx])
 
             println(@sprintf("| %-15s | %9.4f | %13.4f | %.3e |",
                              system_params.system_name,
@@ -302,15 +297,15 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
     workspace = MonteCarloWorkspace{Float32}(system_params.n_atoms, length(nn_params.g2_functions), n_params)
 
     hist_accumulator::Vector{Float32} = zeros(Float32, system_params.n_bins)
+    rdf_norm_factors::Vector{Float32} = compute_rdf_normalization_factors(system_params, box)
 
     if global_params.mode == "training"
         hist::Vector{Float32} = zeros(Float32, system_params.n_bins)
-        g2_accumulator::Matrix{Float32} = zeros(Float32, size(g2_matrix))
         cross_accumulators::Matrix{Float32} = initialize_cross_accumulators(system_params, model)
+        flat_grad_accumulator::Vector{Float32} = zeros(Float32, n_params)
     end
 
-    symm_func_matrix::Matrix{Float32} = g2_matrix
-    energy_vector::Vector{Float32} = init_system_energies_vector(symm_func_matrix, model)
+    energy_vector::Vector{Float32} = init_system_energies_vector(g2_matrix, model)
     total_energy::Float32 = sum(energy_vector)
     energies::Vector{Float32} = zeros(Float32, total_output_points + 1)
     energies[1] = total_energy
@@ -348,10 +343,9 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
             if global_params.mode == "training"
                 hist = update_distance_histogram!(distance_matrix, hist, system_params)
                 hist_accumulator .+= hist
-                g2_accumulator .+= g2_matrix
 
-                normalize_hist_to_rdf!(hist, system_params, box)
                 update_cross_accumulators!(cross_accumulators, g2_matrix, hist, model, workspace.flat_grad_buffer)
+                flat_grad_accumulator .+= workspace.flat_grad_buffer
                 fill!(hist, 0.0f0)
             else
                 hist_accumulator = update_distance_histogram!(distance_matrix, hist_accumulator, system_params)
@@ -365,20 +359,20 @@ function mcsample!(input::MonteCarloSampleInput)::MonteCarloAverages
         error("No production samples collected in mcsample!. Check configuration: steps=$(mc_params.steps), equilibration=$(mc_params.equilibration_steps), output_frequency=$(mc_params.output_frequency).")
     end
 
+    inv_n_samples = one(Float32) / Float32(collected_samples)
+
     if global_params.mode == "training"
-        cross_accumulators ./= Float32(collected_samples)
-        g2_accumulator ./= Float32(collected_samples)
-        symm_func_accumulator = g2_accumulator
+        cross_accumulators .*= rdf_norm_factors .* inv_n_samples
+        flat_grad_accumulator .*= inv_n_samples
     end
 
-    hist_accumulator ./= Float32(collected_samples)
-    normalize_hist_to_rdf!(hist_accumulator, system_params, box)
+    hist_accumulator .*= rdf_norm_factors .* inv_n_samples
 
     if global_params.mode == "training"
         return MonteCarloAverages(hist_accumulator,
                                   energies,
                                   cross_accumulators,
-                                  symm_func_accumulator,
+                                  flat_grad_accumulator,
                                   acceptance_ratio,
                                   system_params,
                                   step_size)

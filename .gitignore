@@ -43,3 +43,6 @@ run/
 performance.md
 
 *run*/
+
+!analyze_pretraining.ipynb
+!analyze_training.ipynb

@@ -2,7 +2,7 @@
 
 [run]
 # One of: "training", "pmf-pretraining", "magic-pretraining", "simulation".
-mode = "pmf-pretraining"
+mode = "magic-pretraining"
 
 [inputs]
 # System TOML files are loaded in this order. For parallel runs, the number of
@@ -39,7 +39,7 @@ bias = true
 
 [monte_carlo]
 # Total MC steps per sampling run.
-steps = 500000
+steps = 1500000
 # Samples are accumulated only after this many equilibration steps.
 equilibration_steps = 10000
 # Adjust trial displacement every N equilibration steps. Set 0 to disable.
@@ -66,7 +66,7 @@ learning_rate = 0.001
 # Used by optimizers that accept momentum-like parameters.
 momentum = 0.9
 # First and second moment decay rates for Adam-family optimizers.
-decay_rates = [0.9, 0.999]
+decay_rates = [0.1, 0.4]
 
 [training.lr_scheduler]
 # Linear warmup length. Set 0 to start directly at learning_rate.
@@ -80,9 +80,9 @@ cooldown = 0
 
 [pretraining]
 # Number of PMF/magic pretraining epochs.
-steps = 20000
+steps = 100000
 # Number of random moves per system before each model update.
-batch_size = 10
+batch_size = 1
 # Loss used for pretraining energy matching: "mse" or "mae".
 loss = "mse"
 regularization = 0.0
@@ -93,7 +93,7 @@ move_all_particles = false
 # Console/log output interval for pretraining.
 output_frequency = 1
 # Save model and optimizer state every N epochs.
-save_frequency = 1000
+save_frequency = 10000
 # Prefix for saved pretraining artifacts.
 output_prefix = "pt"
 
@@ -108,7 +108,7 @@ decay_rates = [0.9, 0.999]
 # Scheduler settings for PMF and magic pretraining.
 warmup_epochs = 1000
 warmup_start = 1.0e-5
-patience = 1000
+patience = 10000
 factor = 0.8
 min_lr = 1.0e-5
 cooldown = 0

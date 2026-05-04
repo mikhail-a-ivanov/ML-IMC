@@ -1,20 +1,10 @@
 using ..ML_IMC
 using Dates
 
-function compute_training_loss(descriptor_nn::AbstractVector{T},
-                               descriptor_ref::AbstractVector{T},
-                               model::Flux.Chain,
-                               nn_params::NeuralNetParameters) where {T <: AbstractFloat}
-    descriptor_loss_rmse = sqrt(mean(abs2, descriptor_nn .- descriptor_ref))
-    descriptor_loss_mae = mean(abs, descriptor_nn .- descriptor_ref)
-
-    reg_loss = zero(T)
-    if nn_params.regularization > zero(T)
-        reg_loss = nn_params.regularization * sum(sum(abs2, p) for p in Flux.trainables(model))
-    end
-
-    total_loss_rmse = descriptor_loss_rmse + reg_loss
-    total_loss_mae = descriptor_loss_mae + reg_loss
+function compute_training_loss(rdf_nn::AbstractVector{T},
+                               rdf_target::AbstractVector{T}) where {T <: AbstractFloat}
+    total_loss_rmse = sqrt(mean(abs2, rdf_nn .- rdf_target))
+    total_loss_mae = mean(abs, rdf_nn .- rdf_target)
 
     return total_loss_mae, total_loss_rmse
 end
@@ -58,7 +48,7 @@ function train!(global_params::GlobalParameters,
                 model::Flux.Chain,
                 optimizer,
                 opt_state_loaded,
-                ref_rdfs)
+                rdf_targets::Vector{Vector{Float32}})
     opt_state = Flux.setup(optimizer, model)
     if !isnothing(opt_state_loaded)
         opt_state = opt_state_loaded
@@ -92,25 +82,21 @@ function train!(global_params::GlobalParameters,
             outputs = pmap(mcsample!, inputs)
 
             system_outputs,
-            system_losses = collect_system_averages(outputs, ref_rdfs, system_params_list, global_params,
-                                                    nn_params, model, lr,
-                                                    iteration,
-                                                    mc_params.steps)
+            system_losses = collect_system_averages(outputs, rdf_targets, system_params_list, global_params)
 
-            loss_gradients = Vector{Any}(undef, length(system_outputs))
+            loss_gradients = Vector{Vector{Float32}}(undef, length(system_outputs))
             for (system_id, system_output) in enumerate(system_outputs)
                 system_params = system_params_list[system_id]
 
-                loss_gradients[system_id] = compute_loss_gradients(system_output.cross_accumulators,
-                                                                   system_output.symmetry_matrix_accumulator,
-                                                                   system_output.descriptor,
-                                                                   ref_rdfs[system_id],
-                                                                   model,
+                loss_gradients[system_id] = compute_loss_gradients(system_output.cross_accumulators::Matrix{Float32},
+                                                                   system_output.mean_flat_grad::Vector{Float32},
+                                                                   system_output.rdf,
+                                                                   rdf_targets[system_id],
                                                                    system_params,
                                                                    nn_params)
 
                 name = system_params.system_name
-                write_rdf(joinpath(od, "RDFNN-$(name)-iter-$(iter_string).dat"), system_output.descriptor,
+                write_rdf(joinpath(od, "RDFNN-$(name)-iter-$(iter_string).dat"), system_output.rdf,
                           system_params)
                 write_energies(joinpath(od, "energies-$(name)-iter-$(iter_string).dat"),
                                system_output.energies,
